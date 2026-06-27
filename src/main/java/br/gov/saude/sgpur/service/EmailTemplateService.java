@@ -1,6 +1,5 @@
 package br.gov.saude.sgpur.service;
 
-import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import org.springframework.stereotype.Service;
@@ -34,8 +33,7 @@ public class EmailTemplateService {
     /** E-mail de solicitacao de parecer aos medicos - SEM dados pessoais do paciente. */
     private EmailTemplate emailMedicos(Processo p) {
         String medicos = p.getPareceres().stream()
-            .map(Parecer::getMembro)
-            .map(m -> "- " + m.getRotulo())
+            .map(par -> "- " + par.getMembro().getRotulo())
             .collect(Collectors.joining("\n"));
         String data = p.getDataSituacaoEspecial() != null
             ? p.getDataSituacaoEspecial().format(DATA) : "(data)";
