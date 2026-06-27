@@ -37,6 +37,10 @@ neste projeto, respeite rigorosamente o dominio e as regras a seguir.
   As credenciais do Neon ficam em `src/main/resources/application-local.yml`
   (GITIGNORED - nunca commitar). Em deploy real, use as env vars
   `SPRING_DATASOURCE_URL/USERNAME/PASSWORD` + `SPRING_PROFILES_ACTIVE=prod`.
+- **Desktop (standalone):** perfil `desktop` - H2 local em `~/.sgpur`, abre o
+  navegador sozinho. Empacotar: `.\package-desktop.ps1` (jpackage app-image ->
+  `dist\desktop\SGPUR\SGPUR.exe` com JRE embutida + `dist\SGPUR-desktop.zip`).
+  Modo recomendado quando NAO e cliente-servidor (ver docs/INSTALAR-DESKTOP.md).
 - App em `http://localhost:8080`. Login inicial: admin / admin123
   (sobrescreva por `SGPUR_ADMIN_USER` / `SGPUR_ADMIN_PASSWORD`).
 - NUNCA escreva segredos (senha do banco, chaves) em arquivos versionados.
@@ -89,8 +93,10 @@ neste projeto, respeite rigorosamente o dominio e as regras a seguir.
   editar/excluir, valida numero duplicado), `FluxoProcessoService` +
   `EtapaFluxo` (etapas em tempo real), `EmailTemplateService` + `EmailTemplate`
   (textos prontos), `RelatorioService` (PDF via OpenPDF),
-  `AnexoStorageService` (arquivos em `app.anexos.dir=./data/anexos`),
+  `OficioService` (oficio de indeferimento PDF), `Iniciais` (iniciais paciente),
+  `AnexoStorageService` (arquivos em `app.anexos.dir`),
   `UsuarioService` + `UsuarioDetailsService` (login via banco).
+  `config/DesktopBrowserLauncher` (abre o navegador no perfil desktop).
 - `web/`: `HomeController` (dashboard + login), `ProcessoController`
   (lista/novo/detalhe/editar/excluir/pareceres/registrar-envio/decidir/
   finalizacao/anexos/download/relatorio), `MembroController` (CRUD),
@@ -134,10 +140,16 @@ neste projeto, respeite rigorosamente o dominio e as regras a seguir.
 - Scripts start.ps1 / start.sh (forcam JDK 21). Pacote dist/ (sgpur-dist.zip).
 - CI no GitHub Actions (.github/workflows/ci.yml) VERDE. Badge no README.
 - .vscode/settings.json: nullAnalysis "disabled" (sem avisos amarelos).
+- Identificacao do paciente por INICIAIS (Iniciais.de -> "M.R.M.") no e-mail
+  aos medicos (nome completo oculto - LGPD).
+- OFICIO de indeferimento em PDF (OficioService) gerado AUTOMATICAMENTE ao
+  indeferir (nome completo do paciente, motivo) + endpoint /processos/{id}/oficio.
+- Perfil DESKTOP (application-desktop.yml, H2 em ~/.sgpur) + DesktopBrowserLauncher
+  + package-desktop.ps1 (jpackage). App roda standalone, sem hospedagem.
 - Testes: ProcessoService(7) + FluxoProcessoService(4) + EmailTemplate(3) +
-  SgpurApplicationTests smoke(1) + SecurityIntegration(4) = 19 ok.
-  README criado. Deploy preparado (deploy/) para Oracle Always Free - PAUSADO
-  (cartao recusado; ver memoria deploy-sgpur-oracle).
+  Iniciais(3) + SgpurApplicationTests smoke(1) + SecurityIntegration(4) = 22 ok.
+  README + docs/PLANO-DESKTOP.md + docs/INSTALAR-DESKTOP.md.
+  Deploy web (deploy/) para Oracle - em standby (desktop dispensa hospedagem).
 
 ## Pendencias / ideias futuras (backlog)
 - Editar/remover anexo; anexar o Relatorio Final no encerramento.
