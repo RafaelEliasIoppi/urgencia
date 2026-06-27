@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.*;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.service.AnexoStorageService;
+import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.EmailTemplateService;
 import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.ProcessoService;
@@ -37,19 +38,22 @@ public class ProcessoController {
     private final RelatorioService relatorioService;
     private final MembroUrgenciaRenalRepository membroRepository;
     private final AnexoStorageService anexoStorage;
+    private final AuditoriaService auditoria;
 
     public ProcessoController(ProcessoService processoService,
                               FluxoProcessoService fluxoService,
                               EmailTemplateService emailTemplateService,
                               RelatorioService relatorioService,
                               MembroUrgenciaRenalRepository membroRepository,
-                              AnexoStorageService anexoStorage) {
+                              AnexoStorageService anexoStorage,
+                              AuditoriaService auditoria) {
         this.processoService = processoService;
         this.fluxoService = fluxoService;
         this.emailTemplateService = emailTemplateService;
         this.relatorioService = relatorioService;
         this.membroRepository = membroRepository;
         this.anexoStorage = anexoStorage;
+        this.auditoria = auditoria;
     }
 
     @ModelAttribute("statusValores")
@@ -123,6 +127,8 @@ public class ProcessoController {
             return "processos/form";
         }
         Processo salvo = processoService.cadastrar(processo, medicoIds);
+        auditoria.registrar("PROCESSO_CADASTRADO",
+            "Processo " + salvo.getNumero() + " - " + salvo.getPacienteNome());
         ra.addFlashAttribute("msg", "Processo " + salvo.getNumero() + " cadastrado.");
         return "redirect:/processos/" + salvo.getId();
     }
@@ -158,6 +164,7 @@ public class ProcessoController {
             return "processos/editar";
         }
         processoService.atualizarDados(id, form);
+        auditoria.registrar("PROCESSO_EDITADO", "Processo id " + id);
         ra.addFlashAttribute("msg", "Processo atualizado.");
         return "redirect:/processos/" + id;
     }
@@ -168,6 +175,7 @@ public class ProcessoController {
         String numero = p.getNumero();
         processoService.excluir(id);
         anexoStorage.removerPastaProcesso(id);
+        auditoria.registrar("PROCESSO_EXCLUIDO", "Processo " + numero);
         ra.addFlashAttribute("msg", "Processo " + numero + " excluido.");
         return "redirect:/processos";
     }
@@ -243,6 +251,8 @@ public class ProcessoController {
                 ra.addFlashAttribute("erro", "Decisao salva, mas falhou ao anexar o relatorio: " + e.getMessage());
             }
         }
+        auditoria.registrar("PROCESSO_DECIDIDO",
+            "Processo " + p.getNumero() + " - " + decisao.getDescricao());
         ra.addFlashAttribute("msg", "Decisao registrada: " + decisao.getDescricao());
         return "redirect:/processos/" + id;
     }
@@ -278,6 +288,8 @@ public class ProcessoController {
         Processo p = processoService.buscar(id);
         try {
             anexoStorage.salvar(p, tipo, descricao, arquivo);
+            auditoria.registrar("ANEXO_ADICIONADO",
+                "Processo " + p.getNumero() + " - " + tipo.getDescricao());
             ra.addFlashAttribute("msg", "Anexo enviado.");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar: " + e.getMessage());
@@ -299,6 +311,7 @@ public class ProcessoController {
     @PostMapping("/anexos/{anexoId}/excluir")
     public String excluirAnexo(@PathVariable Long anexoId, RedirectAttributes ra) {
         Long processoId = anexoStorage.excluir(anexoId);
+        auditoria.registrar("ANEXO_REMOVIDO", "Processo id " + processoId);
         ra.addFlashAttribute("msg", "Anexo removido.");
         return "redirect:/processos/" + processoId + "#anexos";
     }

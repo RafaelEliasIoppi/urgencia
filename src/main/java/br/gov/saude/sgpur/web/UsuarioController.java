@@ -2,6 +2,7 @@ package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
+import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.UsuarioService;
 import jakarta.validation.Valid;
 import org.springframework.stereotype.Controller;
@@ -15,9 +16,11 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class UsuarioController {
 
     private final UsuarioService service;
+    private final AuditoriaService auditoria;
 
-    public UsuarioController(UsuarioService service) {
+    public UsuarioController(UsuarioService service, AuditoriaService auditoria) {
         this.service = service;
+        this.auditoria = auditoria;
     }
 
     @ModelAttribute("perfis")
@@ -62,6 +65,7 @@ public class UsuarioController {
             model.addAttribute("erro", e.getMessage());
             return "usuarios/form";
         }
+        auditoria.registrar("USUARIO_CRIADO", "Usuario " + usuario.getUsername());
         ra.addFlashAttribute("msg", "Usuario criado.");
         return "redirect:/usuarios";
     }
@@ -70,6 +74,7 @@ public class UsuarioController {
     public String atualizar(@PathVariable Long id, @ModelAttribute("usuario") Usuario form,
                             @RequestParam(required = false) String senha, RedirectAttributes ra) {
         service.atualizar(id, form, senha);
+        auditoria.registrar("USUARIO_EDITADO", "Usuario id " + id);
         ra.addFlashAttribute("msg", "Usuario atualizado.");
         return "redirect:/usuarios";
     }
