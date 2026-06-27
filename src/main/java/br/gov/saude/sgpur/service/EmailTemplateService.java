@@ -37,6 +37,8 @@ public class EmailTemplateService {
             .collect(Collectors.joining("\n"));
         String data = p.getDataSituacaoEspecial() != null
             ? p.getDataSituacaoEspecial().format(DATA) : "(data)";
+        String iniciais = Iniciais.de(p.getPacienteNome());
+        String idProcesso = p.getNumero() + " - Paciente " + iniciais;
 
         String corpo = """
             Prezados(as) avaliadores(as),
@@ -48,18 +50,18 @@ public class EmailTemplateService {
             Processo: %s
             Data da situacao especial: %s
 
-            (Os dados pessoais do paciente foram omitidos. Em caso de necessidade de
-            identificacao para a analise, solicitar a Secretaria.)
+            (Os dados pessoais do paciente foram omitidos; identificado apenas pelas
+            iniciais. Em caso de necessidade de identificacao, solicitar a Secretaria.)
 
             Avaliadores designados:
             %s
 
             Atenciosamente,
             Equipe de Urgencia Renal - Secretaria de Saude
-            """.formatted(p.getNumero(), data, medicos);
+            """.formatted(idProcesso, data, medicos);
 
         return new EmailTemplate("medicos", "Envio aos medicos (parecer)", "send",
-            "Urgencia Renal - Solicitacao de parecer - Processo " + p.getNumero(), corpo);
+            "Urgencia Renal - Solicitacao de parecer - Processo " + idProcesso, corpo);
     }
 
     private EmailTemplate emailDeferido(Processo p) {
