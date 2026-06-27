@@ -22,4 +22,15 @@ public interface ProcessoRepository extends JpaRepository<Processo, Long> {
     Integer findMaxSequencialByAno(@Param("ano") int ano);
 
     long countByStatus(StatusProcesso status);
+
+    @Query("""
+        select p from Processo p
+        where (:status is null or p.status = :status)
+          and (:q is null or :q = ''
+               or lower(p.pacienteNome) like lower(concat('%', :q, '%'))
+               or p.numero like concat('%', :q, '%')
+               or lower(p.solicitanteEquipe) like lower(concat('%', :q, '%')))
+        order by p.ano desc, p.sequencial desc
+        """)
+    List<Processo> buscar(@Param("q") String q, @Param("status") StatusProcesso status);
 }

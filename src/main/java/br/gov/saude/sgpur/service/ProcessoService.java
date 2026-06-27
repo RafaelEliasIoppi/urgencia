@@ -36,6 +36,11 @@ public class ProcessoService {
         return processoRepository.findAllByOrderByAnoDescSequencialDesc();
     }
 
+    public List<Processo> buscar(String q, StatusProcesso status) {
+        String termo = (q == null || q.isBlank()) ? null : q.trim();
+        return processoRepository.buscar(termo, status);
+    }
+
     public Processo buscar(Long id) {
         return processoRepository.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Processo nao encontrado: " + id));

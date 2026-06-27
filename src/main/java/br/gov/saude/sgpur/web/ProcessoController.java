@@ -68,9 +68,13 @@ public class ProcessoController {
     }
 
     @GetMapping
-    public String listar(Model model) {
-        var processos = processoService.listarTodos();
+    public String listar(@RequestParam(required = false) String q,
+                         @RequestParam(required = false) StatusProcesso status,
+                         Model model) {
+        var processos = processoService.buscar(q, status);
         model.addAttribute("processos", processos);
+        model.addAttribute("q", q);
+        model.addAttribute("statusSelecionado", status);
         // resumo de pendencia por processo (id -> texto)
         java.util.Map<Long, String> pendencias = new java.util.LinkedHashMap<>();
         for (Processo p : processos) {
