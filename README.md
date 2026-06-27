@@ -1,5 +1,7 @@
 # SGPUR — Sistema de Gestão de Processos de Urgência Renal
 
+[![CI](https://github.com/RafaelEliasIoppi/urgencia/actions/workflows/ci.yml/badge.svg)](https://github.com/RafaelEliasIoppi/urgencia/actions/workflows/ci.yml)
+
 Sistema web que substitui a planilha Excel utilizada pela equipe de **Urgência
 Renal** da Secretaria de Saúde, informatizando todo o fluxo de um processo —
 do recebimento da solicitação até o deferimento ou indeferimento — de forma
