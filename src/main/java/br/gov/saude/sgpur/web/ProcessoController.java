@@ -10,6 +10,7 @@ import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.OficioService;
 import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.RelatorioService;
+import br.gov.saude.sgpur.service.SolicitacaoAvaliadorService;
 import jakarta.validation.Valid;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -39,6 +40,7 @@ public class ProcessoController {
     private final EmailTemplateService emailTemplateService;
     private final RelatorioService relatorioService;
     private final OficioService oficioService;
+    private final SolicitacaoAvaliadorService solicitacaoAvaliadorService;
     private final MembroUrgenciaRenalRepository membroRepository;
     private final ParecerRepository parecerRepository;
     private final AnexoStorageService anexoStorage;
@@ -49,6 +51,7 @@ public class ProcessoController {
                               EmailTemplateService emailTemplateService,
                               RelatorioService relatorioService,
                               OficioService oficioService,
+                              SolicitacaoAvaliadorService solicitacaoAvaliadorService,
                               MembroUrgenciaRenalRepository membroRepository,
                               ParecerRepository parecerRepository,
                               AnexoStorageService anexoStorage,
@@ -58,6 +61,7 @@ public class ProcessoController {
         this.emailTemplateService = emailTemplateService;
         this.relatorioService = relatorioService;
         this.oficioService = oficioService;
+        this.solicitacaoAvaliadorService = solicitacaoAvaliadorService;
         this.membroRepository = membroRepository;
         this.parecerRepository = parecerRepository;
         this.anexoStorage = anexoStorage;
@@ -175,6 +179,11 @@ public class ProcessoController {
             .map(a -> a.getParecer().getId())
             .collect(java.util.stream.Collectors.toSet());
         model.addAttribute("pareceresComResposta", pareceresComResposta);
+        // Anexo do tipo SOLICITACAO_AVALIADOR gerado automaticamente ao registrar envio
+        Optional<Anexo> solicitacaoPdf = p.getAnexos().stream()
+            .filter(a -> a.getTipo() == TipoAnexo.SOLICITACAO_AVALIADOR)
+            .findFirst();
+        model.addAttribute("solicitacaoPdf", solicitacaoPdf.orElse(null));
         return "processos/detalhe";
     }
 
@@ -244,7 +253,8 @@ public class ProcessoController {
 
     /**
      * Registra a data de envio de hoje para TODOS os 3 medicos do processo
-     * (acao unica). Opcionalmente aceita o PDF do e-mail de envio como anexo.
+     * (acao unica). Gera automaticamente o PDF de solicitacao de avaliacao e
+     * opcionalmente aceita o PDF do e-mail de envio como anexo.
      */
     @PostMapping("/{id}/registrar-envio")
     public String registrarEnvio(@PathVariable Long id,
@@ -254,6 +264,21 @@ public class ProcessoController {
         LocalDate hoje = LocalDate.now();
         p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
         processoService.salvar(p);
+
+        // Gera automaticamente o PDF de solicitacao de avaliacao (sem dados pessoais)
+        try {
+            anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
+            byte[] pdfSolicitacao = solicitacaoAvaliadorService.gerar(p);
+            String nomeSolicitacao = "solicitacao-avaliacao-" + p.getNumero().replace("/", "-") + ".pdf";
+            anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
+                "Solicitacao de avaliacao gerada automaticamente", nomeSolicitacao, "application/pdf", pdfSolicitacao);
+            auditoria.registrar("ANEXO_ADICIONADO",
+                "Processo " + p.getNumero() + " - Solicitacao PDF gerada automaticamente");
+        } catch (IOException e) {
+            ra.addFlashAttribute("erro", "Envio registrado, mas falhou ao gerar a solicitacao PDF: " + e.getMessage());
+            return "redirect:/processos/" + id + "#envio";
+        }
+
         if (arquivo != null && !arquivo.isEmpty()) {
             try {
                 anexoStorage.salvar(p, TipoAnexo.EMAIL_ENVIADO_AVALIADORES,

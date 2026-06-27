@@ -115,6 +115,12 @@
                         Envio registrado em
                         <strong th:text="${#temporals.format(processo.pareceres[0].dataEnvio, 'dd/MM/yyyy')}"></strong>
                         para os 3 avaliadores.
+                        <span th:if="${solicitacaoPdf != null}" class="ms-3">
+                            <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
+                               class="btn btn-sm btn-outline-danger" title="Baixar solicitacao de avaliacao gerada automaticamente">
+                                <i class="bi bi-file-earmark-pdf"></i> Solicitacao PDF
+                            </a>
+                        </span>
                     </div>
                     <div th:if="${processo.pareceres[0].dataEnvio == null}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-hourglass"></i> Envio ainda nao registrado.

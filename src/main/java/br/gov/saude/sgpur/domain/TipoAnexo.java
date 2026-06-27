@@ -5,6 +5,7 @@ package br.gov.saude.sgpur.domain;
  * fluxo, que sao conduzidas por e-mail (recebimento, envio, votos, resposta).
  */
 public enum TipoAnexo {
+    SOLICITACAO_AVALIADOR("Solicitacao de avaliacao gerada pelo sistema"),
     SOLICITACAO_RECEBIDA("E-mail/documento de solicitacao recebida"),
     DOCUMENTO_PACIENTE("Documento do paciente"),
     EMAIL_ENVIADO_AVALIADORES("Copia do e-mail enviado aos avaliadores"),
