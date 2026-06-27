@@ -1,43 +1,23 @@
 package br.gov.saude.sgpur.config;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.User;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.provisioning.InMemoryUserDetailsManager;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 /**
- * Seguranca da aplicacao: login por formulario e um usuario administrador
- * inicial (configuravel via SGPUR_ADMIN_USER / SGPUR_ADMIN_PASSWORD).
+ * Seguranca da aplicacao: login por formulario com usuarios persistidos no
+ * banco (ver UsuarioDetailsService). O admin inicial e semeado por DataSeed.
  */
 @Configuration
 public class SecurityConfig {
 
-    @Value("${app.admin.username}")
-    private String adminUser;
-
-    @Value("${app.admin.password}")
-    private String adminPassword;
-
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
-    }
-
-    @Bean
-    public InMemoryUserDetailsManager userDetailsService(PasswordEncoder encoder) {
-        UserDetails admin = User.builder()
-            .username(adminUser)
-            .password(encoder.encode(adminPassword))
-            .roles("ADMIN")
-            .build();
-        return new InMemoryUserDetailsManager(admin);
     }
 
     @Bean
@@ -46,6 +26,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**")).permitAll()
+                .requestMatchers("/usuarios/**").hasRole("ADMIN")
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

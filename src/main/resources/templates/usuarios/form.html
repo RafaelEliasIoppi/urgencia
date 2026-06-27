@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout :: head('Usuario')}"></head>
+<body>
+<nav th:replace="~{layout :: navbar}"></nav>
+<div th:replace="~{layout :: flash}"></div>
+
+<div class="container my-4" style="max-width: 640px;">
+    <h1 class="h3 mb-3" th:text="${edicao} ? 'Editar usuario' : 'Novo usuario'">Usuario</h1>
+
+    <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
+
+    <form th:object="${usuario}" method="post"
+          th:action="${edicao} ? @{/usuarios/{id}/editar(id=${usuario.id})} : @{/usuarios}"
+          class="card">
+        <div class="card-body">
+            <div class="mb-3">
+                <label class="form-label">Login *</label>
+                <input type="text" th:field="*{username}" class="form-control"
+                       th:readonly="${edicao}">
+                <div class="text-danger small" th:errors="*{username}"></div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Nome *</label>
+                <input type="text" th:field="*{nome}" class="form-control">
+                <div class="text-danger small" th:errors="*{nome}"></div>
+            </div>
+            <div class="mb-3">
+                <label class="form-label">Perfil *</label>
+                <select th:field="*{perfil}" class="form-select">
+                    <option th:each="pf : ${perfis}" th:value="${pf.name()}" th:text="${pf.descricao}"></option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="form-label" th:text="${edicao} ? 'Nova senha (deixe vazio para manter)' : 'Senha *'">Senha</label>
+                <input type="password" name="senha" class="form-control" autocomplete="new-password">
+                <div class="text-danger small" th:errors="*{senha}"></div>
+            </div>
+            <div class="form-check">
+                <input type="checkbox" th:field="*{ativo}" class="form-check-input" id="ativo">
+                <label class="form-check-label" for="ativo">Ativo</label>
+            </div>
+        </div>
+        <div class="card-footer text-end">
+            <a th:href="@{/usuarios}" class="btn btn-outline-secondary">Cancelar</a>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+        </div>
+    </form>
+</div>
+
+<script th:replace="~{layout :: scripts}"></script>
+</body>
+</html>
