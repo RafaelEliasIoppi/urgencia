@@ -7,6 +7,7 @@ package br.gov.saude.sgpur.domain;
 public enum TipoAnexo {
     SOLICITACAO_AVALIADOR("Solicitacao de avaliacao gerada pelo sistema"),
     SOLICITACAO_RECEBIDA("E-mail/documento de solicitacao recebida"),
+    CAPA_PROCESSO("Capa do processo (dados do solicitante e medicos)"),
     DOCUMENTO_PACIENTE("Documento do paciente"),
     EMAIL_ENVIADO_AVALIADORES("Copia do e-mail enviado aos avaliadores"),
     EMAIL_PARECER_RECEBIDO("Copia do e-mail de parecer recebido do avaliador"),

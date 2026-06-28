@@ -201,6 +201,28 @@ public class ProcessoController {
             .filter(a -> a.getTipo() == TipoAnexo.SOLICITACAO_RECEBIDA)
             .findFirst();
         model.addAttribute("solicitacaoOriginal", solicitacaoOriginal.orElse(null));
+        // Capa do processo gerada no passo 1 (dados do solicitante + medicos)
+        Optional<Anexo> capaProcesso = p.getAnexos().stream()
+            .filter(a -> a.getTipo() == TipoAnexo.CAPA_PROCESSO)
+            .findFirst();
+        model.addAttribute("capaProcesso", capaProcesso.orElse(null));
+        // Aviso (nao bloqueia): medicos da mesma equipe/instituicao do solicitante
+        java.util.List<String> medicosMesmaEquipe = java.util.Collections.emptyList();
+        String equipe = p.getSolicitanteEquipe();
+        if (equipe != null && !equipe.isBlank()) {
+            String alvo = equipe.trim().toLowerCase();
+            medicosMesmaEquipe = p.getPareceres().stream()
+                .map(par -> par.getMembro())
+                .filter(m -> m.getInstituicao() != null && !m.getInstituicao().isBlank())
+                .filter(m -> {
+                    String inst = m.getInstituicao().trim().toLowerCase();
+                    return inst.contains(alvo) || alvo.contains(inst);
+                })
+                .map(m -> m.getNome() + " (" + m.getInstituicao() + ")")
+                .distinct()
+                .collect(java.util.stream.Collectors.toList());
+        }
+        model.addAttribute("medicosMesmaEquipe", medicosMesmaEquipe);
         return "processos/detalhe";
     }
 
@@ -277,10 +299,11 @@ public class ProcessoController {
      * opcionalmente aceita o PDF do e-mail de envio como anexo.
      */
     /**
-     * Etapa 1 (Recebimento e ajuste do texto): anexa a copia da solicitacao
-     * ORIGINAL recebida e gera automaticamente a copia anonimizada para envio
-     * as equipes (sem o nome completo do paciente), com o nome de arquivo
-     * oficial "Processo CET-RS NN-AAAA - Paciente X.X.X.pdf".
+     * Etapa 1 (Recebimento da solicitacao): anexa a copia da solicitacao
+     * ORIGINAL recebida e gera automaticamente a CAPA do processo (PDF com os
+     * dados do solicitante e os medicos avaliadores), salva na pasta do
+     * processo. A copia anonimizada para as equipes ("Processo CET-RS...") e
+     * gerada no passo 2 (envio).
      */
     @PostMapping("/{id}/recebimento")
     public String registrarRecebimento(@PathVariable Long id,
@@ -302,22 +325,22 @@ public class ProcessoController {
             }
         }
 
-        // 2) Copia anonimizada para envio as equipes — gerada pelo sistema.
+        // 2) Capa do processo (dados do solicitante + medicos) — gerada pelo sistema.
         try {
-            anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
-            byte[] pdf = solicitacaoAvaliadorService.gerar(p);
-            String nome = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
-            anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
-                "Copia da solicitacao para envio as equipes (nome completo suprimido)",
+            anexoStorage.removerPorTipo(id, TipoAnexo.CAPA_PROCESSO);
+            byte[] pdf = relatorioService.gerarCapaProcesso(p);
+            String nome = "Capa - Processo " + p.getNumero().replace("/", "-") + ".pdf";
+            anexoStorage.salvarBytes(p, TipoAnexo.CAPA_PROCESSO,
+                "Capa do processo (dados do solicitante e medicos avaliadores)",
                 nome, "application/pdf", pdf);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - Copia para as equipes gerada (" + nome + ")");
+                "Processo " + p.getNumero() + " - Capa do processo gerada (" + nome + ")");
         } catch (IOException e) {
-            ra.addFlashAttribute("erro", "Falha ao gerar a copia para as equipes: " + e.getMessage());
+            ra.addFlashAttribute("erro", "Falha ao gerar a capa do processo: " + e.getMessage());
             return "redirect:/processos/" + id + "#recebimento";
         }
 
-        ra.addFlashAttribute("msg", "Recebimento registrado: solicitacao original anexada e copia para as equipes gerada.");
+        ra.addFlashAttribute("msg", "Recebimento registrado: solicitacao original anexada e capa do processo gerada.");
         return "redirect:/processos/" + id + "#recebimento";
     }
 

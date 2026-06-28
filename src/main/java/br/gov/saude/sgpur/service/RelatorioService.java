@@ -50,7 +50,7 @@ public class RelatorioService {
             Font fSecao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
 
             // --- Pagina de capa ---
-            adicionarCapa(doc, p);
+            adicionarCapa(doc, p, "RELATORIO FINAL DE PROCESSO", false);
             doc.newPage();
 
             // Cabecalho
@@ -171,7 +171,27 @@ public class RelatorioService {
     // Capa do relatorio
     // -----------------------------------------------------------------------
 
-    private void adicionarCapa(Document doc, Processo p) throws DocumentException {
+    /**
+     * Gera, como PDF de uma pagina, a CAPA do processo com os dados do
+     * solicitante e os medicos avaliadores (passo 1 do fluxo). Reaproveita o
+     * layout da capa do Relatorio Final.
+     */
+    public byte[] gerarCapaProcesso(Processo p) {
+        Document doc = new Document(PageSize.A4, 40, 40, 50, 40);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            PdfWriter.getInstance(doc, out);
+            doc.open();
+            adicionarCapa(doc, p, "CAPA DO PROCESSO", true);
+            doc.close();
+            return out.toByteArray();
+        } catch (DocumentException e) {
+            throw new IllegalStateException("Falha ao gerar a capa do processo", e);
+        }
+    }
+
+    private void adicionarCapa(Document doc, Processo p, String tituloDocumento,
+                               boolean incluirSolicitante) throws DocumentException {
 
         Font fOrgao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, Color.BLACK);
         Font fSubOrgao = FontFactory.getFont(FontFactory.HELVETICA, 12, Color.BLACK);
@@ -217,7 +237,7 @@ public class RelatorioService {
         doc.add(separador);
 
         // Titulo do documento
-        Paragraph tituloDoc = new Paragraph("RELATORIO FINAL DE PROCESSO", fTituloDoc);
+        Paragraph tituloDoc = new Paragraph(tituloDocumento, fTituloDoc);
         tituloDoc.setAlignment(Element.ALIGN_CENTER);
         tituloDoc.setSpacingAfter(40);
         doc.add(tituloDoc);
@@ -231,6 +251,15 @@ public class RelatorioService {
         adicionarLinhaCapa(tDados, "N do Processo:", nvl(p.getNumero()), fRotulo, fValor);
         adicionarLinhaCapa(tDados, "Paciente:", nvl(p.getPacienteNome()), fRotulo, fValor);
         adicionarLinhaCapa(tDados, "RGCT / SNT:", nvl(p.getPacienteRgct()), fRotulo, fValor);
+
+        // Dados do solicitante (apenas na capa do processo - passo 1)
+        if (incluirSolicitante) {
+            adicionarLinhaCapa(tDados, "Equipe solicitante:", nvl(p.getSolicitanteEquipe()), fRotulo, fValor);
+            adicionarLinhaCapa(tDados, "E-mail do solicitante:", nvl(p.getSolicitanteEmail()), fRotulo, fValor);
+            String dataSit = p.getDataSituacaoEspecial() != null
+                ? p.getDataSituacaoEspecial().format(DATA) : "-";
+            adicionarLinhaCapa(tDados, "Data da situacao especial:", dataSit, fRotulo, fValor);
+        }
 
         // Data da decisao
         String dataDecisaoStr;

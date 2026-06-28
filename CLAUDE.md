@@ -48,13 +48,20 @@ Pacote base `br.gov.saude.sgpur`.
   Finais: Deferido/Indeferido/Cancelado. `Em análise` é mantido como sinônimo
   legado de `Enviado` (registros antigos continuam válidos). Ver
   `docs/PLANO-FLUXO.md`.
-- **Passo 1 (Recebimento e ajuste do texto):** exige **dois anexos** — a
-  **cópia da solicitação original** (`SOLICITACAO_RECEBIDA`, anexada à mão) e a
-  **cópia para envio às equipes** (`SOLICITACAO_AVALIADOR`, **gerada pelo
-  sistema** com o nome completo do paciente suprimido). Nome de arquivo oficial:
+- **Fluxo em 6 passos** (checklist `FluxoProcessoService` + abas na tela):
+  **1 Recebimento · 2 Envio · 3 Respostas · 4 Decisão · 5 Ofício/Comprovante ·
+  6 Resposta ao solicitante**.
+- **Passo 1 (Recebimento):** exige a **cópia da solicitação original**
+  (`SOLICITACAO_RECEBIDA`, manual) **+** a **capa do processo**
+  (`CAPA_PROCESSO`, **gerada pelo sistema** com dados do solicitante e os 3
+  médicos — reaproveita a capa do Relatório Final via
+  `RelatorioService.gerarCapaProcesso`). Endpoint
+  `POST /processos/{id}/recebimento`. A etapa bloqueia até os dois existirem.
+- **Passo 2 (Envio):** ao registrar o envio o sistema gera a **cópia anonimizada
+  para as equipes** (`SOLICITACAO_AVALIADOR`, só iniciais), nome oficial
   `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). A etapa bloqueia até os
-  dois existirem. Endpoint `POST /processos/{id}/recebimento`.
+  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). **Aviso (não bloqueia)** se
+  algum médico for da mesma equipe/instituição do solicitante.
 - Numeração `NN/AAAA`: **manual em 2026**, **automática a partir de 2027**.
 - Fluxo por e-mail com anexos por etapa; e-mail aos médicos **oculta dados do
   paciente** (LGPD). Decisão manual com **sugestão automática** por maioria

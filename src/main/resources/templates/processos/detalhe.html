@@ -104,9 +104,9 @@
 
             <!-- Abas por fase do processo (Envio -> Respostas -> Decisao -> Finalizacao) -->
             <div th:with="st=${processo.status.name()},
-                          recebimentoFeito=${solicitacaoOriginal != null and solicitacaoPdf != null},
-                          abaReceb=${st == 'SOLICITADO' and !(solicitacaoOriginal != null and solicitacaoPdf != null)},
-                          abaEnvio=${st == 'SOLICITADO' and (solicitacaoOriginal != null and solicitacaoPdf != null)},
+                          recebimentoFeito=${solicitacaoOriginal != null and capaProcesso != null},
+                          abaReceb=${st == 'SOLICITADO' and !(solicitacaoOriginal != null and capaProcesso != null)},
+                          abaEnvio=${st == 'SOLICITADO' and (solicitacaoOriginal != null and capaProcesso != null)},
                           abaResp=${st == 'ENVIADO' or st == 'EM_ANALISE' or st == 'SOLICITA_INFORMACAO'},
                           abaFinal=${processo.status.finalizado},
                           envioFeito=${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}">
@@ -160,9 +160,9 @@
                         <div class="card-body">
                             <p class="small text-muted mb-3">
                                 Anexe a <strong>solicitacao original</strong> recebida. O sistema gera
-                                automaticamente a <strong>copia para envio as equipes</strong> com o nome
-                                completo do paciente <strong>suprimido</strong> (apenas iniciais), no nome
-                                de arquivo oficial.
+                                automaticamente a <strong>capa do processo</strong> (com os dados do
+                                solicitante e os medicos avaliadores) e a salva na pasta do processo.
+                                A copia anonimizada para as equipes e gerada no passo 2 (Envio).
                             </p>
 
                             <!-- Status dos dois anexos -->
@@ -182,16 +182,16 @@
                                 </li>
                                 <li class="list-group-item d-flex justify-content-between align-items-center">
                                     <span>
-                                        <i class="bi" th:classappend="${solicitacaoPdf != null} ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'"></i>
-                                        Copia para envio as equipes (nome completo suprimido)
+                                        <i class="bi" th:classappend="${capaProcesso != null} ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'"></i>
+                                        Capa do processo (dados do solicitante e medicos)
                                     </span>
-                                    <a th:if="${solicitacaoPdf != null}"
-                                       th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
+                                    <a th:if="${capaProcesso != null}"
+                                       th:href="@{/processos/anexos/{id}/download(id=${capaProcesso.id})}"
                                        class="btn btn-sm btn-outline-danger">
                                         <i class="bi bi-file-earmark-pdf"></i>
-                                        <span th:text="${solicitacaoPdf.nomeArquivo}">arquivo</span>
+                                        <span th:text="${capaProcesso.nomeArquivo}">arquivo</span>
                                     </a>
-                                    <span th:unless="${solicitacaoPdf != null}" class="badge bg-secondary">sera gerada</span>
+                                    <span th:unless="${capaProcesso != null}" class="badge bg-secondary">sera gerada</span>
                                 </li>
                             </ul>
 
@@ -209,7 +209,7 @@
                                 </div>
                                 <div class="col-md-5 d-flex align-items-end">
                                     <button class="btn btn-primary btn-sm">
-                                        <i class="bi bi-inbox-fill"></i> Registrar recebimento e gerar copia
+                                        <i class="bi bi-inbox-fill"></i> Registrar recebimento e gerar capa
                                     </button>
                                 </div>
                             </form>
@@ -224,6 +224,21 @@
             <div class="card mb-4" id="envio">
                 <div class="card-header"><i class="bi bi-send"></i> Envio aos Avaliadores</div>
                 <div class="card-body">
+                    <!-- Aviso: medico da mesma equipe/instituicao do solicitante (nao bloqueia) -->
+                    <div th:if="${!medicosMesmaEquipe.isEmpty()}" class="alert alert-warning py-2 mb-3">
+                        <i class="bi bi-exclamation-triangle"></i>
+                        Atencao: ha avaliador(es) possivelmente da mesma equipe/instituicao do
+                        solicitante (<span th:text="${processo.solicitanteEquipe}">equipe</span>):
+                        <strong th:text="${#strings.listJoin(medicosMesmaEquipe, '; ')}">medicos</strong>.
+                        Confirme se nao ha conflito de interesse antes de enviar.
+                    </div>
+                    <!-- Copia anonimizada para envio as equipes (gerada no envio) -->
+                    <div th:if="${solicitacaoPdf != null}" class="alert alert-light border py-2 mb-3">
+                        <i class="bi bi-file-earmark-pdf text-danger"></i>
+                        Copia para as equipes (nome do paciente suprimido):
+                        <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
+                           th:text="${solicitacaoPdf.nomeArquivo}">arquivo</a>
+                    </div>
                     <!-- Data de envio (exibe se ja registrada) -->
                     <div th:if="${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}" class="alert alert-success py-2 mb-3">
                         <i class="bi bi-check-circle"></i>

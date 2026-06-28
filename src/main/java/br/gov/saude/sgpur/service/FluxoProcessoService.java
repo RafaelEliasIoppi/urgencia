@@ -26,22 +26,22 @@ public class FluxoProcessoService {
         List<EtapaFluxo> etapas = new ArrayList<>();
         boolean anterioresConcluidas = true;
 
-        // 1. Recebimento do e-mail e ajuste do texto (suprimir nome completo):
-        //    exige a copia da solicitacao ORIGINAL e a copia anonimizada para
-        //    envio as equipes (gerada pelo sistema, sem o nome completo).
+        // 1. Recebimento da solicitacao: exige a copia da solicitacao ORIGINAL
+        //    e a CAPA do processo (gerada pelo sistema, com dados do solicitante
+        //    e os medicos). A copia anonimizada para as equipes e do passo 2.
         boolean temOriginal = temAnexo(p, TipoAnexo.SOLICITACAO_RECEBIDA);
-        boolean temCopiaEquipes = temAnexo(p, TipoAnexo.SOLICITACAO_AVALIADOR);
-        boolean recebimento = temOriginal && temCopiaEquipes;
+        boolean temCapa = temAnexo(p, TipoAnexo.CAPA_PROCESSO);
+        boolean recebimento = temOriginal && temCapa;
         String detReceb;
         if (recebimento) {
-            detReceb = "Solicitacao original e copia para as equipes anexadas.";
+            detReceb = "Solicitacao original anexada e capa do processo gerada.";
         } else {
             List<String> faltas = new ArrayList<>();
             if (!temOriginal) faltas.add("copia da solicitacao original");
-            if (!temCopiaEquipes) faltas.add("copia para envio das equipes (gerada pelo sistema)");
+            if (!temCapa) faltas.add("capa do processo (gerada pelo sistema)");
             detReceb = "Falta: " + String.join(", ", faltas) + ".";
         }
-        etapas.add(montar("Recebimento e ajuste do texto", "inbox-fill",
+        etapas.add(montar("Recebimento da solicitacao", "inbox-fill",
             recebimento, anterioresConcluidas, detReceb));
         anterioresConcluidas = anterioresConcluidas && recebimento;
 

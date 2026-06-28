@@ -76,12 +76,16 @@ o dominio e as regras a seguir.
 7. **Numeracao NN/AAAA:** manual em 2026; **automatica** (sequencial por ano)
    a partir de 2027 (`ANO_NUMERACAO_AUTOMATICA = 2027`).
 8. **Fluxo por e-mail** com anexos por etapa (entidade `Anexo` + `TipoAnexo`).
-   **Passo 1 (Recebimento e ajuste do texto)** exige DOIS anexos: a copia da
-   solicitacao ORIGINAL (`SOLICITACAO_RECEBIDA`, manual) e a copia para envio as
-   equipes (`SOLICITACAO_AVALIADOR`, **gerada pelo sistema**, nome completo
-   suprimido). Nome oficial: `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-   (`SolicitacaoAvaliadorService.nomeArquivoOficial`). Endpoint
-   `POST /processos/{id}/recebimento`. A etapa bloqueia ate os dois existirem.
+   **Passo 1 (Recebimento)** exige a copia da solicitacao ORIGINAL
+   (`SOLICITACAO_RECEBIDA`, manual) + a CAPA do processo (`CAPA_PROCESSO`,
+   **gerada pelo sistema** com dados do solicitante e os 3 medicos, via
+   `RelatorioService.gerarCapaProcesso` — reaproveita a capa do Relatorio Final).
+   Endpoint `POST /processos/{id}/recebimento`; bloqueia ate os dois existirem.
+   **Passo 2 (Envio)** gera a copia anonimizada para as equipes
+   (`SOLICITACAO_AVALIADOR`, so iniciais), nome oficial
+   `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
+   (`SolicitacaoAvaliadorService.nomeArquivoOficial`); AVISA (nao bloqueia) se um
+   medico for da mesma equipe/instituicao do solicitante.
 9. **Sinalizar em TEMPO REAL** a etapa atual e o que falta
    (`FluxoProcessoService.montarEtapas()` -> `EtapaFluxo`). A tela de detalhe
    organiza as fases em ABAS: 1.Recebimento 2.Envio 3.Respostas 4.Decisao
