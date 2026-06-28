@@ -24,5 +24,21 @@ if (-not $mvn) {
     exit 1
 }
 
+# --- Libera a porta 8080 (encerra qualquer processo que esteja escutando) ---
+$portas = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue
+if ($portas) {
+    $pids = $portas | Select-Object -ExpandProperty OwningProcess -Unique
+    foreach ($processo in $pids) {
+        try {
+            $nome = (Get-Process -Id $processo -ErrorAction Stop).ProcessName
+            Write-Host "==> Liberando a porta 8080 (encerrando $nome PID $processo)..." -ForegroundColor Yellow
+            Stop-Process -Id $processo -Force -ErrorAction Stop
+        } catch {
+            Write-Host "    Nao foi possivel encerrar o PID ${processo}: $($_.Exception.Message)" -ForegroundColor Red
+        }
+    }
+    Start-Sleep -Seconds 1
+}
+
 Write-Host "==> Subindo SGPUR | perfil: $Perfil | JAVA_HOME: $env:JAVA_HOME" -ForegroundColor Cyan
 & $mvn -DskipTests "-Dspring-boot.run.profiles=$Perfil" spring-boot:run
