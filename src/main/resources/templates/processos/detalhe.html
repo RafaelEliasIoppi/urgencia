@@ -102,6 +102,49 @@
                 </div>
             </div>
 
+            <!-- Abas por fase do processo (Envio -> Respostas -> Decisao -> Finalizacao) -->
+            <div th:with="st=${processo.status.name()},
+                          abaEnvio=${st == 'SOLICITADO'},
+                          abaResp=${st == 'ENVIADO' or st == 'EM_ANALISE' or st == 'SOLICITA_INFORMACAO'},
+                          abaFinal=${processo.status.finalizado},
+                          envioFeito=${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}">
+                <ul class="nav nav-tabs nav-fill mb-3" id="fasesTab" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" th:classappend="${abaEnvio} ? 'active' : ''"
+                                id="tab-envio" data-bs-toggle="tab" data-bs-target="#pane-envio"
+                                type="button" role="tab" aria-controls="pane-envio">
+                            <i class="bi bi-send"></i> 1. Envio
+                            <i class="bi bi-check-circle-fill text-success ms-1" th:if="${envioFeito}"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" th:classappend="${abaResp} ? 'active' : ''"
+                                id="tab-respostas" data-bs-toggle="tab" data-bs-target="#pane-respostas"
+                                type="button" role="tab" aria-controls="pane-respostas">
+                            <i class="bi bi-chat-square-text"></i> 2. Respostas
+                            <span class="badge bg-success ms-1" th:if="${envioFeito}" th:text="${favoraveis}">0</span>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link"
+                                id="tab-decisao" data-bs-toggle="tab" data-bs-target="#pane-decisao"
+                                type="button" role="tab" aria-controls="pane-decisao">
+                            <i class="bi bi-scale"></i> 3. Decisao
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" th:classappend="${abaFinal} ? 'active' : ''"
+                                id="tab-finalizacao" data-bs-toggle="tab" data-bs-target="#pane-finalizacao"
+                                type="button" role="tab" aria-controls="pane-finalizacao">
+                            <i class="bi bi-flag"></i> 4. Finalizacao
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="fasesTabContent">
+                <!-- ABA 1: Envio -->
+                <div class="tab-pane fade" th:classappend="${abaEnvio} ? 'show active' : ''"
+                     id="pane-envio" role="tabpanel" aria-labelledby="tab-envio">
             <!-- Secao: Envio aos Avaliadores -->
             <div class="card mb-4" id="envio">
                 <div class="card-header"><i class="bi bi-send"></i> Envio aos Avaliadores</div>
@@ -137,10 +180,19 @@
                     </form>
                 </div>
             </div>
+                </div><!-- /ABA 1 Envio -->
+
+                <!-- ABA 2: Respostas -->
+                <div class="tab-pane fade" th:classappend="${abaResp} ? 'show active' : ''"
+                     id="pane-respostas" role="tabpanel" aria-labelledby="tab-respostas">
+            <!-- Aviso quando o envio ainda nao foi registrado -->
+            <div th:unless="${envioFeito}" class="alert alert-warning">
+                <i class="bi bi-hourglass-split"></i>
+                Registre o envio aos avaliadores (aba <strong>1. Envio</strong>) antes de lancar as respostas.
+            </div>
 
             <!-- Secao: Respostas dos Avaliadores -->
-            <div class="card mb-4" id="respostas"
-                 th:classappend="${processo.pareceres.isEmpty() or processo.pareceres[0].dataEnvio == null} ? 'd-none' : ''">
+            <div class="card mb-4" id="respostas" th:if="${envioFeito}">
                 <div class="card-header d-flex justify-content-between">
                     <span><i class="bi bi-chat-square-text"></i> Respostas dos Avaliadores</span>
                     <span class="badge bg-success" th:text="${favoraveis} + ' favoravel(is)'">0</span>
@@ -211,7 +263,10 @@
                     </div>
                 </div>
             </div>
+                </div><!-- /ABA 2 Respostas -->
 
+                <!-- ABA 3: Decisao -->
+                <div class="tab-pane fade" id="pane-decisao" role="tabpanel" aria-labelledby="tab-decisao">
             <!-- Decisao -->
             <div class="card mb-4" id="decisao">
                 <div class="card-header"><i class="bi bi-scale"></i> Decisao final</div>
@@ -238,7 +293,11 @@
                     </form>
                 </div>
             </div>
+                </div><!-- /ABA 3 Decisao -->
 
+                <!-- ABA 4: Finalizacao -->
+                <div class="tab-pane fade" th:classappend="${abaFinal} ? 'show active' : ''"
+                     id="pane-finalizacao" role="tabpanel" aria-labelledby="tab-finalizacao">
             <!-- Finalizacao / oficio / resposta -->
             <div class="card mb-4" id="finalizacao">
                 <div class="card-header"><i class="bi bi-flag"></i> Finalizacao</div>
@@ -270,6 +329,9 @@
                     </form>
                 </div>
             </div>
+                </div><!-- /ABA 4 Finalizacao -->
+                </div><!-- /tab-content -->
+            </div><!-- /th:with abas -->
 
             <!-- E-mails prontos -->
             <div class="card mb-4" id="emails">
