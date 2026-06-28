@@ -48,7 +48,13 @@ o dominio e as regras a seguir.
 4. **Regra de decisao:** 2 de 3 favoraveis = **DEFERIDO**
    (`FAVORAVEIS_PARA_DEFERIR = 2`). Caso contrario = **INDEFERIDO**, que EXIGE
    oficio com motivo da reprovacao + data de emissao + envio ao solicitante.
-5. **Status:** EM_ANALISE -> DEFERIDO / INDEFERIDO / CANCELADO.
+5. **Status (ciclo expandido):** SOLICITADO -> ENVIADO ->
+   { DEFERIDO, INDEFERIDO, SOLICITA_INFORMACAO } (+ CANCELADO a qualquer
+   momento). Finais: DEFERIDO/INDEFERIDO/CANCELADO. `EM_ANALISE` permanece como
+   sinonimo legado de ENVIADO (compatibilidade de dados antigos). Processo nasce
+   SOLICITADO; vira ENVIADO ao registrar envio; vai a SOLICITA_INFORMACAO se um
+   medico pede dados antes da decisao. Helpers de badge no enum
+   (`getBadgeClasse`/`getBadgeIcone`/`getBootstrapBadge`).
 6. Decisao **manual** (operador decide) com **sugestao automatica** (regra 2/3).
 7. **Numeracao NN/AAAA:** manual em 2026; **automatica** (sequencial por ano)
    a partir de 2027 (`ANO_NUMERACAO_AUTOMATICA = 2027`).

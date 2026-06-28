@@ -1,99 +1,217 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
 <head th:replace="~{layout :: head('Painel')}"></head>
+<!--/*
+  Tailwind CSS pre-compilado (estatico, offline), escopado APENAS nesta pagina
+  (referenciado so aqui, nao no layout.html), para nao interferir nas demais
+  telas que usam Bootstrap. Gerado com o Tailwind CLI standalone v3.4.17,
+  preflight DESABILITADO. Para regenerar apos mudar as classes do painel, veja
+  docs/PLANO-FLUXO.md. Bootstrap-icons (do layout) continua via "bi bi-*".
+*/-->
 <body>
+<link rel="stylesheet" th:href="@{/css/tailwind-dashboard.css}">
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Painel</h1>
-        <a th:href="@{/processos/novo}" class="btn btn-primary">
+<main class="tw-scope px-3 sm:px-6 lg:px-8 py-6 max-w-screen-2xl mx-auto">
+
+    <!-- Cabecalho -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-slate-800">Painel da Urgencia Renal</h1>
+            <p class="text-sm text-slate-500">Acompanhe, em tempo real, para quais medicos cada
+                solicitacao foi enviada e a situacao de cada parecer.</p>
+        </div>
+        <a th:href="@{/processos/novo}"
+           class="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600
+                  px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-500/20
+                  hover:from-sky-500 hover:to-indigo-500 transition focus:outline-none
+                  focus:ring-2 focus:ring-indigo-400">
             <i class="bi bi-plus-lg"></i> Novo processo
         </a>
     </div>
 
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md">
-            <a th:href="@{/processos}" class="text-decoration-none">
-            <div class="card card-stat text-center h-100"><div class="card-body">
-                <div class="display-6" th:text="${totalProcessos}">0</div>
-                <div class="text-muted small">Total</div>
-            </div></div></a>
-        </div>
-        <div class="col-6 col-md">
-            <a th:href="@{/processos(status='EM_ANALISE')}" class="text-decoration-none">
-            <div class="card card-stat text-center h-100 border-warning"><div class="card-body">
-                <div class="display-6 text-warning" th:text="${emAnalise}">0</div>
-                <div class="text-muted small">Em analise</div>
-            </div></div></a>
-        </div>
-        <div class="col-6 col-md">
-            <a th:href="@{/processos(status='DEFERIDO')}" class="text-decoration-none">
-            <div class="card card-stat text-center h-100 border-success"><div class="card-body">
-                <div class="display-6 text-success" th:text="${deferidos}">0</div>
-                <div class="text-muted small">Deferidos</div>
-            </div></div></a>
-        </div>
-        <div class="col-6 col-md">
-            <a th:href="@{/processos(status='INDEFERIDO')}" class="text-decoration-none">
-            <div class="card card-stat text-center h-100 border-danger"><div class="card-body">
-                <div class="display-6 text-danger" th:text="${indeferidos}">0</div>
-                <div class="text-muted small">Indeferidos</div>
-            </div></div></a>
-        </div>
-        <div class="col-6 col-md">
-            <a th:href="@{/processos(status='CANCELADO')}" class="text-decoration-none">
-            <div class="card card-stat text-center h-100"><div class="card-body">
-                <div class="display-6 text-secondary" th:text="${cancelados}">0</div>
-                <div class="text-muted small">Cancelados</div>
-            </div></div></a>
-        </div>
+    <!-- Cards de contadores -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-8">
+        <a th:href="@{/processos}"
+           class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-slate-800" th:text="${totalProcessos}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-slate-100 text-slate-500">
+                    <i class="bi bi-collection"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">Total</div>
+        </a>
+        <a th:href="@{/processos}"
+           class="group rounded-2xl border border-amber-200 bg-amber-50/60 p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-amber-600" th:text="${emAndamento}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-amber-100 text-amber-600">
+                    <i class="bi bi-hourglass-split"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-amber-700">Em andamento</div>
+        </a>
+        <a th:href="@{/processos(status='DEFERIDO')}"
+           class="group rounded-2xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-emerald-600" th:text="${deferidos}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-emerald-100 text-emerald-600">
+                    <i class="bi bi-check2-circle"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-emerald-700">Deferidos</div>
+        </a>
+        <a th:href="@{/processos(status='INDEFERIDO')}"
+           class="group rounded-2xl border border-rose-200 bg-rose-50/60 p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-rose-600" th:text="${indeferidos}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-rose-100 text-rose-600">
+                    <i class="bi bi-x-octagon"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-rose-700">Indeferidos</div>
+        </a>
+        <a th:href="@{/processos(status='CANCELADO')}"
+           class="group rounded-2xl border border-slate-200 bg-white p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-slate-500" th:text="${cancelados}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-slate-100 text-slate-500">
+                    <i class="bi bi-slash-circle"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-slate-500">Cancelados</div>
+        </a>
+        <a th:href="@{/membros}"
+           class="group rounded-2xl border border-indigo-200 bg-indigo-50/60 p-4 shadow-sm
+                  hover:shadow-md hover:-translate-y-0.5 transition">
+            <div class="flex items-center justify-between">
+                <span class="text-3xl font-extrabold text-indigo-600" th:text="${membrosAtivos}">0</span>
+                <span class="grid place-items-center h-9 w-9 rounded-xl bg-indigo-100 text-indigo-600">
+                    <i class="bi bi-people-fill"></i></span>
+            </div>
+            <div class="mt-1 text-xs font-medium uppercase tracking-wide text-indigo-700">Membros ativos</div>
+        </a>
     </div>
 
-    <div class="card mb-4 border-warning">
-        <div class="card-header bg-warning-subtle d-flex justify-content-between">
-            <span><i class="bi bi-hourglass-split"></i> Aguardando acao</span>
-            <span class="badge bg-warning text-dark" th:text="${pendentes.size()}">0</span>
+    <!-- Planilha de processos -->
+    <section class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <div class="flex flex-wrap items-center justify-between gap-2 px-4 py-3
+                    border-b border-slate-200 bg-gradient-to-r from-slate-50 to-white">
+            <h2 class="flex items-center gap-2 text-sm font-semibold text-slate-700">
+                <i class="bi bi-table text-indigo-500"></i>
+                Solicitacoes e situacao dos pareceres
+            </h2>
+            <div class="flex items-center gap-3 text-[11px] text-slate-500">
+                <span class="inline-flex items-center gap-1">
+                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-500"></span>Favoravel</span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="h-2.5 w-2.5 rounded-full bg-rose-500"></span>Desfavoravel</span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="h-2.5 w-2.5 rounded-full bg-amber-500"></span>Aguardando</span>
+                <span class="inline-flex items-center gap-1">
+                    <span class="h-2.5 w-2.5 rounded-full bg-slate-300"></span>Sem medico</span>
+            </div>
         </div>
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item" th:each="p : ${pendentes}">
-                <div class="d-flex justify-content-between">
-                    <a th:href="@{/processos/{id}(id=${p.id})}" class="text-decoration-none fw-semibold"
-                       th:text="${p.identificacao()}">00/0000 - Paciente - RGCT</a>
-                </div>
-                <small class="text-muted">
-                    <i class="bi bi-arrow-right-short"></i>
-                    <span th:text="${pendencias.get(p.id)}">o que falta</span>
-                </small>
-            </li>
-            <li class="list-group-item text-muted" th:if="${pendentes.isEmpty()}">
-                Nenhum processo aguardando acao.
-            </li>
-        </ul>
-    </div>
 
-    <div class="card">
-        <div class="card-header d-flex justify-content-between">
-            <span>Ultimos processos</span>
-            <a th:href="@{/processos}" class="small">ver todos</a>
+        <div class="overflow-x-auto max-h-[70vh] overflow-y-auto">
+            <table class="w-full border-collapse text-sm">
+                <thead class="sticky top-0 z-10">
+                    <tr class="bg-slate-100 text-slate-600">
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Nº / Ano</th>
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Paciente / Solicitante</th>
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Status</th>
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Medico 1</th>
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Medico 2</th>
+                        <th class="px-3 py-2.5 text-left font-semibold whitespace-nowrap">Medico 3</th>
+                        <th class="px-3 py-2.5 text-center font-semibold whitespace-nowrap">Acao</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    <tr th:each="l : ${linhas}"
+                        class="odd:bg-white even:bg-slate-50/60 hover:bg-indigo-50/60 transition">
+
+                        <!-- Numero / Ano -->
+                        <td class="px-3 py-2 align-top whitespace-nowrap">
+                            <a th:href="@{/processos/{id}(id=${l.processo.id})}"
+                               class="font-semibold text-indigo-700 hover:underline"
+                               th:text="${l.processo.numero}">00/0000</a>
+                            <div class="text-[11px] text-slate-400"
+                                 th:text="${#temporals.format(l.processo.dataCadastro, 'dd/MM/yyyy')}">data</div>
+                        </td>
+
+                        <!-- Paciente / Solicitante -->
+                        <td class="px-3 py-2 align-top max-w-[16rem]">
+                            <div class="font-medium text-slate-800 truncate"
+                                 th:text="${l.processo.pacienteNome}"
+                                 th:title="${l.processo.pacienteNome}">Paciente</div>
+                            <div class="text-[11px] text-slate-500 truncate"
+                                 th:text="${l.processo.solicitanteEquipe}"
+                                 th:title="${l.processo.solicitanteEquipe}">Solicitante</div>
+                        </td>
+
+                        <!-- Status do processo -->
+                        <td class="px-3 py-2 align-top whitespace-nowrap">
+                            <span class="inline-flex items-center gap-1 rounded-full px-2.5 py-1
+                                         text-[11px] font-semibold ring-1 ring-inset"
+                                  th:classappend="${l.processo.status.badgeClasse}">
+                                <i class="bi" th:classappend="'bi-' + ${l.processo.status.badgeIcone}"></i>
+                                <span th:text="${l.processo.status.descricao}">status</span>
+                            </span>
+                            <div th:if="${pendencias.containsKey(l.processo.id)}"
+                                 class="mt-1 text-[10px] leading-tight text-amber-700/80 max-w-[12rem] truncate"
+                                 th:text="${pendencias.get(l.processo.id)}"
+                                 th:title="${pendencias.get(l.processo.id)}">o que falta</div>
+                        </td>
+
+                        <!-- Medicos 1..3 -->
+                        <td class="px-3 py-2 align-top" th:each="c : ${l.medicos}">
+                            <div th:if="${c.definido}">
+                                <div class="text-[12px] font-medium text-slate-700 truncate max-w-[12rem]"
+                                     th:text="${c.medico}" th:title="${c.medico}">Medico</div>
+                                <span class="mt-1 inline-flex items-center gap-1 rounded-md px-2 py-0.5
+                                             text-[11px] font-semibold ring-1 ring-inset"
+                                      th:classappend="${c.cor == 'success'}
+                                            ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+                                            : (${c.cor == 'danger'}
+                                            ? 'bg-rose-50 text-rose-700 ring-rose-200'
+                                            : (${c.cor == 'warning'}
+                                            ? 'bg-amber-50 text-amber-700 ring-amber-200'
+                                            : (${c.cor == 'info'}
+                                            ? 'bg-sky-50 text-sky-700 ring-sky-200'
+                                            : 'bg-slate-100 text-slate-500 ring-slate-200')))">
+                                    <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                    <span th:text="${c.texto}">situacao</span>
+                                </span>
+                            </div>
+                            <div th:unless="${c.definido}"
+                                 class="text-[11px] italic text-slate-300">— nao definido —</div>
+                        </td>
+
+                        <!-- Acao -->
+                        <td class="px-3 py-2 align-top text-center whitespace-nowrap">
+                            <a th:href="@{/processos/{id}(id=${l.processo.id})}"
+                               class="inline-flex items-center gap-1 rounded-lg border border-slate-200
+                                      px-2.5 py-1.5 text-[12px] font-medium text-slate-600
+                                      hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50 transition">
+                                <i class="bi bi-eye"></i> Abrir
+                            </a>
+                        </td>
+                    </tr>
+
+                    <tr th:if="${linhas.isEmpty()}">
+                        <td colspan="7" class="px-3 py-10 text-center text-slate-400">
+                            <i class="bi bi-inbox text-2xl block mb-1"></i>
+                            Nenhum processo cadastrado ainda.
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
-        <ul class="list-group list-group-flush">
-            <li class="list-group-item d-flex justify-content-between align-items-center"
-                th:each="p : ${ultimos}">
-                <a th:href="@{/processos/{id}(id=${p.id})}" class="text-decoration-none">
-                    <strong th:text="${p.identificacao()}">00/0000 - Paciente - RGCT</strong>
-                </a>
-                <span class="badge"
-                      th:classappend="${p.status.name() == 'DEFERIDO'} ? 'bg-success' :
-                                      (${p.status.name() == 'INDEFERIDO'} ? 'bg-danger' :
-                                      (${p.status.name() == 'CANCELADO'} ? 'bg-secondary' : 'bg-warning text-dark'))"
-                      th:text="${p.status.descricao}">status</span>
-            </li>
-            <li class="list-group-item text-muted" th:if="${ultimos.isEmpty()}">Nenhum processo cadastrado.</li>
-        </ul>
-    </div>
-</div>
+    </section>
+
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 </body>

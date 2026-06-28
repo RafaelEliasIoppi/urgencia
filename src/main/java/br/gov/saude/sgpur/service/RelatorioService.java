@@ -244,7 +244,7 @@ public class RelatorioService {
         adicionarLinhaCapa(tDados, "Data da decisao:", dataDecisaoStr, fRotulo, fValor);
 
         // Resultado em destaque (apenas se finalizado)
-        if (p.getStatus() != StatusProcesso.EM_ANALISE) {
+        if (p.getStatus().isFinalizado()) {
             String textoResultado;
             Color corResultado;
             if (p.getStatus() == StatusProcesso.DEFERIDO) {

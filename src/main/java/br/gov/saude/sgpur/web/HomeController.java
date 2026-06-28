@@ -10,6 +10,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 
 @Controller
@@ -35,23 +36,29 @@ public class HomeController {
     @GetMapping("/")
     public String dashboard(Model model) {
         model.addAttribute("totalProcessos", processoRepository.count());
-        model.addAttribute("emAnalise", processoRepository.countByStatus(StatusProcesso.EM_ANALISE));
         model.addAttribute("deferidos", processoRepository.countByStatus(StatusProcesso.DEFERIDO));
         model.addAttribute("indeferidos", processoRepository.countByStatus(StatusProcesso.INDEFERIDO));
         model.addAttribute("cancelados", processoRepository.countByStatus(StatusProcesso.CANCELADO));
         model.addAttribute("membrosAtivos", membroRepository.countByAtivoTrue());
-        model.addAttribute("ultimos",
-            processoRepository.findAllByOrderByAnoDescSequencialDesc()
-                .stream().limit(5).toList());
 
-        // Processos aguardando acao (em analise) + o que falta em cada um
-        var pendentes = processoRepository
-            .findByStatusOrderByAnoDescSequencialDesc(StatusProcesso.EM_ANALISE);
+        // Planilha do painel: todos os processos com os 3 medicos e o status
+        // de cada parecer (Favoravel / Desfavoravel / Aguardando / ...).
+        List<Processo> processos = processoRepository.findAllComPareceres();
+        List<PainelLinha> linhas = processos.stream().map(PainelLinha::de).toList();
+        model.addAttribute("linhas", linhas);
+
+        // "Em andamento" agrupa os status nao finais (SOLICITADO, ENVIADO,
+        // EM_ANALISE, SOLICITA_INFORMACAO). O que falta por processo reusa o
+        // FluxoProcessoService.
+        long emAndamento = 0;
         Map<Long, String> pendencias = new LinkedHashMap<>();
-        for (Processo p : pendentes) {
-            pendencias.put(p.getId(), fluxoService.resumoPendencia(p));
+        for (Processo p : processos) {
+            if (p.getStatus().isEmAndamento()) {
+                emAndamento++;
+                pendencias.put(p.getId(), fluxoService.resumoPendencia(p));
+            }
         }
-        model.addAttribute("pendentes", pendentes);
+        model.addAttribute("emAndamento", emAndamento);
         model.addAttribute("pendencias", pendencias);
         return "dashboard";
     }

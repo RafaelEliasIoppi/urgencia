@@ -26,6 +26,8 @@ public class EmailTemplateService {
             lista.add(emailDeferido(p));
         } else if (p.getStatus() == StatusProcesso.INDEFERIDO) {
             lista.add(emailIndeferido(p));
+        } else if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO) {
+            lista.add(emailSolicitaInfo(p));
         }
         return lista;
     }
@@ -62,6 +64,32 @@ public class EmailTemplateService {
 
         return new EmailTemplate("medicos", "Envio aos medicos (parecer)", "send",
             "Urgencia Renal - Solicitacao de parecer - Processo " + idProcesso, corpo);
+    }
+
+    /**
+     * Etapa 8: quando um medico pede mais informacoes, repassa-se o pedido ao
+     * solicitante para que complemente o processo. Texto pronto para copiar/colar.
+     */
+    private EmailTemplate emailSolicitaInfo(Processo p) {
+        String corpo = """
+            Prezados(as),
+
+            Informamos que, durante a analise do processo de Urgencia Renal %s,
+            referente ao paciente %s, um(a) dos(as) avaliadores(as) solicitou
+            informacoes complementares para concluir o parecer.
+
+            Equipe solicitante: %s
+
+            Solicitamos, por gentileza, o envio das informacoes/documentos
+            adicionais necessarios a continuidade da analise.
+
+            Atenciosamente,
+            Equipe de Urgencia Renal - Secretaria de Saude
+            """.formatted(p.getNumero(), p.getPacienteNome(), p.getSolicitanteEquipe());
+
+        return new EmailTemplate("solicita-info",
+            "Pedido de informacao ao solicitante", "question-circle",
+            "Urgencia Renal - Processo " + p.getNumero() + " - Solicitacao de informacoes", corpo);
     }
 
     private EmailTemplate emailDeferido(Processo p) {

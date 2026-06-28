@@ -79,4 +79,37 @@ class ProcessoServiceTest {
         Processo p = comPareceres(ResultadoParecer.FAVORAVEL, ResultadoParecer.SEM_RESPOSTA, null);
         assertThat(service.contarRespondidos(p)).isEqualTo(2);
     }
+
+    @Test
+    void processoNasceSolicitado() {
+        assertThat(new Processo().getStatus()).isEqualTo(StatusProcesso.SOLICITADO);
+    }
+
+    @Test
+    void registrarEnvioMudaParaEnviado() {
+        Processo p = new Processo();
+        when(processoRepository.findById(1L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+        service.registrarEnvio(1L);
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.ENVIADO);
+    }
+
+    @Test
+    void atualizarStatusVaiParaSolicitaInformacaoQuandoMedicoPedeInfo() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+            ResultadoParecer.SOLICITA_INFORMACAO, null);
+        when(processoRepository.findById(2L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+        service.atualizarStatusPorPareceres(2L);
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.SOLICITA_INFORMACAO);
+    }
+
+    @Test
+    void atualizarStatusNaoRebaixaProcessoJaDecidido() {
+        Processo p = comPareceres(ResultadoParecer.SOLICITA_INFORMACAO);
+        p.setStatus(StatusProcesso.DEFERIDO);
+        when(processoRepository.findById(3L)).thenReturn(java.util.Optional.of(p));
+        service.atualizarStatusPorPareceres(3L);
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.DEFERIDO);
+    }
 }

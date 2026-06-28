@@ -247,6 +247,9 @@ public class ProcessoController {
             }
         }
         processoService.salvar(p);
+        // Etapa 6/7: se um medico pediu informacao (e ainda nao houve decisao),
+        // o status passa a SOLICITA_INFORMACAO; senao permanece ENVIADO.
+        processoService.atualizarStatusPorPareceres(id);
         ra.addFlashAttribute("msg", "Pareceres atualizados.");
         return "redirect:/processos/" + id + "#respostas";
     }
@@ -264,6 +267,8 @@ public class ProcessoController {
         LocalDate hoje = LocalDate.now();
         p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
         processoService.salvar(p);
+        // Etapa 5: processo passa de SOLICITADO para ENVIADO.
+        processoService.registrarEnvio(id);
 
         // Gera automaticamente o PDF de solicitacao de avaliacao (sem dados pessoais)
         try {

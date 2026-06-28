@@ -21,13 +21,17 @@ Pacote base `br.gov.saude.sgpur`.
 .\start.ps1 prod       # prod (Neon) — usa application-local.yml (gitignored)
 ```
 - App em http://localhost:8080 · login inicial `admin` / `admin123`.
-- Testes: `mvn test` (22 testes). Build: `mvn -DskipTests package` (gera o JAR).
+- Testes: `mvn test` (26 testes). Build: `mvn -DskipTests package` (gera o JAR).
 - Sempre compile/rode com o **JDK 21**.
 
 ## Regras de negócio (não violar)
 - Cada processo vai para **exatamente 3 médicos**; **2 favoráveis = Deferido**,
   senão **Indeferido** (exige **ofício + motivo**).
-- Status: `Em análise` → `Deferido` / `Indeferido` / `Cancelado`.
+- Status (ciclo expandido, reflete a planilha): `Solicitado` → `Enviado` →
+  { `Deferido` / `Indeferido` / `Solicita informação` } (+ `Cancelado`).
+  Finais: Deferido/Indeferido/Cancelado. `Em análise` é mantido como sinônimo
+  legado de `Enviado` (registros antigos continuam válidos). Ver
+  `docs/PLANO-FLUXO.md`.
 - Numeração `NN/AAAA`: **manual em 2026**, **automática a partir de 2027**.
 - Fluxo por e-mail com anexos por etapa; e-mail aos médicos **oculta dados do
   paciente** (LGPD). Decisão manual com **sugestão automática** (regra 2/3).

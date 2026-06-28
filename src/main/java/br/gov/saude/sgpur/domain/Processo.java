@@ -57,8 +57,8 @@ public class Processo {
 
     // ----- Situacao / decisao -----
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
-    private StatusProcesso status = StatusProcesso.EM_ANALISE;
+    @Column(nullable = false, length = 30)
+    private StatusProcesso status = StatusProcesso.SOLICITADO;
 
     @Column(name = "email_enviado_solicitante", nullable = false)
     private boolean emailEnviadoSolicitante = false;

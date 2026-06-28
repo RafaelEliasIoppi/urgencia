@@ -98,6 +98,41 @@ public class ProcessoService {
         return processoRepository.save(processo);
     }
 
+    /**
+     * Marca o processo como ENVIADO aos avaliadores (etapa 5 do fluxo).
+     * So altera o status quando ainda esta em uma fase anterior a decisao
+     * (SOLICITADO / ENVIADO / EM_ANALISE / SOLICITA_INFORMACAO); nunca rebaixa
+     * um processo ja decidido.
+     */
+    @Transactional
+    public Processo registrarEnvio(Long id) {
+        Processo p = buscar(id);
+        if (p.getStatus().isEmAndamento()) {
+            p.setStatus(StatusProcesso.ENVIADO);
+        }
+        return processoRepository.save(p);
+    }
+
+    /**
+     * Recalcula o status "em andamento" do processo a partir dos pareceres
+     * recebidos, SEM tomar a decisao final (que continua manual via decidir()):
+     * - se algum medico pediu informacao e o processo ainda nao foi decidido,
+     *   o status vai para SOLICITA_INFORMACAO;
+     * - caso contrario permanece ENVIADO (ja foi enviado aos medicos).
+     * Processos ja finalizados (DEFERIDO/INDEFERIDO/CANCELADO) nao sao tocados.
+     */
+    @Transactional
+    public Processo atualizarStatusPorPareceres(Long id) {
+        Processo p = buscar(id);
+        if (p.getStatus().isFinalizado()) {
+            return p;
+        }
+        boolean pediuInfo = p.getPareceres().stream()
+            .anyMatch(par -> par.getResultado() == ResultadoParecer.SOLICITA_INFORMACAO);
+        p.setStatus(pediuInfo ? StatusProcesso.SOLICITA_INFORMACAO : StatusProcesso.ENVIADO);
+        return processoRepository.save(p);
+    }
+
     /** Atualiza apenas os dados descritivos do processo (numero e medicos nao mudam). */
     @Transactional
     public Processo atualizarDados(Long id, Processo form) {

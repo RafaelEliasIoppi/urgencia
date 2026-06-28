@@ -10,10 +10,7 @@
         <div>
             <h1 class="h3 mb-1">
                 <span th:text="${processo.identificacao()}">00/0000 - Paciente - RGCT</span>
-                <span class="badge align-middle"
-                      th:classappend="${processo.status.name() == 'DEFERIDO'} ? 'bg-success' :
-                                      (${processo.status.name() == 'INDEFERIDO'} ? 'bg-danger' :
-                                      (${processo.status.name() == 'CANCELADO'} ? 'bg-secondary' : 'bg-warning text-dark'))"
+                <span class="badge align-middle" th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${processo.status.descricao}">status</span>
             </h1>
         </div>
