@@ -29,6 +29,23 @@ public interface ProcessoRepository extends JpaRepository<Processo, Long> {
 
     List<Processo> findByStatusOrderByAnoDescSequencialDesc(StatusProcesso status);
 
+    /** Anos distintos que possuem ao menos um processo, mais recente primeiro. */
+    @Query("select distinct p.ano from Processo p order by p.ano desc")
+    List<Integer> findAnosComProcessos();
+
+    /**
+     * Processos de um ano, ordenados por sequencial, ja com pareceres e medicos
+     * (fetch join) para o relatorio anual sem incorrer em N+1.
+     */
+    @Query("""
+        select distinct p from Processo p
+        left join fetch p.pareceres par
+        left join fetch par.membro
+        where p.ano = :ano
+        order by p.sequencial asc
+        """)
+    List<Processo> findByAnoComPareceres(@Param("ano") int ano);
+
     Optional<Processo> findByNumero(String numero);
 
     /** Maior sequencial ja usado em um ano (para gerar o proximo numero). */
