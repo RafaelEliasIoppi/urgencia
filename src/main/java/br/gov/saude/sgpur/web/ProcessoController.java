@@ -191,11 +191,16 @@ public class ProcessoController {
             .map(a -> a.getParecer().getId())
             .collect(java.util.stream.Collectors.toSet());
         model.addAttribute("pareceresComResposta", pareceresComResposta);
-        // Anexo do tipo SOLICITACAO_AVALIADOR gerado automaticamente ao registrar envio
+        // Anexo do tipo SOLICITACAO_AVALIADOR = copia anonimizada para as equipes
         Optional<Anexo> solicitacaoPdf = p.getAnexos().stream()
             .filter(a -> a.getTipo() == TipoAnexo.SOLICITACAO_AVALIADOR)
             .findFirst();
         model.addAttribute("solicitacaoPdf", solicitacaoPdf.orElse(null));
+        // Anexo da solicitacao ORIGINAL recebida (com nome completo)
+        Optional<Anexo> solicitacaoOriginal = p.getAnexos().stream()
+            .filter(a -> a.getTipo() == TipoAnexo.SOLICITACAO_RECEBIDA)
+            .findFirst();
+        model.addAttribute("solicitacaoOriginal", solicitacaoOriginal.orElse(null));
         return "processos/detalhe";
     }
 
@@ -271,6 +276,51 @@ public class ProcessoController {
      * (acao unica). Gera automaticamente o PDF de solicitacao de avaliacao e
      * opcionalmente aceita o PDF do e-mail de envio como anexo.
      */
+    /**
+     * Etapa 1 (Recebimento e ajuste do texto): anexa a copia da solicitacao
+     * ORIGINAL recebida e gera automaticamente a copia anonimizada para envio
+     * as equipes (sem o nome completo do paciente), com o nome de arquivo
+     * oficial "Processo CET-RS NN-AAAA - Paciente X.X.X.pdf".
+     */
+    @PostMapping("/{id}/recebimento")
+    public String registrarRecebimento(@PathVariable Long id,
+                                       @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
+                                       RedirectAttributes ra) {
+        Processo p = processoService.buscar(id);
+
+        // 1) Copia da solicitacao original (com nome completo) — anexo manual.
+        if (arquivo != null && !arquivo.isEmpty()) {
+            try {
+                anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_RECEBIDA);
+                anexoStorage.salvar(p, TipoAnexo.SOLICITACAO_RECEBIDA,
+                    "Copia da solicitacao original recebida", arquivo);
+                auditoria.registrar("ANEXO_ADICIONADO",
+                    "Processo " + p.getNumero() + " - " + TipoAnexo.SOLICITACAO_RECEBIDA.getDescricao());
+            } catch (IOException e) {
+                ra.addFlashAttribute("erro", "Falha ao anexar a solicitacao original: " + e.getMessage());
+                return "redirect:/processos/" + id + "#recebimento";
+            }
+        }
+
+        // 2) Copia anonimizada para envio as equipes — gerada pelo sistema.
+        try {
+            anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
+            byte[] pdf = solicitacaoAvaliadorService.gerar(p);
+            String nome = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
+            anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
+                "Copia da solicitacao para envio as equipes (nome completo suprimido)",
+                nome, "application/pdf", pdf);
+            auditoria.registrar("ANEXO_ADICIONADO",
+                "Processo " + p.getNumero() + " - Copia para as equipes gerada (" + nome + ")");
+        } catch (IOException e) {
+            ra.addFlashAttribute("erro", "Falha ao gerar a copia para as equipes: " + e.getMessage());
+            return "redirect:/processos/" + id + "#recebimento";
+        }
+
+        ra.addFlashAttribute("msg", "Recebimento registrado: solicitacao original anexada e copia para as equipes gerada.");
+        return "redirect:/processos/" + id + "#recebimento";
+    }
+
     @PostMapping("/{id}/registrar-envio")
     public String registrarEnvio(@PathVariable Long id,
                                  @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
@@ -286,9 +336,10 @@ public class ProcessoController {
         try {
             anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
             byte[] pdfSolicitacao = solicitacaoAvaliadorService.gerar(p);
-            String nomeSolicitacao = "solicitacao-avaliacao-" + p.getNumero().replace("/", "-") + ".pdf";
+            String nomeSolicitacao = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
             anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
-                "Solicitacao de avaliacao gerada automaticamente", nomeSolicitacao, "application/pdf", pdfSolicitacao);
+                "Copia da solicitacao para envio as equipes (nome completo suprimido)",
+                nomeSolicitacao, "application/pdf", pdfSolicitacao);
             auditoria.registrar("ANEXO_ADICIONADO",
                 "Processo " + p.getNumero() + " - Solicitacao PDF gerada automaticamente");
         } catch (IOException e) {

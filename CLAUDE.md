@@ -48,6 +48,13 @@ Pacote base `br.gov.saude.sgpur`.
   Finais: Deferido/Indeferido/Cancelado. `Em análise` é mantido como sinônimo
   legado de `Enviado` (registros antigos continuam válidos). Ver
   `docs/PLANO-FLUXO.md`.
+- **Passo 1 (Recebimento e ajuste do texto):** exige **dois anexos** — a
+  **cópia da solicitação original** (`SOLICITACAO_RECEBIDA`, anexada à mão) e a
+  **cópia para envio às equipes** (`SOLICITACAO_AVALIADOR`, **gerada pelo
+  sistema** com o nome completo do paciente suprimido). Nome de arquivo oficial:
+  `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
+  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). A etapa bloqueia até os
+  dois existirem. Endpoint `POST /processos/{id}/recebimento`.
 - Numeração `NN/AAAA`: **manual em 2026**, **automática a partir de 2027**.
 - Fluxo por e-mail com anexos por etapa; e-mail aos médicos **oculta dados do
   paciente** (LGPD). Decisão manual com **sugestão automática** por maioria

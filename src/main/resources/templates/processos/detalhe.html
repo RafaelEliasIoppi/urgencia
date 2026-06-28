@@ -104,16 +104,26 @@
 
             <!-- Abas por fase do processo (Envio -> Respostas -> Decisao -> Finalizacao) -->
             <div th:with="st=${processo.status.name()},
-                          abaEnvio=${st == 'SOLICITADO'},
+                          recebimentoFeito=${solicitacaoOriginal != null and solicitacaoPdf != null},
+                          abaReceb=${st == 'SOLICITADO' and !(solicitacaoOriginal != null and solicitacaoPdf != null)},
+                          abaEnvio=${st == 'SOLICITADO' and (solicitacaoOriginal != null and solicitacaoPdf != null)},
                           abaResp=${st == 'ENVIADO' or st == 'EM_ANALISE' or st == 'SOLICITA_INFORMACAO'},
                           abaFinal=${processo.status.finalizado},
                           envioFeito=${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}">
                 <ul class="nav nav-tabs nav-fill mb-3" id="fasesTab" role="tablist">
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" th:classappend="${abaReceb} ? 'active' : ''"
+                                id="tab-recebimento" data-bs-toggle="tab" data-bs-target="#pane-recebimento"
+                                type="button" role="tab" aria-controls="pane-recebimento">
+                            <i class="bi bi-inbox"></i> 1. Recebimento
+                            <i class="bi bi-check-circle-fill text-success ms-1" th:if="${recebimentoFeito}"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" th:classappend="${abaEnvio} ? 'active' : ''"
                                 id="tab-envio" data-bs-toggle="tab" data-bs-target="#pane-envio"
                                 type="button" role="tab" aria-controls="pane-envio">
-                            <i class="bi bi-send"></i> 1. Envio
+                            <i class="bi bi-send"></i> 2. Envio
                             <i class="bi bi-check-circle-fill text-success ms-1" th:if="${envioFeito}"></i>
                         </button>
                     </li>
@@ -121,7 +131,7 @@
                         <button class="nav-link" th:classappend="${abaResp} ? 'active' : ''"
                                 id="tab-respostas" data-bs-toggle="tab" data-bs-target="#pane-respostas"
                                 type="button" role="tab" aria-controls="pane-respostas">
-                            <i class="bi bi-chat-square-text"></i> 2. Respostas
+                            <i class="bi bi-chat-square-text"></i> 3. Respostas
                             <span class="badge bg-success ms-1" th:if="${envioFeito}" th:text="${favoraveis}">0</span>
                         </button>
                     </li>
@@ -129,20 +139,85 @@
                         <button class="nav-link"
                                 id="tab-decisao" data-bs-toggle="tab" data-bs-target="#pane-decisao"
                                 type="button" role="tab" aria-controls="pane-decisao">
-                            <i class="bi bi-scale"></i> 3. Decisao
+                            <i class="bi bi-scale"></i> 4. Decisao
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
                         <button class="nav-link" th:classappend="${abaFinal} ? 'active' : ''"
                                 id="tab-finalizacao" data-bs-toggle="tab" data-bs-target="#pane-finalizacao"
                                 type="button" role="tab" aria-controls="pane-finalizacao">
-                            <i class="bi bi-flag"></i> 4. Finalizacao
+                            <i class="bi bi-flag"></i> 5. Finalizacao
                         </button>
                     </li>
                 </ul>
 
                 <div class="tab-content" id="fasesTabContent">
-                <!-- ABA 1: Envio -->
+                <!-- ABA 1: Recebimento e ajuste do texto -->
+                <div class="tab-pane fade" th:classappend="${abaReceb} ? 'show active' : ''"
+                     id="pane-recebimento" role="tabpanel" aria-labelledby="tab-recebimento">
+                    <div class="card mb-4" id="recebimento">
+                        <div class="card-header"><i class="bi bi-inbox"></i> Recebimento e ajuste do texto</div>
+                        <div class="card-body">
+                            <p class="small text-muted mb-3">
+                                Anexe a <strong>solicitacao original</strong> recebida. O sistema gera
+                                automaticamente a <strong>copia para envio as equipes</strong> com o nome
+                                completo do paciente <strong>suprimido</strong> (apenas iniciais), no nome
+                                de arquivo oficial.
+                            </p>
+
+                            <!-- Status dos dois anexos -->
+                            <ul class="list-group mb-3">
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="bi" th:classappend="${solicitacaoOriginal != null} ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'"></i>
+                                        Copia da solicitacao original
+                                    </span>
+                                    <a th:if="${solicitacaoOriginal != null}"
+                                       th:href="@{/processos/anexos/{id}/download(id=${solicitacaoOriginal.id})}"
+                                       class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-download"></i>
+                                        <span th:text="${solicitacaoOriginal.nomeArquivo}">arquivo</span>
+                                    </a>
+                                    <span th:unless="${solicitacaoOriginal != null}" class="badge bg-secondary">pendente</span>
+                                </li>
+                                <li class="list-group-item d-flex justify-content-between align-items-center">
+                                    <span>
+                                        <i class="bi" th:classappend="${solicitacaoPdf != null} ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'"></i>
+                                        Copia para envio as equipes (nome completo suprimido)
+                                    </span>
+                                    <a th:if="${solicitacaoPdf != null}"
+                                       th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
+                                       class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-file-earmark-pdf"></i>
+                                        <span th:text="${solicitacaoPdf.nomeArquivo}">arquivo</span>
+                                    </a>
+                                    <span th:unless="${solicitacaoPdf != null}" class="badge bg-secondary">sera gerada</span>
+                                </li>
+                            </ul>
+
+                            <!-- Acao: anexar a original + gerar a copia para as equipes -->
+                            <form th:action="@{/processos/{id}/recebimento(id=${processo.id})}" method="post"
+                                  enctype="multipart/form-data" class="row g-2 align-items-end">
+                                <div class="col-md-7">
+                                    <label class="form-label">Solicitacao original recebida (PDF/e-mail)</label>
+                                    <input type="file" name="arquivo" class="form-control form-control-sm"
+                                           accept=".pdf,.eml,.msg"
+                                           th:required="${solicitacaoOriginal == null}">
+                                    <div class="form-text" th:if="${solicitacaoOriginal != null}">
+                                        Ja anexada. Selecione um arquivo apenas se quiser substituir.
+                                    </div>
+                                </div>
+                                <div class="col-md-5 d-flex align-items-end">
+                                    <button class="btn btn-primary btn-sm">
+                                        <i class="bi bi-inbox-fill"></i> Registrar recebimento e gerar copia
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div><!-- /ABA 1 Recebimento -->
+
+                <!-- ABA 2: Envio -->
                 <div class="tab-pane fade" th:classappend="${abaEnvio} ? 'show active' : ''"
                      id="pane-envio" role="tabpanel" aria-labelledby="tab-envio">
             <!-- Secao: Envio aos Avaliadores -->
@@ -180,9 +255,9 @@
                     </form>
                 </div>
             </div>
-                </div><!-- /ABA 1 Envio -->
+                </div><!-- /ABA 2 Envio -->
 
-                <!-- ABA 2: Respostas -->
+                <!-- ABA 3: Respostas -->
                 <div class="tab-pane fade" th:classappend="${abaResp} ? 'show active' : ''"
                      id="pane-respostas" role="tabpanel" aria-labelledby="tab-respostas">
             <!-- Aviso quando o envio ainda nao foi registrado -->
@@ -263,9 +338,9 @@
                     </div>
                 </div>
             </div>
-                </div><!-- /ABA 2 Respostas -->
+                </div><!-- /ABA 3 Respostas -->
 
-                <!-- ABA 3: Decisao -->
+                <!-- ABA 4: Decisao -->
                 <div class="tab-pane fade" id="pane-decisao" role="tabpanel" aria-labelledby="tab-decisao">
             <!-- Decisao -->
             <div class="card mb-4" id="decisao">
@@ -293,9 +368,9 @@
                     </form>
                 </div>
             </div>
-                </div><!-- /ABA 3 Decisao -->
+                </div><!-- /ABA 4 Decisao -->
 
-                <!-- ABA 4: Finalizacao -->
+                <!-- ABA 5: Finalizacao -->
                 <div class="tab-pane fade" th:classappend="${abaFinal} ? 'show active' : ''"
                      id="pane-finalizacao" role="tabpanel" aria-labelledby="tab-finalizacao">
             <!-- Finalizacao / oficio / resposta -->
@@ -329,7 +404,7 @@
                     </form>
                 </div>
             </div>
-                </div><!-- /ABA 4 Finalizacao -->
+                </div><!-- /ABA 5 Finalizacao -->
                 </div><!-- /tab-content -->
             </div><!-- /th:with abas -->
 

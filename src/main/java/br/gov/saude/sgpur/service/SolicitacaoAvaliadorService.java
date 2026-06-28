@@ -28,6 +28,20 @@ public class SolicitacaoAvaliadorService {
     private static final Color CINZA_BORDA = new Color(222, 226, 230);
     private static final Color AZUL_ESCURO = new Color(0, 53, 128);
 
+    /**
+     * Nome de arquivo oficial da copia da solicitacao para envio das equipes,
+     * no padrao: "Processo CET-RS NN-AAAA - Paciente X.X.X.pdf" (numero com a
+     * barra trocada por traco e iniciais do paciente — sem expor o nome).
+     */
+    public static String nomeArquivoOficial(Processo p) {
+        String numero = p.getNumero() == null ? "" : p.getNumero().replace("/", "-");
+        String iniciais = Iniciais.de(p.getPacienteNome());
+        if (iniciais.endsWith(".")) {
+            iniciais = iniciais.substring(0, iniciais.length() - 1);
+        }
+        return "Processo CET-RS " + numero + " - Paciente " + iniciais + ".pdf";
+    }
+
     public byte[] gerar(Processo p) {
         Document doc = new Document(PageSize.A4, 50, 50, 55, 45);
         ByteArrayOutputStream out = new ByteArrayOutputStream();
