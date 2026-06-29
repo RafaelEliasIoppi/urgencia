@@ -18,6 +18,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -54,20 +55,29 @@ public class AvaliadorController {
     }
 
     /**
-     * Lista os processos pendentes do medico logado.
-     * Mostra apenas: numero, iniciais do paciente, data de envio, link ao PDF.
-     * NUNCA: nome completo, equipe solicitante, co-avaliadores ou votos alheios.
+     * Painel do medico avaliador logado: contadores consolidados, lista de
+     * pendentes e historico das suas avaliacoes.
+     *
+     * Mostra apenas: numero, iniciais do paciente, datas, resultado proprio,
+     * link ao PDF. NUNCA: nome completo, equipe solicitante, co-avaliadores ou
+     * votos alheios.
      */
     @GetMapping
     public String lista(Principal principal, Model model) {
         MembroUrgenciaRenal membro = resolverMembro(principal);
+        Long membroId = membro.getId();
 
         // Regra unica de "pendentes do avaliador" (reutilizada pelo badge global).
-        List<Parecer> parecersFiltrados = pendentesDoMembro(parecerRepo, membro.getId());
+        List<Parecer> parecersFiltrados = pendentesDoMembro(parecerRepo, membroId);
 
         // Mapas por processoId — passados ao template para evitar logica na view.
         Map<Long, Anexo> pdfPorProcesso = new HashMap<>();
         Map<Long, String> iniciaisPorProcesso = new HashMap<>();
+        // PRAZOS: o dominio NAO possui campo de prazo/SLA/data-limite. Por isso
+        // exibimos apenas "dias desde o envio" (hoje - dataEnvio) como informacao
+        // auxiliar, sem inventar campo novo nem migracao.
+        Map<Long, Long> diasDesdeEnvio = new HashMap<>();
+        LocalDate hoje = LocalDate.now();
         for (Parecer par : parecersFiltrados) {
             Long pid = par.getProcesso().getId();
             List<Anexo> pdfs = anexoRepo.findByProcessoIdAndTipo(
@@ -76,12 +86,43 @@ public class AvaliadorController {
                 pdfPorProcesso.put(pid, pdfs.get(0));
             }
             iniciaisPorProcesso.put(pid, Iniciais.de(par.getProcesso().getPacienteNome()));
+            if (par.getDataEnvio() != null) {
+                diasDesdeEnvio.put(pid, ChronoUnit.DAYS.between(par.getDataEnvio(), hoje));
+            }
         }
+
+        // Historico: pareceres ja votados pelo membro (mais recente primeiro).
+        List<Parecer> historico = parecerRepo
+            .findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc(membroId);
+        Map<Long, String> iniciaisHistorico = new HashMap<>();
+        for (Parecer par : historico) {
+            iniciaisHistorico.put(par.getId(),
+                Iniciais.de(par.getProcesso().getPacienteNome()));
+        }
+
+        // Contadores consolidados (reutilizam as queries de contagem do repo).
+        long totalAtribuidos = parecerRepo.countByMembroId(membroId);
+        long totalAvaliados = parecerRepo.countByMembroIdAndResultadoNotNull(membroId);
+        long favoraveis = parecerRepo
+            .countByMembroIdAndResultado(membroId, ResultadoParecer.FAVORAVEL);
+        long naoFavoraveis = parecerRepo
+            .countByMembroIdAndResultado(membroId, ResultadoParecer.NAO_FAVORAVEL);
+        long solicitaInfo = parecerRepo
+            .countByMembroIdAndResultado(membroId, ResultadoParecer.SOLICITA_INFORMACAO);
 
         model.addAttribute("pareceres", parecersFiltrados);
         model.addAttribute("pdfPorProcesso", pdfPorProcesso);
         model.addAttribute("iniciaisPorProcesso", iniciaisPorProcesso);
+        model.addAttribute("diasDesdeEnvio", diasDesdeEnvio);
+        model.addAttribute("historico", historico);
+        model.addAttribute("iniciaisHistorico", iniciaisHistorico);
         model.addAttribute("membro", membro);
+        model.addAttribute("totalAtribuidos", totalAtribuidos);
+        model.addAttribute("totalPendentes", parecersFiltrados.size());
+        model.addAttribute("totalAvaliados", totalAvaliados);
+        model.addAttribute("favoraveis", favoraveis);
+        model.addAttribute("naoFavoraveis", naoFavoraveis);
+        model.addAttribute("solicitaInfo", solicitaInfo);
         return "avaliador/lista";
     }
 

@@ -24,6 +24,12 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
      */
     List<Parecer> findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(Long membroId);
 
+    /**
+     * Pareceres ja votados pelo membro (resultado != null), do mais recente para
+     * o mais antigo. Usado pelo historico do Portal do Avaliador.
+     */
+    List<Parecer> findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc(Long membroId);
+
     /** Localiza o parecer de um membro especifico em um processo especifico. */
     Optional<Parecer> findByProcessoIdAndMembroId(Long processoId, Long membroId);
 }

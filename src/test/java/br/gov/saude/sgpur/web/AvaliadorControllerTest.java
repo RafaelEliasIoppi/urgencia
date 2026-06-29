@@ -91,6 +91,56 @@ class AvaliadorControllerTest {
 
     @Test
     @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void painelExibeContadoresEHistoricoDoMembroLogado() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(10L))
+            .thenReturn(List.of(parecer)); // 1 pendente
+        when(anexoRepo.findByProcessoIdAndTipo(any(Long.class), any()))
+            .thenReturn(List.of());
+
+        // Contadores do repo (apenas do membro logado)
+        when(parecerRepo.countByMembroId(10L)).thenReturn(5L);
+        when(parecerRepo.countByMembroIdAndResultadoNotNull(10L)).thenReturn(4L);
+        when(parecerRepo.countByMembroIdAndResultado(10L, ResultadoParecer.FAVORAVEL))
+            .thenReturn(2L);
+        when(parecerRepo.countByMembroIdAndResultado(10L, ResultadoParecer.NAO_FAVORAVEL))
+            .thenReturn(1L);
+        when(parecerRepo.countByMembroIdAndResultado(10L, ResultadoParecer.SOLICITA_INFORMACAO))
+            .thenReturn(1L);
+
+        // Historico: parecer ja votado deste membro
+        Processo outro = new Processo();
+        outro.setId(7L);
+        outro.setNumero("07/2026");
+        outro.setPacienteNome("Joao Pedro Alves");
+        Parecer votado = new Parecer(membro);
+        votado.setId(200L);
+        votado.setProcesso(outro);
+        votado.setResultado(ResultadoParecer.FAVORAVEL);
+        votado.setDataResposta(LocalDate.now());
+        when(parecerRepo.findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc(10L))
+            .thenReturn(List.of(votado));
+
+        mvc.perform(get("/avaliador"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("avaliador/lista"))
+            .andExpect(model().attribute("totalAtribuidos", 5L))
+            .andExpect(model().attribute("totalPendentes", 1))
+            .andExpect(model().attribute("totalAvaliados", 4L))
+            .andExpect(model().attribute("favoraveis", 2L))
+            .andExpect(model().attribute("naoFavoraveis", 1L))
+            .andExpect(model().attribute("solicitaInfo", 1L))
+            .andExpect(model().attribute("historico", List.of(votado)))
+            // Historico usa apenas iniciais — nunca nome completo
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("Joao Pedro Alves"))));
+
+        // O historico do portal so consulta o membro logado (10L)
+        verify(parecerRepo).findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc(10L);
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
     void contagemDePendentesIgnoraVotadosEProcessosNaoAtivos() throws Exception {
         when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
 
