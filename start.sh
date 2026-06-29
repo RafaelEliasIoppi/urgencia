@@ -43,7 +43,7 @@ fi
 
 # --- Porta: 3000 no Codespace, 8080 em outros ambientes ---
 if [ -n "${CODESPACES:-}" ] || [ -n "${CODESPACE_NAME:-}" ]; then
-  PORTA=3000
+  PORTA=2500
 else
   PORTA=8080
 fi
