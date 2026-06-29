@@ -43,3 +43,6 @@ deploy/sgpur.env
 node_modules/
 package-lock.json
 
+### Claude Code (settings pessoais, fora do git) ###
+.claude/settings.local.json
+

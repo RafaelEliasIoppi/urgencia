@@ -408,7 +408,8 @@ public class ProcessoController {
             }
         }
         processoService.retomarAposInformacao(id);
-        auditoria.registrar("ANALISE_RETOMADA", "Processo " + p.getNumero());
+        auditoria.registrar("ANALISE_RETOMADA",
+            "Processo " + p.getNumero() + " - pareceres em 'Solicita informacao' reabertos como pendencia limpa");
         ra.addFlashAttribute("msg",
             "Informacao complementar recebida. Analise retomada - registre os pareceres definitivos.");
         return "redirect:/processos/" + id + "#respostas";

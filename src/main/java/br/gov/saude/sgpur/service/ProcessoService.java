@@ -152,7 +152,18 @@ public class ProcessoService {
         }
         p.getPareceres().stream()
             .filter(par -> par.getResultado() == ResultadoParecer.SOLICITA_INFORMACAO)
-            .forEach(par -> par.setResultado(null));
+            .forEach(par -> {
+                // Reset COMPLETO para pendencia limpa: o parecer volta a ser uma
+                // pendencia genuina, sem metadados obsoletos do voto "Solicita
+                // informacao" antigo (preserva o nao-repudio do voto definitivo).
+                // Mantem dataEnvio (o processo foi enviado de fato).
+                par.setResultado(null);
+                par.setDataResposta(null);
+                par.setDataHoraVoto(null);
+                par.setVotadoPor(null);
+                par.setOrigem(null);
+                par.setJustificativa(null);
+            });
         p.setStatus(StatusProcesso.ENVIADO);
         return processoRepository.save(p);
     }

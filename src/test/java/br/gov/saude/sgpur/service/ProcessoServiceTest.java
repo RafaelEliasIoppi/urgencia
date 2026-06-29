@@ -145,6 +145,71 @@ class ProcessoServiceTest {
         assertThat(p.getPareceres().get(1).getResultado()).isNull();
     }
 
+    /**
+     * Ao reabrir o parecer que pediu informacao, o reset deve ser COMPLETO:
+     * nenhum metadado do voto antigo pode sobreviver (nao-repudio), mas dataEnvio
+     * (o processo foi enviado de fato) deve ser preservado.
+     */
+    @Test
+    void retomarAposInformacaoZeraTodosOsMetadadosDoParecerReaberto() {
+        Processo p = comPareceres(ResultadoParecer.SOLICITA_INFORMACAO);
+        Parecer reaberto = p.getPareceres().get(0);
+        java.time.LocalDate envio = java.time.LocalDate.of(2026, 6, 1);
+        reaberto.setDataEnvio(envio);
+        reaberto.setDataResposta(java.time.LocalDate.of(2026, 6, 10));
+        reaberto.setDataHoraVoto(java.time.LocalDateTime.of(2026, 6, 10, 9, 30));
+        reaberto.setVotadoPor("avaliador1");
+        reaberto.setOrigem(OrigemParecer.AVALIADOR_SISTEMA);
+        reaberto.setJustificativa("Faltam exames laboratoriais.");
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        when(processoRepository.findById(22L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+
+        service.retomarAposInformacao(22L);
+
+        assertThat(reaberto.getResultado()).isNull();
+        assertThat(reaberto.getDataResposta()).isNull();
+        assertThat(reaberto.getDataHoraVoto()).isNull();
+        assertThat(reaberto.getVotadoPor()).isNull();
+        assertThat(reaberto.getOrigem()).isNull();
+        assertThat(reaberto.getJustificativa()).isNull();
+        // dataEnvio NAO e tocada (o processo foi enviado de fato)
+        assertThat(reaberto.getDataEnvio()).isEqualTo(envio);
+    }
+
+    /**
+     * Pareceres ja definitivos (FAVORAVEL/NAO_FAVORAVEL) NAO podem ser tocados
+     * na retomada — so os que estavam em SOLICITA_INFORMACAO sao reabertos.
+     */
+    @Test
+    void retomarAposInformacaoNaoTocaPareceresDefinitivos() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+            ResultadoParecer.SOLICITA_INFORMACAO, ResultadoParecer.NAO_FAVORAVEL);
+        Parecer favoravel = p.getPareceres().get(0);
+        favoravel.setVotadoPor("avaliador1");
+        favoravel.setOrigem(OrigemParecer.AVALIADOR_SISTEMA);
+        favoravel.setJustificativa("Caso elegivel.");
+        favoravel.setDataResposta(java.time.LocalDate.of(2026, 6, 5));
+        Parecer naoFavoravel = p.getPareceres().get(2);
+        naoFavoravel.setVotadoPor("operador");
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        when(processoRepository.findById(23L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+
+        service.retomarAposInformacao(23L);
+
+        // o do meio foi reaberto
+        assertThat(p.getPareceres().get(1).getResultado()).isNull();
+        // os definitivos permanecem intactos
+        assertThat(favoravel.getResultado()).isEqualTo(ResultadoParecer.FAVORAVEL);
+        assertThat(favoravel.getVotadoPor()).isEqualTo("avaliador1");
+        assertThat(favoravel.getOrigem()).isEqualTo(OrigemParecer.AVALIADOR_SISTEMA);
+        assertThat(favoravel.getJustificativa()).isEqualTo("Caso elegivel.");
+        assertThat(favoravel.getDataResposta()).isEqualTo(java.time.LocalDate.of(2026, 6, 5));
+        assertThat(naoFavoravel.getResultado()).isEqualTo(ResultadoParecer.NAO_FAVORAVEL);
+        assertThat(naoFavoravel.getVotadoPor()).isEqualTo("operador");
+    }
+
     @Test
     void decidirBloqueiaQuandoAguardandoInformacaoComplementar() {
         Processo p = comPareceres(ResultadoParecer.NAO_FAVORAVEL,
