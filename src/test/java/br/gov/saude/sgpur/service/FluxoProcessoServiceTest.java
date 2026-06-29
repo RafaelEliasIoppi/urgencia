@@ -98,6 +98,48 @@ class FluxoProcessoServiceTest {
     }
 
     @Test
+    void respostasPodeConcluirComMaioriaSemAguardarTerceiroParecer() {
+        // 2 favoraveis (com anexo de resposta) + 1 ainda sem responder.
+        // Por maioria simples a etapa Respostas ja deve estar CONCLUIDA, sem
+        // ficar "Aguardando parecer (2/3)".
+        Processo p = processoComTresPareceres();
+        p.setStatus(StatusProcesso.ENVIADO);
+        // Etapa 1 (Recebimento) concluida: solicitacao original + capa.
+        Anexo original = new Anexo();
+        original.setTipo(TipoAnexo.SOLICITACAO_RECEBIDA);
+        p.addAnexo(original);
+        Anexo capa = new Anexo();
+        capa.setTipo(TipoAnexo.CAPA_PROCESSO);
+        p.addAnexo(capa);
+        long id = 1;
+        for (Parecer par : p.getPareceres()) {
+            par.setId(id++);
+            par.setDataEnvio(LocalDate.now());
+        }
+        // dois votos favoraveis com seus anexos de resposta vinculados
+        for (int i = 0; i < 2; i++) {
+            Parecer par = p.getPareceres().get(i);
+            par.setResultado(ResultadoParecer.FAVORAVEL);
+            Anexo resp = new Anexo();
+            resp.setTipo(TipoAnexo.RESPOSTA_AVALIADOR);
+            resp.setParecer(par);
+            p.addAnexo(resp);
+        }
+        // terceiro parecer continua sem resposta
+
+        EtapaFluxo respostas = fluxo().montarEtapas(p).stream()
+            .filter(e -> e.titulo().equals("Respostas dos medicos")).findFirst().orElseThrow();
+        assertThat(respostas.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(respostas.detalhe()).doesNotContain("Faltam");
+        assertThat(respostas.detalhe()).contains("Maioria formada");
+
+        // e a Decisao final fica como etapa ATUAL (liberada), nao PENDENTE.
+        EtapaFluxo decisao = fluxo().montarEtapas(p).stream()
+            .filter(e -> e.titulo().equals("Decisao final")).findFirst().orElseThrow();
+        assertThat(decisao.estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
+    }
+
+    @Test
     void incluiEtapaComprovanteSntApenasQuandoDeferido() {
         Processo def = processoComTresPareceres();
         def.setStatus(StatusProcesso.DEFERIDO);

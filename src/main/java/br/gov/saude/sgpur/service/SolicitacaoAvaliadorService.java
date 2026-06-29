@@ -3,10 +3,14 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
 import com.lowagie.text.*;
+import com.lowagie.text.pdf.BaseFont;
+import com.lowagie.text.pdf.ColumnText;
+import com.lowagie.text.pdf.PdfContentByte;
 import com.lowagie.text.pdf.PdfCopy;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfReader;
+import com.lowagie.text.pdf.PdfStamper;
 import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
 
@@ -82,6 +86,54 @@ public class SolicitacaoAvaliadorService {
             return out.toByteArray();
         } catch (DocumentException | java.io.IOException e) {
             throw new IllegalStateException("Falha ao consolidar os PDFs da solicitacao", e);
+        }
+    }
+
+    /**
+     * Carimba um cabecalho de duas linhas no TOPO de CADA pagina de um PDF ja
+     * existente, SEM alterar o conteudo original das paginas (escreve por cima,
+     * na margem superior). Linha 1: identificacao institucional. Linha 2: numero
+     * do processo + INICIAIS do paciente (NUNCA o nome completo, para preservar
+     * a imparcialidade do julgamento dos avaliadores). Usa PdfStamper sobre o
+     * over-content de cada pagina.
+     */
+    public byte[] carimbarCabecalho(byte[] pdf, Processo p) {
+        if (pdf == null || pdf.length == 0) {
+            throw new IllegalArgumentException("PDF vazio para carimbar.");
+        }
+        String linha1 = "GOVERNO DO ESTADO DO RIO GRANDE DO SUL - URGENCIA RENAL";
+        String iniciais = Iniciais.de(p.getPacienteNome());
+        if (iniciais.endsWith(".")) {
+            iniciais = iniciais.substring(0, iniciais.length() - 1);
+        }
+        String linha2 = "Processo CET-RS " + nvl(p.getNumero()) + " - Paciente " + iniciais;
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            PdfReader reader = new PdfReader(pdf);
+            PdfStamper stamper = new PdfStamper(reader, out);
+            BaseFont bf = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
+            int paginas = reader.getNumberOfPages();
+            for (int i = 1; i <= paginas; i++) {
+                Rectangle tamanho = reader.getPageSizeWithRotation(i);
+                float xCentro = (tamanho.getLeft() + tamanho.getRight()) / 2f;
+                float topo = tamanho.getTop();
+                PdfContentByte over = stamper.getOverContent(i);
+                over.saveState();
+                over.setColorFill(CINZA);
+                ColumnText.showTextAligned(over, Element.ALIGN_CENTER,
+                    new Phrase(linha1, new Font(bf, 8, Font.NORMAL, CINZA)),
+                    xCentro, topo - 14, 0);
+                ColumnText.showTextAligned(over, Element.ALIGN_CENTER,
+                    new Phrase(linha2, new Font(bf, 8, Font.NORMAL, CINZA)),
+                    xCentro, topo - 24, 0);
+                over.restoreState();
+            }
+            stamper.close();
+            reader.close();
+            return out.toByteArray();
+        } catch (DocumentException | java.io.IOException e) {
+            throw new IllegalStateException("Falha ao carimbar o cabecalho do PDF dos avaliadores", e);
         }
     }
 

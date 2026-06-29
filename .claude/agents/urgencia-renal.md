@@ -102,17 +102,27 @@ o dominio e as regras a seguir.
    **Passo 2 (Envio)** gera a copia anonimizada para as equipes
    (`SOLICITACAO_AVALIADOR`, so iniciais), nome oficial
    `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-   (`SolicitacaoAvaliadorService.nomeArquivoOficial`). Esse anexo e um PDF UNICO
-   CONSOLIDADO = folha-rosto (gerada pelo sistema, so iniciais —
-   `SolicitacaoAvaliadorService.gerar`) + os documentos clinicos ANONIMIZADOS
-   anexados ao processo (`TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR`, apenas os PDF),
-   unidos por `SolicitacaoAvaliadorService.consolidar`. A solicitacao ORIGINAL
-   (`SOLICITACAO_RECEBIDA`) NUNCA entra nesse PDF — contem o nome completo do
-   paciente, e os avaliadores julgam sem saber quem e o paciente (imparcialidade).
-   Documentos clinicos nao-PDF sao ignorados do merge com AVISO
-   nao-bloqueante (flash `aviso`). Os documentos clinicos sao anexados na propria
-   aba Envio via `POST /processos/{id}/documento-clinico`. AVISA (nao bloqueia)
-   se um medico for da mesma equipe/instituicao do solicitante.
+   (`SolicitacaoAvaliadorService.nomeArquivoOficial`). NAO ha mais folha-rosto
+   gerada pelo sistema. Esse anexo e um PDF UNICO = os documentos clinicos
+   ANONIMIZADOS anexados ao processo (`TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR`,
+   apenas os PDF) FUNDIDOS por `SolicitacaoAvaliadorService.consolidar`, e DEPOIS
+   CARIMBADOS em CADA pagina com um cabecalho via
+   `SolicitacaoAvaliadorService.carimbarCabecalho(byte[] pdf, Processo p)`
+   (PdfStamper sobre o over-content, sem alterar o conteudo original). O cabecalho
+   tem 2 linhas: "GOVERNO DO ESTADO DO RIO GRANDE DO SUL - URGENCIA RENAL" e
+   "Processo CET-RS NN/AAAA - Paciente X.X.X" (numero + INICIAIS, NUNCA o nome
+   completo — imparcialidade). E OBRIGATORIO ao menos um documento clinico PDF
+   anexado: `registrarEnvio` BLOQUEIA (flash `erro`, sem efetivar o envio) se a
+   lista de PDF estiver vazia. A etapa "Envio aos 3 medicos" do
+   `FluxoProcessoService` reflete isso ("Anexe o(s) documento(s) clinico(s) (PDF)
+   para gerar o processo dos avaliadores."). O metodo legado
+   `SolicitacaoAvaliadorService.gerar` (folha-rosto) permanece no codigo mas NAO
+   e mais chamado no fluxo de envio. A solicitacao ORIGINAL (`SOLICITACAO_RECEBIDA`)
+   NUNCA entra nesse PDF — contem o nome completo do paciente. Documentos clinicos
+   nao-PDF sao ignorados do merge com AVISO nao-bloqueante (flash `aviso`). Os
+   documentos clinicos sao anexados na propria aba Envio via
+   `POST /processos/{id}/documento-clinico`. AVISA (nao bloqueia) se um medico for
+   da mesma equipe/instituicao do solicitante.
 9. **Sinalizar em TEMPO REAL** a etapa atual e o que falta
    (`FluxoProcessoService.montarEtapas()` -> `EtapaFluxo`). A tela de detalhe
    organiza as fases em ABAS: 1.Recebimento 2.Envio 3.Respostas 4.Decisao

@@ -241,8 +241,15 @@ public class ProcessoController {
         long respondidos = processoService.contarRespondidos(p);
         int totalMedicos = p.getPareceres().size();
         boolean todasRespondidas = totalMedicos > 0 && respondidos == totalMedicos;
-        boolean respostasOk = todasRespondidas
-            && processoService.pareceresRecebidosSemAnexo(p).isEmpty();
+        // Maioria simples (2 de 3): assim que ha >=2 favoraveis OU >=2 desfavoraveis
+        // o resultado ja esta definido e nao e preciso aguardar o 3o parecer.
+        // (sugestao ja foi calculada acima via processoService.sugerirDecisao)
+        boolean maioriaFormada = sugestao.isPresent();
+        boolean semAnexoPendente = processoService.pareceresRecebidosSemAnexo(p).isEmpty();
+        // A decisao libera quando: (a) maioria ja formada, OU (b) todas as
+        // respostas chegaram. Em ambos os casos os pareceres recebidos precisam
+        // dos seus anexos (decidir exige RESPOSTA_AVALIADOR de todo parecer recebido).
+        boolean respostasOk = (maioriaFormada || todasRespondidas) && semAnexoPendente;
         boolean decidido = p.getStatus().isFinalizado();
         // PAUSA: enquanto aguarda informacao complementar do solicitante, a
         // decisao e a finalizacao ficam bloqueadas ate o operador retomar a analise.
@@ -262,12 +269,17 @@ public class ProcessoController {
         model.addAttribute("liberadoDecisao", liberadoDecisao);
         model.addAttribute("liberadoFinalizacao", liberadoFinalizacao);
 
-        // Sub-rotulo dinamico: quando o processo ja foi enviado e ainda aguarda
-        // pareceres, mostra "Aguardando parecer (x/total)" ao lado do status.
+        // Sub-rotulo dinamico ao lado do status. Por MAIORIA SIMPLES (2 de 3),
+        // assim que ha 2 votos do mesmo tipo o resultado ja esta definido: nao
+        // mostra mais "Aguardando parecer", e sim "pronto para decidir". So
+        // mostra "Aguardando parecer (x/total)" quando ainda NAO ha maioria.
         String statusSubrotulo = null;
         if (p.getStatus() == StatusProcesso.ENVIADO
                 || p.getStatus() == StatusProcesso.EM_ANALISE) {
-            if (envioFeito && totalMedicos > 0 && respondidos < totalMedicos) {
+            if (envioFeito && maioriaFormada) {
+                statusSubrotulo = "Maioria formada - pronto para decidir ("
+                    + sugestao.get().getDescricao() + ")";
+            } else if (envioFeito && totalMedicos > 0 && respondidos < totalMedicos) {
                 statusSubrotulo = "Aguardando parecer (" + respondidos + "/" + totalMedicos + ")";
             } else if (envioFeito && respostasOk) {
                 statusSubrotulo = "Pareceres recebidos - aguardando decisao";
@@ -459,23 +471,17 @@ public class ProcessoController {
                                  RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         LocalDate hoje = LocalDate.now();
-        p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
-        processoService.salvar(p);
-        // Etapa 5: processo passa de SOLICITADO para ENVIADO.
-        processoService.registrarEnvio(id);
 
-        // Gera o PDF unico de solicitacao de avaliacao (sem o nome do paciente) =
-        // folha-rosto (gerada pelo sistema, so iniciais) + documentos clinicos
-        // anonimizados anexados (PDF). A solicitacao ORIGINAL recebida NUNCA
-        // entra aqui, pois contem o nome completo do paciente, e os avaliadores
-        // julgam sem saber quem e o paciente (imparcialidade - convencao da equipe).
+        // O PDF dos avaliadores agora e montado SO com os documentos clinicos
+        // anonimizados (PDF) anexados pelo operador: funde-os em um unico PDF e
+        // carimba, em cada pagina, um cabecalho com nº do processo + INICIAIS do
+        // paciente (NUNCA o nome completo - imparcialidade do julgamento). Sem a
+        // folha-rosto gerada pelo sistema. A solicitacao ORIGINAL recebida (nome
+        // completo) NUNCA entra aqui. Sem nenhum documento clinico PDF nao ha o
+        // que enviar: bloqueia o envio.
+        java.util.List<byte[]> partes = new java.util.ArrayList<>();
+        java.util.List<String> ignorados = new java.util.ArrayList<>();
         try {
-            anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
-
-            java.util.List<byte[]> partes = new java.util.ArrayList<>();
-            partes.add(solicitacaoAvaliadorService.gerar(p)); // folha-rosto
-
-            java.util.List<String> ignorados = new java.util.ArrayList<>();
             for (Anexo doc : p.getAnexos()) {
                 if (doc.getTipo() != TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR) {
                     continue;
@@ -488,14 +494,36 @@ public class ProcessoController {
                 }
                 partes.add(java.nio.file.Files.readAllBytes(anexoStorage.resolverArquivo(doc)));
             }
+        } catch (IOException e) {
+            ra.addFlashAttribute("erro", "Falha ao ler os documentos clinicos: " + e.getMessage());
+            return "redirect:/processos/" + id + "#envio";
+        }
 
-            byte[] pdfSolicitacao = solicitacaoAvaliadorService.consolidar(partes);
+        if (partes.isEmpty()) {
+            String detalhe = ignorados.isEmpty()
+                ? "Anexe ao menos um documento clinico (PDF) antes de registrar o envio."
+                : "Os documentos anexados nao sao PDF e nao podem ser consolidados ("
+                    + String.join(", ", ignorados) + "). Anexe ao menos um documento clinico em PDF.";
+            ra.addFlashAttribute("erro", detalhe);
+            return "redirect:/processos/" + id + "#envio";
+        }
+
+        // So a partir daqui o envio e efetivado.
+        p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
+        processoService.salvar(p);
+        // Etapa 5: processo passa de SOLICITADO para ENVIADO.
+        processoService.registrarEnvio(id);
+
+        try {
+            anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
+            byte[] consolidado = solicitacaoAvaliadorService.consolidar(partes);
+            byte[] pdfSolicitacao = solicitacaoAvaliadorService.carimbarCabecalho(consolidado, p);
             String nomeSolicitacao = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
             anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
-                "Copia da solicitacao para envio as equipes (folha-rosto + documentos clinicos anonimizados; nome completo suprimido)",
+                "Copia da solicitacao para envio as equipes (documentos clinicos anonimizados com cabecalho; nome completo suprimido)",
                 nomeSolicitacao, "application/pdf", pdfSolicitacao);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - Solicitacao PDF consolidada gerada automaticamente");
+                "Processo " + p.getNumero() + " - Solicitacao PDF consolidada (cabecalho carimbado) gerada automaticamente");
 
             if (!ignorados.isEmpty()) {
                 ra.addFlashAttribute("aviso",

@@ -45,15 +45,24 @@ public class FluxoProcessoService {
             recebimento, anterioresConcluidas, detReceb));
         anterioresConcluidas = anterioresConcluidas && recebimento;
 
-        // 2. Envio aos 3 medicos (data de envio registrada em todos os pareceres)
+        // 2. Envio aos 3 medicos (data de envio registrada em todos os pareceres).
+        //    Exige ao menos um documento clinico (PDF) anexado: o PDF dos
+        //    avaliadores e montado SO com esses documentos (com cabecalho
+        //    carimbado), sem folha-rosto gerada pelo sistema.
         int totalMedicos = p.getPareceres().size();
         long enviadosCount = p.getPareceres().stream().filter(par -> par.getDataEnvio() != null).count();
+        boolean temDocClinicoPdf = p.getAnexos().stream()
+            .anyMatch(a -> a.getTipo() == TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR
+                && a.getContentType() != null
+                && a.getContentType().toLowerCase().contains("application/pdf"));
         boolean enviado = totalMedicos == ProcessoService.AVALIADORES_POR_PROCESSO
             && enviadosCount == totalMedicos;
         String detEnvio;
         if (totalMedicos != ProcessoService.AVALIADORES_POR_PROCESSO) {
             detEnvio = "Processo deve ter " + ProcessoService.AVALIADORES_POR_PROCESSO
                 + " medicos (atual: " + totalMedicos + ").";
+        } else if (!temDocClinicoPdf && !enviado) {
+            detEnvio = "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.";
         } else if (!enviado) {
             detEnvio = "Registre o envio aos medicos (faltam " + (totalMedicos - enviadosCount)
                 + " de " + totalMedicos + ").";
@@ -63,23 +72,30 @@ public class FluxoProcessoService {
         etapas.add(montar("Envio aos 3 medicos", "send-fill", enviado, anterioresConcluidas, detEnvio));
         anterioresConcluidas = anterioresConcluidas && enviado;
 
-        // 3. Respostas dos medicos (cada resposta recebida precisa do anexo)
+        // 3. Respostas dos medicos (cada resposta recebida precisa do anexo).
+        //    Por MAIORIA SIMPLES (2 de 3), assim que ha 2 votos do mesmo tipo a
+        //    etapa esta pronta: nao e preciso aguardar o 3o parecer para decidir.
         long respondidos = processoService.contarRespondidos(p);
         long favoraveis = processoService.contarFavoraveis(p);
         var recebidosSemAnexo = processoService.pareceresRecebidosSemAnexo(p);
+        var sugestaoResp = processoService.sugerirDecisao(p);
+        boolean maioria = sugestaoResp.isPresent();
         boolean todasRespondidas = totalMedicos > 0 && respondidos == totalMedicos;
-        boolean respostasOk = todasRespondidas && recebidosSemAnexo.isEmpty();
+        boolean respostasOk = (maioria || todasRespondidas) && recebidosSemAnexo.isEmpty();
         String detResp;
         if (totalMedicos == 0) {
             detResp = "Aguardando definicao dos medicos.";
-        } else if (!todasRespondidas) {
-            detResp = "Faltam " + (totalMedicos - respondidos) + " de " + totalMedicos
-                + " pareceres. Favoraveis ate agora: " + favoraveis + ".";
         } else if (!recebidosSemAnexo.isEmpty()) {
             String nomes = recebidosSemAnexo.stream()
                 .map(par -> par.getMembro().getNome())
                 .collect(java.util.stream.Collectors.joining(", "));
             detResp = "Anexe a resposta de: " + nomes + ".";
+        } else if (maioria) {
+            detResp = "Maioria formada (" + sugestaoResp.get().getDescricao()
+                + ") - pronto para decidir. Favoraveis: " + favoraveis + ".";
+        } else if (!todasRespondidas) {
+            detResp = "Faltam " + (totalMedicos - respondidos) + " de " + totalMedicos
+                + " pareceres. Favoraveis ate agora: " + favoraveis + ".";
         } else {
             detResp = respondidos + " pareceres recebidos (com anexo). Favoraveis: " + favoraveis + ".";
         }

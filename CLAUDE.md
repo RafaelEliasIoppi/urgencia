@@ -80,18 +80,24 @@ Pacote base `br.gov.saude.sgpur`.
 - **Passo 2 (Envio):** ao registrar o envio o sistema gera a **cópia anonimizada
   para as equipes** (`SOLICITACAO_AVALIADOR`, só iniciais), nome oficial
   `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). Esse anexo é um **PDF único
-  consolidado** = **folha-rosto** (gerada pelo sistema, só iniciais —
-  `SolicitacaoAvaliadorService.gerar`) **+** os **documentos clínicos
-  anonimizados** anexados ao processo (`DOCUMENTO_CLINICO_AVALIADOR`, só os que
-  forem PDF), unidos por `SolicitacaoAvaliadorService.consolidar`. A **solicitação
-  original** (`SOLICITACAO_RECEBIDA`) **NUNCA** entra nesse PDF — contém o nome
-  completo do paciente, e os avaliadores julgam sem saber quem é o paciente
-  (imparcialidade). Documentos clínicos não-PDF são ignorados do merge
-  com **aviso não-bloqueante** (flash `aviso`). Os documentos clínicos são
-  anexados na própria aba Envio (`POST /processos/{id}/documento-clinico`).
-  **Aviso (não bloqueia)** se algum médico for da mesma equipe/instituição do
-  solicitante.
+  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). **Não há mais folha-rosto
+  gerada pelo sistema.** Esse anexo é um **PDF único** = os **documentos clínicos
+  anonimizados** anexados ao processo (`DOCUMENTO_CLINICO_AVALIADOR`, só os PDF)
+  **fundidos** (`SolicitacaoAvaliadorService.consolidar`) e depois **carimbados
+  página a página** com um cabeçalho
+  (`SolicitacaoAvaliadorService.carimbarCabecalho`, PdfStamper sobre o
+  over-content — não altera o conteúdo). Cabeçalho em 2 linhas: "GOVERNO DO ESTADO
+  DO RIO GRANDE DO SUL - URGENCIA RENAL" e "Processo CET-RS NN/AAAA - Paciente
+  X.X.X" (número + **iniciais**, nunca o nome completo — imparcialidade). **É
+  obrigatório ao menos um documento clínico PDF anexado:** `registrarEnvio`
+  **bloqueia** (flash `erro`, sem efetivar o envio) se não houver nenhum. A
+  **solicitação original** (`SOLICITACAO_RECEBIDA`) **NUNCA** entra nesse PDF
+  (contém o nome completo). Documentos clínicos não-PDF são ignorados do merge com
+  **aviso não-bloqueante** (flash `aviso`). O método legado
+  `SolicitacaoAvaliadorService.gerar` (folha-rosto) **permanece no código mas não
+  é mais chamado** no fluxo de envio. Os documentos clínicos são anexados na
+  própria aba Envio (`POST /processos/{id}/documento-clinico`). **Aviso (não
+  bloqueia)** se algum médico for da mesma equipe/instituição do solicitante.
 - Numeração `NN/AAAA`: **manual em 2026**, **automática a partir de 2027**.
 - Fluxo por e-mail com anexos por etapa. **Identificação do paciente:** o
   e-mail/material aos **médicos avaliadores oculta o nome** do paciente (só

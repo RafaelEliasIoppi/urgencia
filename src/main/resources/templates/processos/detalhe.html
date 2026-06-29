@@ -252,10 +252,12 @@
                             <i class="bi bi-files"></i> Documentos clinicos anonimizados
                         </h6>
                         <p class="small text-muted mb-2">
-                            Anexe aqui os documentos clinicos <strong>ja anonimizados</strong> (sem o nome do
-                            paciente). Eles serao consolidados em um unico PDF junto com a folha-rosto ao
-                            registrar o envio. A solicitacao original NUNCA entra neste PDF (contem o nome completo).
-                            Apenas arquivos PDF entram na consolidacao.
+                            Anexe aqui o(s) documento(s) clinico(s) <strong>ja anonimizados</strong> (sem o nome do
+                            paciente). Ao registrar o envio eles serao fundidos em um unico PDF e cada pagina
+                            recebera um <strong>cabecalho carimbado</strong> com o numero do processo e as iniciais do
+                            paciente (sem alterar o conteudo). A solicitacao original NUNCA entra neste PDF
+                            (contem o nome completo). Apenas arquivos PDF entram na consolidacao;
+                            <strong>e obrigatorio ao menos um</strong> para registrar o envio.
                         </p>
                         <ul class="list-group list-group-flush mb-2" th:if="${!documentosClinicos.isEmpty()}">
                             <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent"
@@ -307,6 +309,12 @@
                     </div>
                     <div th:if="${processo.pareceres.isEmpty() or processo.pareceres[0].dataEnvio == null}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-hourglass"></i> Envio ainda nao registrado.
+                    </div>
+                    <div th:if="${documentosClinicos.isEmpty() and (processo.pareceres.isEmpty() or processo.pareceres[0].dataEnvio == null)}"
+                         class="alert alert-info py-2 mb-3">
+                        <i class="bi bi-info-circle"></i>
+                        Anexe o(s) documento(s) clinico(s) (PDF) acima para gerar o processo dos avaliadores
+                        antes de registrar o envio.
                     </div>
                     <!-- Acao unica de registro de envio -->
                     <form th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
