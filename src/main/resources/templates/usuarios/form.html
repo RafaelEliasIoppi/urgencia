@@ -48,7 +48,12 @@
 
             <div class="mb-3">
                 <label class="form-label" th:text="${edicao} ? 'Nova senha (deixe vazio para manter)' : 'Senha *'">Senha</label>
-                <input type="password" name="senha" class="form-control" autocomplete="new-password">
+                <div class="input-group">
+                    <input type="password" name="senha" class="form-control" id="senhaForm" autocomplete="new-password">
+                    <button class="btn btn-outline-secondary" type="button" id="olhoSenhaForm">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
                 <div class="text-danger small" th:errors="*{senha}"></div>
             </div>
             <div class="form-check">
@@ -77,7 +82,19 @@
     }
 
     perfilSelect.addEventListener('change', atualizarMembro);
-    atualizarMembro(); // aplica estado inicial correto (edicao de avaliador existente)
+    atualizarMembro();
+
+    document.getElementById('olhoSenhaForm')?.addEventListener('click', function () {
+        var input = document.getElementById('senhaForm');
+        var icon = this.querySelector('i');
+        if (input.type === 'password') {
+            input.type = 'text';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            input.type = 'password';
+            icon.className = 'bi bi-eye';
+        }
+    });
 })();
 </script>
 </body>

@@ -50,15 +50,10 @@ class SecurityIntegrationTest {
     void operadorNaoAcessaAreasDeAdmin() throws Exception {
         mvc.perform(get("/usuarios")).andExpect(status().isForbidden());
         mvc.perform(get("/auditoria")).andExpect(status().isForbidden());
+        mvc.perform(get("/membros")).andExpect(status().isForbidden());
+        mvc.perform(get("/relatorios/anual")).andExpect(status().isForbidden());
         // mas acessa a area operacional normal
         mvc.perform(get("/processos")).andExpect(status().isOk());
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void operadorAcessaRelatorioAnual() throws Exception {
-        // A pagina deve renderizar mesmo sem processos cadastrados.
-        mvc.perform(get("/relatorios/anual")).andExpect(status().isOk());
     }
 
     @Test

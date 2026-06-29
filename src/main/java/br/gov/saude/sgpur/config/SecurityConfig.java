@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.ico").permitAll()
                 .requestMatchers(AntPathRequestMatcher.antMatcher("/h2-console/**")).permitAll()
                 .requestMatchers("/usuarios/**", "/auditoria/**").hasRole("ADMIN")
+                .requestMatchers("/membros/**", "/relatorios/**").hasRole("ADMIN")
                 .requestMatchers("/avaliador/**").hasRole("AVALIADOR")
                 .anyRequest().authenticated()
             )

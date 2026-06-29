@@ -102,4 +102,30 @@ public class UsuarioController {
         ra.addFlashAttribute("msg", "Situacao do usuario atualizada.");
         return "redirect:/usuarios";
     }
+
+    @PostMapping("/{id}/excluir")
+    public String excluir(@PathVariable Long id, RedirectAttributes ra) {
+        service.excluir(id);
+        auditoria.registrar("USUARIO_EXCLUIDO", "Usuario id " + id);
+        ra.addFlashAttribute("msg", "Usuario excluido.");
+        return "redirect:/usuarios";
+    }
+
+    @GetMapping("/esqueci-senha")
+    public String esqueciSenha() {
+        return "usuarios/esqueci-senha";
+    }
+
+    @PostMapping("/esqueci-senha")
+    public String redefinirSenha(@RequestParam String username, Model model) {
+        try {
+            String novaSenha = service.resetarSenha(username);
+            model.addAttribute("sucesso", true);
+            model.addAttribute("msgRedefinicao",
+                "Senha redefinida. Sua nova senha temporaria: " + novaSenha);
+        } catch (IllegalArgumentException e) {
+            model.addAttribute("erroRedefinicao", e.getMessage());
+        }
+        return "usuarios/esqueci-senha";
+    }
 }

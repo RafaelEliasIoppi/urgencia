@@ -89,6 +89,32 @@ public class UsuarioService {
         repo.save(u);
     }
 
+    @Transactional
+    public void excluir(Long id) {
+        Usuario u = buscar(id);
+        repo.delete(u);
+    }
+
+    @Transactional
+    public String resetarSenha(String username) {
+        Usuario u = repo.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado: " + username));
+        String novaSenha = gerarSenhaTemporaria();
+        u.setSenha(encoder.encode(novaSenha));
+        repo.save(u);
+        return novaSenha;
+    }
+
+    private String gerarSenhaTemporaria() {
+        String chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+        StringBuilder sb = new StringBuilder(8);
+        java.util.Random rnd = new java.util.Random();
+        for (int i = 0; i < 8; i++) {
+            sb.append(chars.charAt(rnd.nextInt(chars.length())));
+        }
+        return sb.toString();
+    }
+
     /**
      * Aplica a regra de membro vinculado: AVALIADOR exige membro; outros perfis
      * nao devem ter membro (limpa o campo para evitar estado inconsistente).

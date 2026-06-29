@@ -33,6 +33,10 @@
                         <button class="btn btn-sm btn-outline-warning"
                                 th:text="${u.ativo} ? 'Inativar' : 'Ativar'">Inativar</button>
                     </form>
+                    <form th:action="@{/usuarios/{id}/excluir(id=${u.id})}" method="post" class="d-inline"
+                          onsubmit="return confirm('Excluir usuario &quot;' + '${u.username}' + '&quot;? Esta acao nao pode ser desfeita.');">
+                        <button class="btn btn-sm btn-outline-danger">Excluir</button>
+                    </form>
                 </td>
             </tr>
             </tbody>

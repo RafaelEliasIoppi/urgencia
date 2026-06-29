@@ -12,6 +12,8 @@
         <div class="card-body">
             <div th:if="${param.error}" class="alert alert-danger py-2">Usuario ou senha invalidos.</div>
             <div th:if="${param.logout}" class="alert alert-success py-2">Sessao encerrada.</div>
+            <div th:if="${msg}" class="alert alert-success py-2" th:text="${msg}"></div>
+            <div th:if="${erro}" class="alert alert-danger py-2" th:text="${erro}"></div>
             <form th:action="@{/login}" method="post">
                 <div class="mb-3">
                     <label class="form-label">Usuario</label>
@@ -19,13 +21,34 @@
                 </div>
                 <div class="mb-3">
                     <label class="form-label">Senha</label>
-                    <input type="password" name="password" class="form-control" required>
+                    <div class="input-group">
+                        <input type="password" name="password" class="form-control" id="senhaInput" required>
+                        <button class="btn btn-outline-secondary" type="button" id="olhoSenha">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
                 </div>
                 <button type="submit" class="btn btn-primary w-100">Entrar</button>
+                <div class="text-center mt-3">
+                    <a th:href="@{/usuarios/esqueci-senha}" class="text-muted small">Esqueci minha senha</a>
+                </div>
             </form>
         </div>
     </div>
 </div>
 <script th:replace="~{layout :: scripts}"></script>
+<script>
+document.getElementById('olhoSenha')?.addEventListener('click', function () {
+    var input = document.getElementById('senhaInput');
+    var icon = this.querySelector('i');
+    if (input.type === 'password') {
+        input.type = 'text';
+        icon.className = 'bi bi-eye-slash';
+    } else {
+        input.type = 'password';
+        icon.className = 'bi bi-eye';
+    }
+});
+</script>
 </body>
 </html>
