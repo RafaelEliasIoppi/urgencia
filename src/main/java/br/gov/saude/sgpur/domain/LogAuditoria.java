@@ -30,6 +30,14 @@ public class LogAuditoria {
     @Column(length = 400)
     private String detalhe;
 
+    /**
+     * Endereco IP do cliente que executou a acao (nullable — nem toda acao
+     * tem IP disponivel, ex.: tarefas internas do sistema). Comporta IPv6 (45 chars).
+     * Usado para nao-repudio no voto autenticado do Portal do Avaliador.
+     */
+    @Column(length = 45)
+    private String ip;
+
     public LogAuditoria() {
     }
 
@@ -37,6 +45,13 @@ public class LogAuditoria {
         this.usuario = usuario;
         this.acao = acao;
         this.detalhe = detalhe;
+    }
+
+    public LogAuditoria(String usuario, String acao, String detalhe, String ip) {
+        this.usuario = usuario;
+        this.acao = acao;
+        this.detalhe = detalhe;
+        this.ip = ip;
     }
 
     public Long getId() {
@@ -73,5 +88,13 @@ public class LogAuditoria {
 
     public void setDetalhe(String detalhe) {
         this.detalhe = detalhe;
+    }
+
+    public String getIp() {
+        return ip;
+    }
+
+    public void setIp(String ip) {
+        this.ip = ip;
     }
 }

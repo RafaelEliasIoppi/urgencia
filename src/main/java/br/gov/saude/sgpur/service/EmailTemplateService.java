@@ -1,7 +1,9 @@
 package br.gov.saude.sgpur.service;
 
+import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.format.DateTimeFormatter;
@@ -22,9 +24,17 @@ public class EmailTemplateService {
 
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
+    /** URL base da aplicacao, usada nos links do Portal do Avaliador. */
+    @Value("${app.base-url:http://localhost:8080}")
+    private String baseUrl;
+
     public List<EmailTemplate> gerar(Processo p) {
         List<EmailTemplate> lista = new ArrayList<>();
         lista.add(emailMedicos(p));
+        // Template de convite ao portal para processos em andamento (ENVIADO/EM_ANALISE)
+        if (p.getStatus() == StatusProcesso.ENVIADO || p.getStatus() == StatusProcesso.EM_ANALISE) {
+            lista.add(emailConvitePortal(p));
+        }
         if (p.getStatus() == StatusProcesso.DEFERIDO) {
             lista.add(emailDeferido(p));
         } else if (p.getStatus() == StatusProcesso.INDEFERIDO) {
@@ -71,6 +81,93 @@ public class EmailTemplateService {
 
         return new EmailTemplate("medicos", "Envio aos medicos (parecer)", "send",
             "Urgencia Renal - Solicitacao de parecer - Processo " + idProcesso, corpo);
+    }
+
+    /**
+     * Convite individual ao avaliador para votar no Portal do Avaliador.
+     * Destinado a cada medico separadamente. Contem APENAS iniciais do paciente
+     * (imparcialidade) e link de acesso ao portal.
+     * Exibido na aba Envio quando o processo esta em ENVIADO/EM_ANALISE.
+     */
+    public EmailTemplate emailConviteAvaliador(Processo p, MembroUrgenciaRenal membro) {
+        String iniciais = Iniciais.de(p.getPacienteNome());
+        String idProcesso = p.getNumero() + " - Paciente " + iniciais;
+        String portalUrl = baseUrl + "/avaliador";
+
+        String corpo = """
+            Prezado(a) %s,
+
+            Voce foi designado(a) como avaliador(a) do processo de Urgencia Renal
+            abaixo e pode registrar seu parecer diretamente no sistema da Secretaria,
+            sem necessidade de responder por e-mail.
+
+            Processo: %s
+            Data da situacao especial: %s
+
+            Para emitir seu parecer, acesse o Portal do Avaliador com suas credenciais:
+            %s
+
+            Caso nao possua login, entre em contato com a equipe da Secretaria.
+
+            O nome do paciente foi omitido para preservar a imparcialidade do
+            julgamento; identificado apenas pelas iniciais.
+
+            Atenciosamente,
+            Equipe de Urgencia Renal - Secretaria de Saude
+            """.formatted(
+                membro.getNome(),
+                idProcesso,
+                p.getDataSituacaoEspecial() != null ? p.getDataSituacaoEspecial().format(DATA) : "(data)",
+                portalUrl);
+
+        return new EmailTemplate("convite-avaliador",
+            "Convite ao Portal do Avaliador - " + membro.getNome(), "person-check",
+            "Urgencia Renal - Solicitacao de avaliacao - Processo " + idProcesso,
+            corpo);
+    }
+
+    /**
+     * Template agrupado de convite ao portal (exibido na aba Envio do processo).
+     * Lista todos os avaliadores com o link unico do portal.
+     * SEM nome completo do paciente (so iniciais).
+     */
+    private EmailTemplate emailConvitePortal(Processo p) {
+        String iniciais = Iniciais.de(p.getPacienteNome());
+        String idProcesso = p.getNumero() + " - Paciente " + iniciais;
+        String portalUrl = baseUrl + "/avaliador";
+        String medicos = p.getPareceres().stream()
+            .map(par -> "- " + par.getMembro().getNome() + " (" + par.getMembro().getInstituicao() + ")")
+            .collect(Collectors.joining("\n"));
+
+        String corpo = """
+            Prezados(as) avaliadores(as),
+
+            Voces foram designados(as) para avaliar o processo de Urgencia Renal abaixo
+            e podem registrar o parecer diretamente no sistema (sem responder por e-mail).
+
+            Processo: %s
+            Data da situacao especial: %s
+
+            Avaliadores designados:
+            %s
+
+            Acesse o Portal do Avaliador com suas credenciais:
+            %s
+
+            O nome do paciente foi omitido para preservar a imparcialidade do julgamento.
+
+            Atenciosamente,
+            Equipe de Urgencia Renal - Secretaria de Saude
+            """.formatted(
+                idProcesso,
+                p.getDataSituacaoEspecial() != null ? p.getDataSituacaoEspecial().format(DATA) : "(data)",
+                medicos,
+                portalUrl);
+
+        return new EmailTemplate("convite-portal",
+            "Convite ao Portal do Avaliador (votacao no sistema)", "person-check",
+            "Urgencia Renal - Acesso ao Portal do Avaliador - Processo " + idProcesso,
+            corpo);
     }
 
     /**

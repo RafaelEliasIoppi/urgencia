@@ -21,7 +21,7 @@ Pacote base `br.gov.saude.sgpur`.
 .\start.ps1 prod       # prod (Neon) — usa application-local.yml (gitignored)
 ```
 - App em http://localhost:8080 · login inicial `admin` / `admin123`.
-- Testes: `.\test.ps1` (ou `mvn test`) — **39 testes**, sempre com **JDK 21**.
+- Testes: `.\test.ps1` (ou `mvn test`) — **60 testes**, sempre com **JDK 21**.
   Build: `mvn -DskipTests package` (gera o JAR).
 - **Desktop:** `.\release.ps1` faz tudo (pull + `.exe` + `SGPUR-Setup.exe` +
   **reinstala** em `C:\Program Files\SGPUR`). Use ao mexer em telas/CSS — só
@@ -108,6 +108,58 @@ Pacote base `br.gov.saude.sgpur`.
   **nome completo** do paciente. Decisão manual com **sugestão automática** por
   maioria simples (2/3 favoráveis → Deferido; 2/3 desfavoráveis → Indeferido).
 - "Membros da Urgência Renal" (nunca "Câmara Técnica").
+
+## Portal do Avaliador (/avaliador) — Fase 1 MVP
+
+Modelo **híbrido** de parecer: convive o voto pelo operador (e-mail) e o voto
+autenticado do próprio médico no sistema.
+
+### Perfil AVALIADOR
+- Novo valor `Perfil.AVALIADOR` em `domain/Perfil.java`.
+- `Usuario.membro` (`@ManyToOne`, nullable): vincula o login ao
+  `MembroUrgenciaRenal` que ele representa. Obrigatório para AVALIADOR;
+  ADMIN/OPERADOR devem ter `membro = null`.
+- `UsuarioService` valida e persiste o vínculo (sobrecarga `criar/atualizar` com
+  `membroId`). `UsuarioController` passa a lista de membros ao form.
+- Seed dev-only: `avaliador1` / `avaliador123`, vinculado ao primeiro membro ativo.
+
+### OrigemParecer (domain/OrigemParecer.java)
+- `OPERADOR_EMAIL` — operador lançou o resultado após receber por e-mail; exige
+  `TipoAnexo.RESPOSTA_AVALIADOR` como comprovante (comportamento anterior).
+- `AVALIADOR_SISTEMA` — médico se autenticou no portal e votou diretamente; o
+  registro autenticado (usuario + `dataHoraVoto` + IP no log de auditoria)
+  substitui o anexo. `pareceresRecebidosSemAnexo` ignora esses pareceres.
+- Origem `null` (legado) equivale a `OPERADOR_EMAIL`.
+- Novos campos em `Parecer`: `origem`, `dataHoraVoto`, `votadoPor`.
+
+### Segurança
+- `SecurityConfig`: `/avaliador/**` exige `ROLE_AVALIADOR`; OPERADOR/ADMIN ficam
+  bloqueados nessa rota. Success handler redireciona AVALIADOR para `/avaliador`,
+  demais para `/`.
+
+### AvaliadorController (web/AvaliadorController.java)
+- `GET /avaliador` — lista pareceres pendentes do membro logado (status
+  ENVIADO/EM_ANALISE, resultado nulo, dataEnvio preenchida). Exibe **somente
+  iniciais** do paciente — nunca nome completo, equipe solicitante ou
+  co-avaliadores.
+- `GET /avaliador/{processoId}` — formulário de voto. 403 se não for avaliador do
+  processo, se o parecer já foi emitido, ou se o status não é ENVIADO/EM_ANALISE.
+- `POST /avaliador/{processoId}/votar` — grava `resultado`, `dataResposta`,
+  `dataHoraVoto`, `votadoPor`, `origem=AVALIADOR_SISTEMA`; chama
+  `atualizarStatusPorPareceres`; registra auditoria com IP.
+
+### Auditoria com IP
+- `LogAuditoria.ip` (VARCHAR 45, nullable — comporta IPv6).
+- `AuditoriaService.registrar(acao, detalhe, ip)` — sobrecarga que grava o IP.
+  Método sem IP delega a ela com `null` (sem quebrar chamadas existentes).
+- Coluna IP visível em `/auditoria` (ADMIN).
+
+### E-mail
+- `EmailTemplateService.emailConviteAvaliador(p, membro)` — gera texto com
+  iniciais e link `{app.base-url}/avaliador` para copiar/colar.
+- `app.base-url` configurável em `application.yml` (default `http://localhost:8080`,
+  variável de ambiente `SGPUR_BASE_URL` em prod).
+- Template "convite-portal" incluído em `gerar(p)` quando status ENVIADO/EM_ANALISE.
 
 ## Convenções de código
 - Entidades JPA em `domain/` com getters/setters simples (sem Lombok).

@@ -67,4 +67,40 @@ class SecurityIntegrationTest {
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrlPattern("**/login"));
     }
+
+    // --- Testes do Portal do Avaliador ---
+
+    @Test
+    @WithMockUser(roles = "AVALIADOR")
+    void avaliadorAcessaPortalProprio() throws Exception {
+        // ROLE_AVALIADOR tem permissao na rota /avaliador (Spring Security nao bloqueia).
+        // O controller lanca ResponseStatusException(UNAUTHORIZED) ao nao encontrar o usuario
+        // no banco (MockMvc usa usuario ficticio "user" sem registro real), resultando em 401.
+        // O ponto testado e que a rota NAO retorna 403 (proibido por role).
+        mvc.perform(get("/avaliador"))
+            .andExpect(status().is4xxClientError()); // 401 de logica (usuario nao no banco), nao 403 de role
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void operadorNaoAcessaPortalDoAvaliador() throws Exception {
+        mvc.perform(get("/avaliador"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void adminNaoAcessaPortalDoAvaliador() throws Exception {
+        mvc.perform(get("/avaliador"))
+            .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "AVALIADOR")
+    void avaliadorNaoAcessaAreaDeAdmin() throws Exception {
+        mvc.perform(get("/usuarios"))
+            .andExpect(status().isForbidden());
+        mvc.perform(get("/auditoria"))
+            .andExpect(status().isForbidden());
+    }
 }

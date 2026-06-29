@@ -27,10 +27,26 @@
             </div>
             <div class="mb-3">
                 <label class="form-label">Perfil *</label>
-                <select th:field="*{perfil}" class="form-select">
+                <select th:field="*{perfil}" class="form-select" id="perfilSelect">
                     <option th:each="pf : ${perfis}" th:value="${pf.name()}" th:text="${pf.descricao}"></option>
                 </select>
             </div>
+
+            <!-- Membro vinculado: visivel e obrigatorio apenas para perfil AVALIADOR -->
+            <div class="mb-3" id="membroBox">
+                <label class="form-label">Membro da Urgencia Renal vinculado *</label>
+                <select name="membroId" class="form-select" id="membroSelect">
+                    <option value="">-- selecione o medico avaliador --</option>
+                    <option th:each="m : ${membros}"
+                            th:value="${m.id}"
+                            th:text="${m.rotulo}"
+                            th:selected="${usuario.membro != null and usuario.membro.id == m.id}"></option>
+                </select>
+                <div class="form-text text-muted">
+                    Identifica qual medico este login representa no Portal do Avaliador (/avaliador).
+                </div>
+            </div>
+
             <div class="mb-3">
                 <label class="form-label" th:text="${edicao} ? 'Nova senha (deixe vazio para manter)' : 'Senha *'">Senha</label>
                 <input type="password" name="senha" class="form-control" autocomplete="new-password">
@@ -49,5 +65,21 @@
 </div>
 
 <script th:replace="~{layout :: scripts}"></script>
+<script>
+(function () {
+    var perfilSelect = document.getElementById('perfilSelect');
+    var membroBox = document.getElementById('membroBox');
+    var membroSelect = document.getElementById('membroSelect');
+
+    function atualizarMembro() {
+        var ehAvaliador = perfilSelect.value === 'AVALIADOR';
+        membroBox.style.display = ehAvaliador ? '' : 'none';
+        membroSelect.required = ehAvaliador;
+    }
+
+    perfilSelect.addEventListener('change', atualizarMembro);
+    atualizarMembro(); // aplica estado inicial correto (edicao de avaliador existente)
+})();
+</script>
 </body>
 </html>

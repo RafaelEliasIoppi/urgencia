@@ -34,6 +34,15 @@ public class Usuario {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    /**
+     * Membro da Urgencia Renal vinculado a este usuario (nullable).
+     * Preenchido apenas para perfil AVALIADOR: identifica qual medico este
+     * login representa, para filtrar os processos do portal do avaliador.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "membro_id")
+    private MembroUrgenciaRenal membro;
+
     public Usuario() {
     }
 
@@ -83,5 +92,13 @@ public class Usuario {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public MembroUrgenciaRenal getMembro() {
+        return membro;
+    }
+
+    public void setMembro(MembroUrgenciaRenal membro) {
+        this.membro = membro;
     }
 }

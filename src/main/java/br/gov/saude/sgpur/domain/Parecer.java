@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.domain;
 import jakarta.persistence.*;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 /**
  * Parecer de um membro da Urgencia Renal sobre um processo.
@@ -44,6 +45,25 @@ public class Parecer {
 
     @Column(name = "data_resposta")
     private LocalDate dataResposta;
+
+    /**
+     * Como o voto foi registrado: pelo operador (via e-mail) ou pelo proprio
+     * avaliador autenticado no portal. Nulo equivale a OPERADOR_EMAIL (legado).
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private OrigemParecer origem;
+
+    /** Data e hora exatos do voto (preenchido pelo portal do avaliador). */
+    @Column(name = "data_hora_voto")
+    private LocalDateTime dataHoraVoto;
+
+    /**
+     * Username de quem registrou o voto (para nao-repudio). Operador que lancou
+     * o resultado em nome do medico, ou o proprio medico autenticado.
+     */
+    @Column(name = "votado_por", length = 120)
+    private String votadoPor;
 
     public Parecer() {
     }
@@ -111,5 +131,29 @@ public class Parecer {
 
     public void setDataResposta(LocalDate dataResposta) {
         this.dataResposta = dataResposta;
+    }
+
+    public OrigemParecer getOrigem() {
+        return origem;
+    }
+
+    public void setOrigem(OrigemParecer origem) {
+        this.origem = origem;
+    }
+
+    public LocalDateTime getDataHoraVoto() {
+        return dataHoraVoto;
+    }
+
+    public void setDataHoraVoto(LocalDateTime dataHoraVoto) {
+        this.dataHoraVoto = dataHoraVoto;
+    }
+
+    public String getVotadoPor() {
+        return votadoPor;
+    }
+
+    public void setVotadoPor(String votadoPor) {
+        this.votadoPor = votadoPor;
     }
 }

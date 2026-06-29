@@ -21,10 +21,18 @@ public class AuditoriaService {
     }
 
     public void registrar(String acao, String detalhe) {
+        registrar(acao, detalhe, null);
+    }
+
+    /**
+     * Registra a acao com o IP do cliente. Usar quando o IP for relevante para
+     * nao-repudio (ex.: voto autenticado do Portal do Avaliador).
+     */
+    public void registrar(String acao, String detalhe, String ip) {
         try {
             String usuario = usuarioAtual();
             String det = (detalhe != null && detalhe.length() > 400) ? detalhe.substring(0, 400) : detalhe;
-            repo.save(new LogAuditoria(usuario, acao, det));
+            repo.save(new LogAuditoria(usuario, acao, det, ip));
         } catch (Exception ignored) {
             // auditoria nunca pode interromper a operacao principal
         }

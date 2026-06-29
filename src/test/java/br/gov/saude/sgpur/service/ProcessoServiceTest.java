@@ -222,4 +222,45 @@ class ProcessoServiceTest {
         var faltantes = service.pareceresRecebidosSemAnexo(p);
         assertThat(faltantes).containsExactly(p.getPareceres().get(1));
     }
+
+    /**
+     * Parecer votado diretamente pelo avaliador autenticado (AVALIADOR_SISTEMA)
+     * NAO deve aparecer em pareceresRecebidosSemAnexo — a prova e o registro
+     * autenticado, nao um anexo.
+     */
+    @Test
+    void pareceresRecebidosSemAnexoIgnoraOrigemAvaliadorSistema() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+            ResultadoParecer.FAVORAVEL, ResultadoParecer.NAO_FAVORAVEL);
+        // Primeiro: operador lancou (origem null = OPERADOR_EMAIL) — sem anexo, deve aparecer
+        // Segundo: avaliador autenticado (AVALIADOR_SISTEMA) — sem anexo, mas NAO deve aparecer
+        // Terceiro: operador lancou, mas com anexo — nao deve aparecer
+        Parecer segundo = p.getPareceres().get(1);
+        segundo.setOrigem(OrigemParecer.AVALIADOR_SISTEMA);
+        Parecer terceiro = p.getPareceres().get(2);
+        anexarResposta(p, terceiro);
+
+        var faltantes = service.pareceresRecebidosSemAnexo(p);
+        // Apenas o primeiro (origem null, sem anexo) deve constar
+        assertThat(faltantes).containsExactly(p.getPareceres().get(0));
+    }
+
+    /**
+     * Com todos os pareceres de origem AVALIADOR_SISTEMA (sem nenhum anexo),
+     * pareceresRecebidosSemAnexo deve retornar vazio — pode decidir sem anexo.
+     */
+    @Test
+    void decidirPermitidoQuandoTodosVotosForamPeloPortal() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+            ResultadoParecer.FAVORAVEL, ResultadoParecer.NAO_FAVORAVEL);
+        // Marca todos como voto direto do portal
+        p.getPareceres().forEach(par -> par.setOrigem(OrigemParecer.AVALIADOR_SISTEMA));
+
+        when(processoRepository.findById(99L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+
+        // NAO deve lancar excecao de "Anexe a resposta"
+        service.decidir(99L, StatusProcesso.DEFERIDO, null);
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.DEFERIDO);
+    }
 }

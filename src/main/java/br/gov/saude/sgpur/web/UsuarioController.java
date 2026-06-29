@@ -2,6 +2,7 @@ package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
+import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.UsuarioService;
 import jakarta.validation.Valid;
@@ -17,10 +18,13 @@ public class UsuarioController {
 
     private final UsuarioService service;
     private final AuditoriaService auditoria;
+    private final MembroUrgenciaRenalRepository membroRepo;
 
-    public UsuarioController(UsuarioService service, AuditoriaService auditoria) {
+    public UsuarioController(UsuarioService service, AuditoriaService auditoria,
+                             MembroUrgenciaRenalRepository membroRepo) {
         this.service = service;
         this.auditoria = auditoria;
+        this.membroRepo = membroRepo;
     }
 
     @ModelAttribute("perfis")
@@ -38,6 +42,7 @@ public class UsuarioController {
     public String novo(Model model) {
         model.addAttribute("usuario", new Usuario());
         model.addAttribute("edicao", false);
+        model.addAttribute("membros", membroRepo.findByAtivoTrueOrderByInstituicaoAsc());
         return "usuarios/form";
     }
 
@@ -45,23 +50,28 @@ public class UsuarioController {
     public String editar(@PathVariable Long id, Model model) {
         model.addAttribute("usuario", service.buscar(id));
         model.addAttribute("edicao", true);
+        model.addAttribute("membros", membroRepo.findByAtivoTrueOrderByInstituicaoAsc());
         return "usuarios/form";
     }
 
     @PostMapping
     public String criar(@Valid @ModelAttribute("usuario") Usuario usuario, BindingResult result,
-                        @RequestParam String senha, Model model, RedirectAttributes ra) {
+                        @RequestParam String senha,
+                        @RequestParam(required = false) Long membroId,
+                        Model model, RedirectAttributes ra) {
         if (senha == null || senha.isBlank()) {
             result.rejectValue("senha", "obrigatorio", "Informe a senha.");
         }
         if (result.hasErrors()) {
             model.addAttribute("edicao", false);
+            model.addAttribute("membros", membroRepo.findByAtivoTrueOrderByInstituicaoAsc());
             return "usuarios/form";
         }
         try {
-            service.criar(usuario, senha);
+            service.criar(usuario, senha, membroId);
         } catch (IllegalArgumentException e) {
             model.addAttribute("edicao", false);
+            model.addAttribute("membros", membroRepo.findByAtivoTrueOrderByInstituicaoAsc());
             model.addAttribute("erro", e.getMessage());
             return "usuarios/form";
         }
@@ -72,8 +82,15 @@ public class UsuarioController {
 
     @PostMapping("/{id}/editar")
     public String atualizar(@PathVariable Long id, @ModelAttribute("usuario") Usuario form,
-                            @RequestParam(required = false) String senha, RedirectAttributes ra) {
-        service.atualizar(id, form, senha);
+                            @RequestParam(required = false) String senha,
+                            @RequestParam(required = false) Long membroId,
+                            RedirectAttributes ra) {
+        try {
+            service.atualizar(id, form, senha, membroId);
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("erro", e.getMessage());
+            return "redirect:/usuarios/" + id + "/editar";
+        }
         auditoria.registrar("USUARIO_EDITADO", "Usuario id " + id);
         ra.addFlashAttribute("msg", "Usuario atualizado.");
         return "redirect:/usuarios";

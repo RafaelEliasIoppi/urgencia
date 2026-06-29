@@ -5,10 +5,13 @@ import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
@@ -19,6 +22,8 @@ import java.util.List;
  */
 @Configuration
 public class DataSeed {
+
+    private static final Logger log = LoggerFactory.getLogger(DataSeed.class);
 
     @Bean
     CommandLineRunner seedMembros(MembroUrgenciaRenalRepository repo) {
@@ -56,6 +61,39 @@ public class DataSeed {
             admin.setPerfil(Perfil.ADMIN);
             admin.setAtivo(true);
             usuarioRepo.save(admin);
+        };
+    }
+
+    /**
+     * Cria um usuario AVALIADOR de exemplo vinculado ao primeiro membro ativo.
+     * APENAS em perfil dev/H2 — nao executado em prod ou desktop.
+     * Login: avaliador1 / avaliador123
+     */
+    @Bean
+    @Profile("dev")
+    CommandLineRunner seedAvaliadorExemplo(UsuarioRepository usuarioRepo,
+                                           MembroUrgenciaRenalRepository membroRepo,
+                                           PasswordEncoder encoder) {
+        return args -> {
+            if (usuarioRepo.findByUsername("avaliador1").isPresent()) {
+                return; // ja existe, nao duplicar
+            }
+            List<MembroUrgenciaRenal> membros = membroRepo.findByAtivoTrueOrderByInstituicaoAsc();
+            if (membros.isEmpty()) {
+                log.warn("DataSeed: nenhum membro ativo encontrado, usuario avaliador1 nao criado.");
+                return;
+            }
+            MembroUrgenciaRenal primeiroMembro = membros.get(0);
+            Usuario avaliador = new Usuario();
+            avaliador.setUsername("avaliador1");
+            avaliador.setNome("Avaliador Exemplo (" + primeiroMembro.getNome() + ")");
+            avaliador.setSenha(encoder.encode("avaliador123"));
+            avaliador.setPerfil(Perfil.AVALIADOR);
+            avaliador.setAtivo(true);
+            avaliador.setMembro(primeiroMembro);
+            usuarioRepo.save(avaliador);
+            log.info("DataSeed: usuario avaliador1 criado e vinculado a {} - {}.",
+                primeiroMembro.getInstituicao(), primeiroMembro.getNome());
         };
     }
 }

@@ -4,6 +4,9 @@ import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+import java.util.Optional;
+
 public interface ParecerRepository extends JpaRepository<Parecer, Long> {
 
     /** Total de processos em que o membro foi designado avaliador. */
@@ -14,4 +17,13 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
 
     /** Pareceres do membro com um resultado especifico. */
     long countByMembroIdAndResultado(Long membroId, ResultadoParecer resultado);
+
+    /**
+     * Pareceres pendentes do membro (resultado nulo, envio ja registrado).
+     * Usado pelo Portal do Avaliador para listar os processos que aguardam voto.
+     */
+    List<Parecer> findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(Long membroId);
+
+    /** Localiza o parecer de um membro especifico em um processo especifico. */
+    Optional<Parecer> findByProcessoIdAndMembroId(Long processoId, Long membroId);
 }

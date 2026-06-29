@@ -211,6 +211,10 @@ public class ProcessoService {
             .collect(java.util.stream.Collectors.toSet());
         return processo.getPareceres().stream()
             .filter(par -> par.getResultado() != null)          // recebido
+            // Pareceres votados diretamente pelo avaliador autenticado (AVALIADOR_SISTEMA)
+            // nao exigem anexo: o proprio registro autenticado (usuario + IP + dataHoraVoto)
+            // serve de comprovante. Origem null (legado) e OPERADOR_EMAIL continuam exigindo.
+            .filter(par -> par.getOrigem() != OrigemParecer.AVALIADOR_SISTEMA)
             .filter(par -> !comAnexo.contains(par.getId()))     // sem anexo de resposta
             .toList();
     }
