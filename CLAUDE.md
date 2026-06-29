@@ -48,6 +48,26 @@ Pacote base `br.gov.saude.sgpur`.
   Finais: Deferido/Indeferido/Cancelado. `Em análise` é mantido como sinônimo
   legado de `Enviado` (registros antigos continuam válidos). Ver
   `docs/PLANO-FLUXO.md`.
+- **Solicita informação (PAUSA):** quando um avaliador vota
+  `ResultadoParecer.SOLICITA_INFORMACAO`, o processo entra em
+  `StatusProcesso.SOLICITA_INFORMACAO` (via
+  `ProcessoService.atualizarStatusPorPareceres`, chamado em `salvarPareceres`).
+  Isso **pausa o fluxo**: a Decisão fica **bloqueada** — `ProcessoService.decidir`
+  lança erro ao tentar Deferir/Indeferir, o controller devolve flash de erro e a
+  aba **4. Decisão** fica travada (`liberadoDecisao=false`). O checklist
+  (`FluxoProcessoService`) insere a etapa **"Informacao complementar"** com o
+  aviso *"Aguardando informacao complementar do solicitante"*. O sistema gera o
+  e-mail pronto *"Pedido de informacao complementar ao solicitante"*
+  (`EmailTemplateService.emailSolicitaInfo`) endereçado à **equipe solicitante**,
+  com nº do processo + **nome completo** do paciente (e-mail ao solicitante leva
+  o nome completo; só o material dos avaliadores usa iniciais). Na
+  aba **3. Respostas** o operador tem dois botões: **registrar o reenvio** ao
+  solicitante (`POST /processos/{id}/solicitar-info`, anexa cópia do e-mail em
+  `TipoAnexo.INFO_COMPLEMENTAR`, mantém a pausa) e **registrar o recebimento +
+  retomar a análise** (`POST /processos/{id}/retomar-analise` →
+  `ProcessoService.retomarAposInformacao`): o processo **volta para `Enviado`**,
+  os pareceres marcados como *Solicita informação* são **reabertos** (resultado
+  limpo) para o voto definitivo, e o fluxo de Respostas/Decisão é liberado.
 - **Fluxo em 6 passos** (checklist `FluxoProcessoService` + abas na tela):
   **1 Recebimento · 2 Envio · 3 Respostas · 4 Decisão · 5 Ofício/Comprovante ·
   6 Resposta ao solicitante**.
@@ -60,12 +80,27 @@ Pacote base `br.gov.saude.sgpur`.
 - **Passo 2 (Envio):** ao registrar o envio o sistema gera a **cópia anonimizada
   para as equipes** (`SOLICITACAO_AVALIADOR`, só iniciais), nome oficial
   `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). **Aviso (não bloqueia)** se
-  algum médico for da mesma equipe/instituição do solicitante.
+  (`SolicitacaoAvaliadorService.nomeArquivoOficial`). Esse anexo é um **PDF único
+  consolidado** = **folha-rosto** (gerada pelo sistema, só iniciais —
+  `SolicitacaoAvaliadorService.gerar`) **+** os **documentos clínicos
+  anonimizados** anexados ao processo (`DOCUMENTO_CLINICO_AVALIADOR`, só os que
+  forem PDF), unidos por `SolicitacaoAvaliadorService.consolidar`. A **solicitação
+  original** (`SOLICITACAO_RECEBIDA`) **NUNCA** entra nesse PDF — contém o nome
+  completo do paciente, e os avaliadores julgam sem saber quem é o paciente
+  (imparcialidade). Documentos clínicos não-PDF são ignorados do merge
+  com **aviso não-bloqueante** (flash `aviso`). Os documentos clínicos são
+  anexados na própria aba Envio (`POST /processos/{id}/documento-clinico`).
+  **Aviso (não bloqueia)** se algum médico for da mesma equipe/instituição do
+  solicitante.
 - Numeração `NN/AAAA`: **manual em 2026**, **automática a partir de 2027**.
-- Fluxo por e-mail com anexos por etapa; e-mail aos médicos **oculta dados do
-  paciente** (LGPD). Decisão manual com **sugestão automática** por maioria
-  simples (2/3 favoráveis → Deferido; 2/3 desfavoráveis → Indeferido).
+- Fluxo por e-mail com anexos por etapa. **Identificação do paciente:** o
+  e-mail/material aos **médicos avaliadores oculta o nome** do paciente (só
+  iniciais), para preservar a **imparcialidade do julgamento** — os avaliadores
+  decidem sem saber quem é o paciente (convenção da equipe de Urgência Renal,
+  **não** é LGPD). Já os e-mails/documentos dirigidos à **equipe solicitante**
+  (pedido de informação complementar, resposta de Deferido/Indeferido) levam o
+  **nome completo** do paciente. Decisão manual com **sugestão automática** por
+  maioria simples (2/3 favoráveis → Deferido; 2/3 desfavoráveis → Indeferido).
 - "Membros da Urgência Renal" (nunca "Câmara Técnica").
 
 ## Convenções de código

@@ -3,19 +3,25 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
 import com.lowagie.text.*;
+import com.lowagie.text.pdf.PdfCopy;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfWriter;
 import org.springframework.stereotype.Service;
 
 import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 /**
  * Gera o PDF "Solicitacao de Avaliacao — Urgencia Renal" destinado aos
  * medicos avaliadores. O documento NAO contem o nome completo do paciente
- * (apenas as iniciais), em conformidade com a LGPD.
+ * (apenas as iniciais), para preservar a IMPARCIALIDADE do julgamento: os
+ * avaliadores decidem sem saber quem e o paciente, evitando vies (convencao
+ * da equipe de Urgencia Renal). Aos documentos dirigidos a equipe SOLICITANTE
+ * vai o nome completo do paciente.
  */
 @Service
 public class SolicitacaoAvaliadorService {
@@ -40,6 +46,43 @@ public class SolicitacaoAvaliadorService {
             iniciais = iniciais.substring(0, iniciais.length() - 1);
         }
         return "Processo CET-RS " + numero + " - Paciente " + iniciais + ".pdf";
+    }
+
+    /**
+     * Consolida varios PDFs em um unico documento (folha-rosto + documentos
+     * clinicos anonimizados), preservando a ordem da lista. Usado para montar o
+     * arquivo oficial unico enviado aos avaliadores. Ignora entradas nulas ou
+     * vazias; se sobrar so um PDF, devolve-o como esta.
+     */
+    public byte[] consolidar(List<byte[]> pdfs) {
+        List<byte[]> validos = pdfs.stream()
+            .filter(b -> b != null && b.length > 0)
+            .toList();
+        if (validos.isEmpty()) {
+            throw new IllegalArgumentException("Nenhum PDF para consolidar.");
+        }
+        if (validos.size() == 1) {
+            return validos.get(0);
+        }
+        Document doc = new Document();
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        try {
+            PdfCopy copy = new PdfCopy(doc, out);
+            doc.open();
+            for (byte[] pdf : validos) {
+                PdfReader reader = new PdfReader(pdf);
+                int paginas = reader.getNumberOfPages();
+                for (int i = 1; i <= paginas; i++) {
+                    copy.addPage(copy.getImportedPage(reader, i));
+                }
+                copy.freeReader(reader);
+                reader.close();
+            }
+            doc.close();
+            return out.toByteArray();
+        } catch (DocumentException | java.io.IOException e) {
+            throw new IllegalStateException("Falha ao consolidar os PDFs da solicitacao", e);
+        }
     }
 
     public byte[] gerar(Processo p) {
@@ -111,7 +154,7 @@ public class SolicitacaoAvaliadorService {
         PdfPTable t = tabelaDados();
         linha(t, "Numero do processo", p.getNumero());
         linha(t, "Identificacao do paciente (iniciais)",
-            Iniciais.de(p.getPacienteNome()) + "  [nome omitido - LGPD]");
+            Iniciais.de(p.getPacienteNome()) + "  [nome omitido - julgamento imparcial]");
         linha(t, "Equipe solicitante", nvl(p.getSolicitanteEquipe()));
         linha(t, "Data da situacao especial",
             p.getDataSituacaoEspecial() != null ? p.getDataSituacaoEspecial().format(DATA) : "-");
@@ -170,7 +213,8 @@ public class SolicitacaoAvaliadorService {
         Font fRodape = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA);
         Paragraph rodape = new Paragraph(
             "Documento gerado automaticamente pelo SGPUR — uso restrito aos membros da Urgencia Renal. "
-                + "Os dados pessoais do paciente foram omitidos em conformidade com a LGPD.",
+                + "O nome do paciente foi omitido para preservar a imparcialidade do julgamento "
+                + "(convencao da equipe de Urgencia Renal).",
             fRodape);
         rodape.setAlignment(Element.ALIGN_CENTER);
         rodape.setSpacingBefore(24);

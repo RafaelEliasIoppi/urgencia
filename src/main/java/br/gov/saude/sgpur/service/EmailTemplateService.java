@@ -11,8 +11,11 @@ import java.util.stream.Collectors;
 
 /**
  * Gera textos de e-mail prontos (copiar/colar) para cada etapa do processo,
- * pre-preenchidos com os dados do processo. No e-mail aos medicos os dados
- * pessoais do paciente sao OCULTADOS (so vai o necessario para analise clinica).
+ * pre-preenchidos com os dados do processo. No e-mail aos MEDICOS AVALIADORES o
+ * nome do paciente e OCULTADO (so iniciais), para preservar a IMPARCIALIDADE do
+ * julgamento - os avaliadores decidem sem saber quem e o paciente (convencao da
+ * equipe de Urgencia Renal). Os e-mails dirigidos a equipe SOLICITANTE (pedido de
+ * informacao complementar, resposta de Deferido/Indeferido) levam o NOME COMPLETO.
  */
 @Service
 public class EmailTemplateService {
@@ -32,7 +35,10 @@ public class EmailTemplateService {
         return lista;
     }
 
-    /** E-mail de solicitacao de parecer aos medicos - SEM dados pessoais do paciente. */
+    /**
+     * E-mail de solicitacao de parecer aos medicos avaliadores - SEM o nome do
+     * paciente (so iniciais), para preservar a imparcialidade do julgamento.
+     */
     private EmailTemplate emailMedicos(Processo p) {
         String medicos = p.getPareceres().stream()
             .map(par -> "- " + par.getMembro().getRotulo())
@@ -52,8 +58,9 @@ public class EmailTemplateService {
             Processo: %s
             Data da situacao especial: %s
 
-            (Os dados pessoais do paciente foram omitidos; identificado apenas pelas
-            iniciais. Em caso de necessidade de identificacao, solicitar a Secretaria.)
+            (O nome do paciente foi omitido para preservar a imparcialidade do
+            julgamento; identificado apenas pelas iniciais. Em caso de necessidade
+            de identificacao, solicitar a Secretaria.)
 
             Avaliadores designados:
             %s
@@ -67,29 +74,37 @@ public class EmailTemplateService {
     }
 
     /**
-     * Etapa 8: quando um medico pede mais informacoes, repassa-se o pedido ao
-     * solicitante para que complemente o processo. Texto pronto para copiar/colar.
+     * Pedido de informacao complementar ao solicitante: quando um medico
+     * avaliador pede mais informacoes, repassa-se o pedido a EQUIPE SOLICITANTE
+     * (a que abriu o processo) para que complemente o processo. Texto pronto
+     * para copiar/colar. Como o destinatario e o SOLICITANTE (nao os medicos
+     * avaliadores), o e-mail PODE e DEVE conter o NOME COMPLETO do paciente.
      */
     private EmailTemplate emailSolicitaInfo(Processo p) {
+        String idProcesso = p.getNumero() + " - Paciente " + p.getPacienteNome();
+
         String corpo = """
             Prezados(as),
 
             Informamos que, durante a analise do processo de Urgencia Renal %s,
-            referente ao paciente %s, um(a) dos(as) avaliadores(as) solicitou
-            informacoes complementares para concluir o parecer.
+            referente ao paciente %s, um(a) dos(as) avaliadores(as) da Urgencia
+            Renal solicitou informacoes complementares para concluir o parecer.
 
             Equipe solicitante: %s
 
-            Solicitamos, por gentileza, o envio das informacoes/documentos
-            adicionais necessarios a continuidade da analise.
+            Solicitamos, por gentileza, o envio das informacoes e/ou documentos
+            adicionais necessarios a continuidade da analise, respondendo a este
+            e-mail. Assim que recebidas, a analise sera retomada e o processo
+            seguira para a decisao.
 
             Atenciosamente,
             Equipe de Urgencia Renal - Secretaria de Saude
             """.formatted(p.getNumero(), p.getPacienteNome(), p.getSolicitanteEquipe());
 
         return new EmailTemplate("solicita-info",
-            "Pedido de informacao ao solicitante", "question-circle",
-            "Urgencia Renal - Processo " + p.getNumero() + " - Solicitacao de informacoes", corpo);
+            "Pedido de informacao complementar ao solicitante", "question-circle",
+            "Urgencia Renal - Processo " + idProcesso + " - Solicitacao de informacoes complementares",
+            corpo);
     }
 
     private EmailTemplate emailDeferido(Processo p) {

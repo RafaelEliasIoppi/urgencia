@@ -206,6 +206,11 @@ public class ProcessoController {
             .filter(a -> a.getTipo() == TipoAnexo.CAPA_PROCESSO)
             .findFirst();
         model.addAttribute("capaProcesso", capaProcesso.orElse(null));
+        // Documentos clinicos anonimizados que serao consolidados no PDF dos avaliadores
+        java.util.List<Anexo> documentosClinicos = p.getAnexos().stream()
+            .filter(a -> a.getTipo() == TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR)
+            .collect(java.util.stream.Collectors.toList());
+        model.addAttribute("documentosClinicos", documentosClinicos);
         // Aviso (nao bloqueia): medicos da mesma equipe/instituicao do solicitante
         java.util.List<String> medicosMesmaEquipe = java.util.Collections.emptyList();
         String equipe = p.getSolicitanteEquipe();
@@ -223,6 +228,53 @@ public class ProcessoController {
                 .collect(java.util.stream.Collectors.toList());
         }
         model.addAttribute("medicosMesmaEquipe", medicosMesmaEquipe);
+
+        // --- Gating das abas (passo 1..5) e sub-rotulo de status ---
+        // Calcula ate qual passo o operador pode navegar. Um passo so libera
+        // quando o passo anterior esta concluido (mesma logica do checklist).
+        boolean recebimentoFeito = p.getAnexos().stream()
+                .anyMatch(a -> a.getTipo() == TipoAnexo.SOLICITACAO_RECEBIDA)
+            && p.getAnexos().stream()
+                .anyMatch(a -> a.getTipo() == TipoAnexo.CAPA_PROCESSO);
+        boolean envioFeito = !p.getPareceres().isEmpty()
+            && p.getPareceres().get(0).getDataEnvio() != null;
+        long respondidos = processoService.contarRespondidos(p);
+        int totalMedicos = p.getPareceres().size();
+        boolean todasRespondidas = totalMedicos > 0 && respondidos == totalMedicos;
+        boolean respostasOk = todasRespondidas
+            && processoService.pareceresRecebidosSemAnexo(p).isEmpty();
+        boolean decidido = p.getStatus().isFinalizado();
+        // PAUSA: enquanto aguarda informacao complementar do solicitante, a
+        // decisao e a finalizacao ficam bloqueadas ate o operador retomar a analise.
+        boolean aguardandoInfo = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
+        model.addAttribute("aguardandoInfo", aguardandoInfo);
+
+        // passoLiberado[i] = true se a aba do passo (1..5) pode ser aberta.
+        // 1 Recebimento sempre liberado; cada passo seguinte exige o anterior pronto.
+        boolean liberadoRecebimento = true;
+        boolean liberadoEnvio = recebimentoFeito;
+        boolean liberadoRespostas = recebimentoFeito && envioFeito;
+        boolean liberadoDecisao = liberadoRespostas && respostasOk && !aguardandoInfo;
+        boolean liberadoFinalizacao = decidido;
+        model.addAttribute("liberadoRecebimento", liberadoRecebimento);
+        model.addAttribute("liberadoEnvio", liberadoEnvio);
+        model.addAttribute("liberadoRespostas", liberadoRespostas);
+        model.addAttribute("liberadoDecisao", liberadoDecisao);
+        model.addAttribute("liberadoFinalizacao", liberadoFinalizacao);
+
+        // Sub-rotulo dinamico: quando o processo ja foi enviado e ainda aguarda
+        // pareceres, mostra "Aguardando parecer (x/total)" ao lado do status.
+        String statusSubrotulo = null;
+        if (p.getStatus() == StatusProcesso.ENVIADO
+                || p.getStatus() == StatusProcesso.EM_ANALISE) {
+            if (envioFeito && totalMedicos > 0 && respondidos < totalMedicos) {
+                statusSubrotulo = "Aguardando parecer (" + respondidos + "/" + totalMedicos + ")";
+            } else if (envioFeito && respostasOk) {
+                statusSubrotulo = "Pareceres recebidos - aguardando decisao";
+            }
+        }
+        model.addAttribute("statusSubrotulo", statusSubrotulo);
+
         return "processos/detalhe";
     }
 
@@ -294,6 +346,63 @@ public class ProcessoController {
     }
 
     /**
+     * Registra o REENVIO ao solicitante do pedido de informacao complementar
+     * (quando um avaliador pede mais dados). Opcionalmente anexa a copia do
+     * e-mail enviado (TipoAnexo.INFO_COMPLEMENTAR). Mantem o processo em
+     * SOLICITA_INFORMACAO (PAUSA) ate a resposta chegar e a analise ser retomada.
+     */
+    @PostMapping("/{id}/solicitar-info")
+    public String solicitarInfo(@PathVariable Long id,
+                                @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
+                                RedirectAttributes ra) {
+        Processo p = processoService.buscar(id);
+        if (arquivo != null && !arquivo.isEmpty()) {
+            try {
+                anexoStorage.salvar(p, TipoAnexo.INFO_COMPLEMENTAR,
+                    "Copia do e-mail de pedido de informacao complementar ao solicitante", arquivo);
+                auditoria.registrar("ANEXO_ADICIONADO",
+                    "Processo " + p.getNumero() + " - Pedido de informacao complementar (enviado)");
+            } catch (IllegalArgumentException | IOException e) {
+                ra.addFlashAttribute("erro", "Falha ao anexar o pedido de informacao: " + e.getMessage());
+                return "redirect:/processos/" + id + "#respostas";
+            }
+        }
+        auditoria.registrar("INFO_COMPLEMENTAR_SOLICITADA", "Processo " + p.getNumero());
+        ra.addFlashAttribute("msg",
+            "Pedido de informacao complementar registrado. O processo permanece em pausa "
+            + "ate a resposta do solicitante.");
+        return "redirect:/processos/" + id + "#respostas";
+    }
+
+    /**
+     * Registra o RECEBIMENTO da informacao complementar do solicitante e RETOMA
+     * a analise: o processo volta de SOLICITA_INFORMACAO para ENVIADO (fluxo de
+     * Respostas/Decisao). Opcionalmente anexa a resposta recebida.
+     */
+    @PostMapping("/{id}/retomar-analise")
+    public String retomarAnalise(@PathVariable Long id,
+                                 @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
+                                 RedirectAttributes ra) {
+        Processo p = processoService.buscar(id);
+        if (arquivo != null && !arquivo.isEmpty()) {
+            try {
+                anexoStorage.salvar(p, TipoAnexo.INFO_COMPLEMENTAR,
+                    "Resposta com as informacoes complementares do solicitante", arquivo);
+                auditoria.registrar("ANEXO_ADICIONADO",
+                    "Processo " + p.getNumero() + " - Informacao complementar (recebida)");
+            } catch (IllegalArgumentException | IOException e) {
+                ra.addFlashAttribute("erro", "Falha ao anexar a resposta: " + e.getMessage());
+                return "redirect:/processos/" + id + "#respostas";
+            }
+        }
+        processoService.retomarAposInformacao(id);
+        auditoria.registrar("ANALISE_RETOMADA", "Processo " + p.getNumero());
+        ra.addFlashAttribute("msg",
+            "Informacao complementar recebida. Analise retomada - registre os pareceres definitivos.");
+        return "redirect:/processos/" + id + "#respostas";
+    }
+
+    /**
      * Registra a data de envio de hoje para TODOS os 3 medicos do processo
      * (acao unica). Gera automaticamente o PDF de solicitacao de avaliacao e
      * opcionalmente aceita o PDF do e-mail de envio como anexo.
@@ -355,16 +464,44 @@ public class ProcessoController {
         // Etapa 5: processo passa de SOLICITADO para ENVIADO.
         processoService.registrarEnvio(id);
 
-        // Gera automaticamente o PDF de solicitacao de avaliacao (sem dados pessoais)
+        // Gera o PDF unico de solicitacao de avaliacao (sem o nome do paciente) =
+        // folha-rosto (gerada pelo sistema, so iniciais) + documentos clinicos
+        // anonimizados anexados (PDF). A solicitacao ORIGINAL recebida NUNCA
+        // entra aqui, pois contem o nome completo do paciente, e os avaliadores
+        // julgam sem saber quem e o paciente (imparcialidade - convencao da equipe).
         try {
             anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
-            byte[] pdfSolicitacao = solicitacaoAvaliadorService.gerar(p);
+
+            java.util.List<byte[]> partes = new java.util.ArrayList<>();
+            partes.add(solicitacaoAvaliadorService.gerar(p)); // folha-rosto
+
+            java.util.List<String> ignorados = new java.util.ArrayList<>();
+            for (Anexo doc : p.getAnexos()) {
+                if (doc.getTipo() != TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR) {
+                    continue;
+                }
+                boolean ehPdf = doc.getContentType() != null
+                    && doc.getContentType().toLowerCase().contains("application/pdf");
+                if (!ehPdf) {
+                    ignorados.add(doc.getNomeArquivo());
+                    continue;
+                }
+                partes.add(java.nio.file.Files.readAllBytes(anexoStorage.resolverArquivo(doc)));
+            }
+
+            byte[] pdfSolicitacao = solicitacaoAvaliadorService.consolidar(partes);
             String nomeSolicitacao = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
             anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
-                "Copia da solicitacao para envio as equipes (nome completo suprimido)",
+                "Copia da solicitacao para envio as equipes (folha-rosto + documentos clinicos anonimizados; nome completo suprimido)",
                 nomeSolicitacao, "application/pdf", pdfSolicitacao);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - Solicitacao PDF gerada automaticamente");
+                "Processo " + p.getNumero() + " - Solicitacao PDF consolidada gerada automaticamente");
+
+            if (!ignorados.isEmpty()) {
+                ra.addFlashAttribute("aviso",
+                    "Estes documentos clinicos nao sao PDF e ficaram de fora do PDF consolidado: "
+                        + String.join(", ", ignorados) + ".");
+            }
         } catch (IOException e) {
             ra.addFlashAttribute("erro", "Envio registrado, mas falhou ao gerar a solicitacao PDF: " + e.getMessage());
             return "redirect:/processos/" + id + "#envio";
@@ -386,6 +523,30 @@ public class ProcessoController {
         return "redirect:/processos/" + id + "#envio";
     }
 
+    /**
+     * Anexa um documento clinico ANONIMIZADO (sem nome do paciente) que sera
+     * consolidado, junto com a folha-rosto, no PDF unico enviado aos avaliadores
+     * no passo 2 (envio). Mantem o operador na aba Envio.
+     */
+    @PostMapping("/{id}/documento-clinico")
+    public String anexarDocumentoClinico(@PathVariable Long id,
+                                         @RequestParam("arquivo") MultipartFile arquivo,
+                                         @RequestParam(required = false) String descricao,
+                                         RedirectAttributes ra) {
+        Processo p = processoService.buscar(id);
+        try {
+            String desc = (descricao != null && !descricao.isBlank())
+                ? descricao : "Documento clinico anonimizado para os avaliadores";
+            anexoStorage.salvar(p, TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR, desc, arquivo);
+            auditoria.registrar("ANEXO_ADICIONADO",
+                "Processo " + p.getNumero() + " - " + TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR.getDescricao());
+            ra.addFlashAttribute("msg", "Documento clinico anexado. Sera consolidado no PDF dos avaliadores ao registrar o envio.");
+        } catch (IllegalArgumentException | IOException e) {
+            ra.addFlashAttribute("erro", "Falha ao anexar documento clinico: " + e.getMessage());
+        }
+        return "redirect:/processos/" + id + "#envio";
+    }
+
     @PostMapping("/{id}/decidir")
     public String decidir(@PathVariable Long id,
                           @RequestParam StatusProcesso decisao,
@@ -403,8 +564,16 @@ public class ProcessoController {
             ra.addFlashAttribute("erro", "Indeferimento exige o motivo.");
             return "redirect:/processos/" + id;
         }
-        // Regra (maioria simples): Deferido exige >=2 favoraveis; Indeferido >=2 desfavoraveis.
+        // PAUSA: enquanto aguarda informacao complementar, nao pode deferir/indeferir.
         Processo atual = processoService.buscar(id);
+        if (atual.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+                && (decisao == StatusProcesso.DEFERIDO || decisao == StatusProcesso.INDEFERIDO)) {
+            ra.addFlashAttribute("erro",
+                "Processo aguardando informacao complementar do solicitante. "
+                + "Registre o recebimento da informacao (retomar analise) antes de decidir.");
+            return "redirect:/processos/" + id + "#respostas";
+        }
+        // Regra (maioria simples): Deferido exige >=2 favoraveis; Indeferido >=2 desfavoraveis.
         if (decisao == StatusProcesso.DEFERIDO
                 && processoService.contarFavoraveis(atual) < ProcessoService.FAVORAVEIS_PARA_DEFERIR) {
             ra.addFlashAttribute("erro", "Deferimento exige no minimo "

@@ -133,6 +133,32 @@ class ProcessoServiceTest {
     }
 
     @Test
+    void retomarAposInformacaoVoltaParaEnviadoEReabreParecer() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+            ResultadoParecer.SOLICITA_INFORMACAO, null);
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        when(processoRepository.findById(20L)).thenReturn(java.util.Optional.of(p));
+        when(processoRepository.save(p)).thenReturn(p);
+        service.retomarAposInformacao(20L);
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.ENVIADO);
+        // o parecer que pediu informacao foi reaberto (resultado limpo)
+        assertThat(p.getPareceres().get(1).getResultado()).isNull();
+    }
+
+    @Test
+    void decidirBloqueiaQuandoAguardandoInformacaoComplementar() {
+        Processo p = comPareceres(ResultadoParecer.NAO_FAVORAVEL,
+            ResultadoParecer.NAO_FAVORAVEL, ResultadoParecer.SOLICITA_INFORMACAO);
+        anexarRespostasParaTodosRecebidos(p);
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        when(processoRepository.findById(21L)).thenReturn(java.util.Optional.of(p));
+        assertThatThrownBy(() -> service.decidir(21L, StatusProcesso.INDEFERIDO, "motivo"))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessageContaining("informacao complementar");
+        assertThat(p.getStatus()).isEqualTo(StatusProcesso.SOLICITA_INFORMACAO);
+    }
+
+    @Test
     void decidirDeferidoExigeNoMinimoDoisFavoraveis() {
         Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
             ResultadoParecer.NAO_FAVORAVEL, ResultadoParecer.NAO_FAVORAVEL);

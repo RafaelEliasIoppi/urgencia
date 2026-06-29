@@ -27,7 +27,7 @@ class EmailTemplateServiceTest {
         EmailTemplate medicos = service.gerar(processo()).stream()
             .filter(e -> e.chave().equals("medicos")).findFirst().orElseThrow();
 
-        // LGPD: nome e RGCT do paciente NAO podem aparecer no e-mail aos medicos
+        // Imparcialidade: nome e RGCT do paciente NAO podem aparecer no e-mail aos avaliadores
         assertThat(medicos.corpo()).doesNotContain("Joao Paciente Secreto");
         assertThat(medicos.corpo()).doesNotContain("123456-4360");
         // mas deve trazer o numero do processo e o avaliador
@@ -51,6 +51,18 @@ class EmailTemplateServiceTest {
             .filter(e -> e.chave().equals("deferido")).findFirst().orElseThrow();
         assertThat(deferido.corpo()).contains("EM ANEXO");
         assertThat(deferido.corpo()).contains("Sistema Nacional de Transplantes");
+    }
+
+    @Test
+    void emailSolicitaInfoLevaNomeCompletoAoSolicitante() {
+        Processo p = processo();
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        EmailTemplate info = service.gerar(p).stream()
+            .filter(e -> e.chave().equals("solicita-info")).findFirst().orElseThrow();
+        // E-mail dirigido a EQUIPE SOLICITANTE: DEVE conter o nome completo do paciente
+        assertThat(info.corpo()).contains("Joao Paciente Secreto");
+        assertThat(info.assunto()).contains("Joao Paciente Secreto");
+        assertThat(info.corpo()).contains("07/2026");
     }
 
     @Test

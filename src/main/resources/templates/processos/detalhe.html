@@ -12,6 +12,9 @@
                 <span th:text="${processo.identificacao()}">00/0000 - Paciente - RGCT</span>
                 <span class="badge align-middle" th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${processo.status.descricao}">status</span>
+                <span th:if="${statusSubrotulo != null}"
+                      class="badge align-middle bg-warning text-dark"
+                      th:text="${statusSubrotulo}">Aguardando parecer</span>
             </h1>
         </div>
         <div class="d-flex gap-2">
@@ -120,33 +123,37 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" th:classappend="${abaEnvio} ? 'active' : ''"
+                        <button class="nav-link" th:classappend="${abaEnvio} ? 'active' : ''" th:disabled="${!liberadoEnvio}"
                                 id="tab-envio" data-bs-toggle="tab" data-bs-target="#pane-envio"
-                                type="button" role="tab" aria-controls="pane-envio">
-                            <i class="bi bi-send"></i> 2. Envio
+                                type="button" role="tab" aria-controls="pane-envio"
+                                th:title="${liberadoEnvio} ? null : 'Conclua o Recebimento (passo 1) primeiro.'">
+                            <i class="bi" th:classappend="${liberadoEnvio} ? 'bi-send' : 'bi-lock-fill'"></i> 2. Envio
                             <i class="bi bi-check-circle-fill text-success ms-1" th:if="${envioFeito}"></i>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" th:classappend="${abaResp} ? 'active' : ''"
+                        <button class="nav-link" th:classappend="${abaResp} ? 'active' : ''" th:disabled="${!liberadoRespostas}"
                                 id="tab-respostas" data-bs-toggle="tab" data-bs-target="#pane-respostas"
-                                type="button" role="tab" aria-controls="pane-respostas">
-                            <i class="bi bi-chat-square-text"></i> 3. Respostas
+                                type="button" role="tab" aria-controls="pane-respostas"
+                                th:title="${liberadoRespostas} ? null : 'Registre o Envio aos avaliadores (passo 2) primeiro.'">
+                            <i class="bi" th:classappend="${liberadoRespostas} ? 'bi-chat-square-text' : 'bi-lock-fill'"></i> 3. Respostas
                             <span class="badge bg-success ms-1" th:if="${envioFeito}" th:text="${favoraveis}">0</span>
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link"
+                        <button class="nav-link" th:disabled="${!liberadoDecisao}"
                                 id="tab-decisao" data-bs-toggle="tab" data-bs-target="#pane-decisao"
-                                type="button" role="tab" aria-controls="pane-decisao">
-                            <i class="bi bi-scale"></i> 4. Decisao
+                                type="button" role="tab" aria-controls="pane-decisao"
+                                th:title="${liberadoDecisao} ? null : (${aguardandoInfo} ? 'Aguardando informacao complementar do solicitante - retome a analise antes de decidir.' : 'Receba e anexe todos os pareceres (passo 3) antes de decidir.')">
+                            <i class="bi" th:classappend="${liberadoDecisao} ? 'bi-scale' : 'bi-lock-fill'"></i> 4. Decisao
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link" th:classappend="${abaFinal} ? 'active' : ''"
+                        <button class="nav-link" th:classappend="${abaFinal} ? 'active' : ''" th:disabled="${!liberadoFinalizacao}"
                                 id="tab-finalizacao" data-bs-toggle="tab" data-bs-target="#pane-finalizacao"
-                                type="button" role="tab" aria-controls="pane-finalizacao">
-                            <i class="bi bi-flag"></i> 5. Finalizacao
+                                type="button" role="tab" aria-controls="pane-finalizacao"
+                                th:title="${liberadoFinalizacao} ? null : 'Registre a decisao (passo 4) primeiro.'">
+                            <i class="bi" th:classappend="${liberadoFinalizacao} ? 'bi-flag' : 'bi-lock-fill'"></i> 5. Finalizacao
                         </button>
                     </li>
                 </ul>
@@ -239,6 +246,52 @@
                         <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
                            th:text="${solicitacaoPdf.nomeArquivo}">arquivo</a>
                     </div>
+                    <!-- Documentos clinicos anonimizados (consolidados no PDF dos avaliadores) -->
+                    <div class="border rounded p-3 mb-3 bg-light">
+                        <h6 class="text-muted small mb-2">
+                            <i class="bi bi-files"></i> Documentos clinicos anonimizados
+                        </h6>
+                        <p class="small text-muted mb-2">
+                            Anexe aqui os documentos clinicos <strong>ja anonimizados</strong> (sem o nome do
+                            paciente). Eles serao consolidados em um unico PDF junto com a folha-rosto ao
+                            registrar o envio. A solicitacao original NUNCA entra neste PDF (contem o nome completo).
+                            Apenas arquivos PDF entram na consolidacao.
+                        </p>
+                        <ul class="list-group list-group-flush mb-2" th:if="${!documentosClinicos.isEmpty()}">
+                            <li class="list-group-item d-flex justify-content-between align-items-center px-0 bg-transparent"
+                                th:each="doc : ${documentosClinicos}">
+                                <span>
+                                    <i class="bi bi-file-earmark-pdf text-danger"></i>
+                                    <a th:href="@{/processos/anexos/{id}/download(id=${doc.id})}"
+                                       th:text="${doc.nomeArquivo}">arquivo</a>
+                                    <span th:if="${doc.contentType == null or !#strings.containsIgnoreCase(doc.contentType, 'application/pdf')}"
+                                          class="badge bg-warning text-dark ms-1" title="Nao sera incluido no PDF consolidado">nao-PDF</span>
+                                </span>
+                                <form th:action="@{/processos/anexos/{id}/excluir(id=${doc.id})}" method="post"
+                                      onsubmit="return confirm('Remover este documento clinico?');">
+                                    <button class="btn btn-sm btn-outline-danger" title="Remover">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                            </li>
+                        </ul>
+                        <p class="small text-muted fst-italic mb-2" th:if="${documentosClinicos.isEmpty()}">
+                            Nenhum documento clinico anexado ainda.
+                        </p>
+                        <form th:action="@{/processos/{id}/documento-clinico(id=${processo.id})}" method="post"
+                              enctype="multipart/form-data" class="row g-2 align-items-end">
+                            <div class="col-md-7">
+                                <label class="form-label small">Documento clinico anonimizado (PDF)</label>
+                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required>
+                            </div>
+                            <div class="col-md-5 d-flex align-items-end">
+                                <button class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-upload"></i> Anexar documento clinico
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
                     <!-- Data de envio (exibe se ja registrada) -->
                     <div th:if="${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}" class="alert alert-success py-2 mb-3">
                         <i class="bi bi-check-circle"></i>
@@ -279,6 +332,52 @@
             <div th:unless="${envioFeito}" class="alert alert-warning">
                 <i class="bi bi-hourglass-split"></i>
                 Registre o envio aos avaliadores (aba <strong>1. Envio</strong>) antes de lancar as respostas.
+            </div>
+
+            <!-- PAUSA: avaliador pediu informacao complementar ao solicitante -->
+            <div th:if="${aguardandoInfo}" class="card border-info mb-4" id="info-complementar">
+                <div class="card-header bg-info text-dark">
+                    <i class="bi bi-question-circle-fill"></i> Aguardando informacao complementar do solicitante
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-3">
+                        Um(a) avaliador(a) pediu mais informacoes. O processo esta <strong>em pausa</strong>:
+                        a decisao fica bloqueada ate o solicitante responder. Use o e-mail pronto
+                        <em>"Pedido de informacao complementar ao solicitante"</em> (secao de e-mails abaixo),
+                        registre o reenvio e, quando a resposta chegar, retome a analise.
+                    </p>
+
+                    <!-- 1) Registrar o reenvio ao solicitante (anexo opcional: copia do e-mail) -->
+                    <form th:action="@{/processos/{id}/solicitar-info(id=${processo.id})}" method="post"
+                          enctype="multipart/form-data" class="row g-2 align-items-end mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold">Copia do e-mail de pedido ao solicitante (opcional)</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-outline-info btn-sm w-100">
+                                <i class="bi bi-send"></i> Registrar reenvio ao solicitante
+                            </button>
+                        </div>
+                    </form>
+
+                    <hr>
+
+                    <!-- 2) Registrar o recebimento da resposta e retomar a analise -->
+                    <form th:action="@{/processos/{id}/retomar-analise(id=${processo.id})}" method="post"
+                          enctype="multipart/form-data" class="row g-2 align-items-end">
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold">Resposta com as informacoes complementares (opcional)</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg">
+                        </div>
+                        <div class="col-md-4 d-flex align-items-end">
+                            <button class="btn btn-success btn-sm w-100"
+                                    onclick="return confirm('Confirmar o recebimento da informacao e retomar a analise? Os pareceres marcados como Solicita informacao serao reabertos.');">
+                                <i class="bi bi-arrow-repeat"></i> Informacao recebida - retomar analise
+                            </button>
+                        </div>
+                    </form>
+                </div>
             </div>
 
             <!-- Secao: Respostas dos Avaliadores -->

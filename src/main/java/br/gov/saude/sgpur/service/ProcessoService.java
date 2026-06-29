@@ -136,6 +136,32 @@ public class ProcessoService {
         return processoRepository.save(p);
     }
 
+    /**
+     * Retoma a analise apos a chegada da informacao complementar do solicitante:
+     * tira o processo de SOLICITA_INFORMACAO e o devolve para ENVIADO (fluxo de
+     * Respostas/Decisao), para que o(s) avaliador(es) concluam o voto. Limpa o
+     * voto "Solicita informacao" dos pareceres que o usaram, para que o medico
+     * registre o parecer definitivo (favoravel/nao favoravel). Nao toca em
+     * processos ja finalizados.
+     */
+    @Transactional
+    public Processo retomarAposInformacao(Long id) {
+        Processo p = buscar(id);
+        if (p.getStatus().isFinalizado()) {
+            return p;
+        }
+        p.getPareceres().stream()
+            .filter(par -> par.getResultado() == ResultadoParecer.SOLICITA_INFORMACAO)
+            .forEach(par -> par.setResultado(null));
+        p.setStatus(StatusProcesso.ENVIADO);
+        return processoRepository.save(p);
+    }
+
+    /** True se algum avaliador pediu informacao complementar (parecer SOLICITA_INFORMACAO). */
+    public boolean aguardandoInformacaoComplementar(Processo processo) {
+        return processo.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
+    }
+
     /** Atualiza apenas os dados descritivos do processo (numero e medicos nao mudam). */
     @Transactional
     public Processo atualizarDados(Long id, Processo form) {
@@ -212,6 +238,15 @@ public class ProcessoService {
     @Transactional
     public Processo decidir(Long id, StatusProcesso decisao, String motivoIndeferimento) {
         Processo p = buscar(id);
+        // Regra: enquanto aguarda informacao complementar do solicitante, o
+        // processo esta em PAUSA - nao pode ser deferido/indeferido. So Cancelado
+        // pode encerra-lo (a qualquer momento). Retome a analise antes de decidir.
+        if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+                && (decisao == StatusProcesso.DEFERIDO || decisao == StatusProcesso.INDEFERIDO)) {
+            throw new IllegalStateException(
+                "Processo aguardando informacao complementar do solicitante. "
+                + "Registre o recebimento da informacao (retomar analise) antes de decidir.");
+        }
         // Regra (maioria simples): Deferido exige >=2 favoraveis; Indeferido >=2 desfavoraveis.
         if (decisao == StatusProcesso.DEFERIDO
                 && contarFavoraveis(p) < FAVORAVEIS_PARA_DEFERIR) {

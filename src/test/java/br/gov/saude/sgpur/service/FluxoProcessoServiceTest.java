@@ -73,6 +73,31 @@ class FluxoProcessoServiceTest {
     }
 
     @Test
+    void incluiEtapaInformacaoComplementarQuandoSolicitaInformacao() {
+        Processo p = processoComTresPareceres();
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+
+        EtapaFluxo info = etapas.stream()
+            .filter(e -> e.titulo().equals("Informacao complementar")).findFirst().orElseThrow();
+        assertThat(info.estado()).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+
+        // a decisao fica bloqueada (nunca CONCLUIDA, e nem ATUAL, pois a info pausa o fluxo)
+        EtapaFluxo decisao = etapas.stream()
+            .filter(e -> e.titulo().equals("Decisao final")).findFirst().orElseThrow();
+        assertThat(decisao.estado()).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+    }
+
+    @Test
+    void naoIncluiEtapaInformacaoComplementarFora() {
+        Processo p = processoComTresPareceres();
+        p.setStatus(StatusProcesso.ENVIADO);
+        boolean tem = fluxo().montarEtapas(p).stream()
+            .anyMatch(e -> e.titulo().equals("Informacao complementar"));
+        assertThat(tem).isFalse();
+    }
+
+    @Test
     void incluiEtapaComprovanteSntApenasQuandoDeferido() {
         Processo def = processoComTresPareceres();
         def.setStatus(StatusProcesso.DEFERIDO);

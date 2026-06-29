@@ -56,6 +56,10 @@
         <span th:text="${erro}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
+    <div th:if="${aviso}" class="alert alert-warning alert-dismissible fade show" role="alert">
+        <span th:text="${aviso}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
 </div>
 
 <script th:fragment="scripts" th:src="@{/webjars/bootstrap/5.3.3/js/bootstrap.bundle.min.js}"></script>

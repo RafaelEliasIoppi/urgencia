@@ -87,6 +87,18 @@ public class FluxoProcessoService {
             respostasOk, anterioresConcluidas, detResp));
         anterioresConcluidas = anterioresConcluidas && respostasOk;
 
+        // 3b. Informacao complementar (apenas enquanto um medico pediu mais dados).
+        //     Funciona como uma PAUSA: bloqueia a decisao ate o solicitante
+        //     responder e o operador retomar a analise.
+        if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO) {
+            etapas.add(montar("Informacao complementar", "question-circle-fill",
+                false, anterioresConcluidas,
+                "Aguardando informacao complementar do solicitante. Envie o pedido, "
+                + "anexe a resposta recebida e retome a analise para liberar a decisao."));
+            // bloqueia tudo o que vem depois enquanto nao for retomado
+            anterioresConcluidas = false;
+        }
+
         // 4. Decisao final
         boolean decidido = p.getStatus().isFinalizado();
         String detDecisao;

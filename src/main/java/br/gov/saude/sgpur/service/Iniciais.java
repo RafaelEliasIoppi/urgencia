@@ -6,7 +6,9 @@ import java.util.Set;
 /**
  * Gera as iniciais de um nome (ex.: "Mariana da Rosa Martins" -> "M.R.M."),
  * ignorando conectivos. Usado para identificar o paciente sem expor o nome
- * completo (LGPD) nas comunicacoes com os medicos.
+ * completo nas comunicacoes com os MEDICOS AVALIADORES, preservando a
+ * imparcialidade do julgamento (convencao da equipe de Urgencia Renal). Os
+ * documentos dirigidos a equipe SOLICITANTE levam o nome completo.
  */
 public final class Iniciais {
 

@@ -71,6 +71,24 @@ o dominio e as regras a seguir.
    SOLICITADO; vira ENVIADO ao registrar envio; vai a SOLICITA_INFORMACAO se um
    medico pede dados antes da decisao. Helpers de badge no enum
    (`getBadgeClasse`/`getBadgeIcone`/`getBootstrapBadge`).
+   **SOLICITA_INFORMACAO = PAUSA do fluxo.** Disparado quando um avaliador vota
+   `ResultadoParecer.SOLICITA_INFORMACAO`: `atualizarStatusPorPareceres` (chamado
+   em `salvarPareceres`) poe o processo em SOLICITA_INFORMACAO. Enquanto nesse
+   estado: `decidir` REJEITA Deferir/Indeferir (so CANCELADO encerra); o
+   controller bloqueia a aba Decisao (`liberadoDecisao=false` quando
+   `aguardandoInfo`); `FluxoProcessoService` insere a etapa
+   **"Informacao complementar"** (icone `question-circle-fill`) que bloqueia tudo
+   o que vem depois. O e-mail pronto *"Pedido de informacao complementar ao
+   solicitante"* (`EmailTemplateService.emailSolicitaInfo`) vai a EQUIPE
+   SOLICITANTE com nº + NOME COMPLETO do paciente (e-mails ao solicitante levam o
+   nome completo; so o material dos avaliadores usa iniciais). Acoes na aba
+   3.Respostas: `POST /processos/{id}/solicitar-info`
+   (registra reenvio + anexa copia do e-mail, `TipoAnexo.INFO_COMPLEMENTAR`,
+   mantem a pausa) e `POST /processos/{id}/retomar-analise`
+   (`ProcessoService.retomarAposInformacao`): volta o status para ENVIADO, REABRE
+   (limpa resultado) os pareceres que votaram SOLICITA_INFORMACAO e libera o
+   fluxo de Respostas/Decisao. `TipoAnexo.INFO_COMPLEMENTAR` foi adicionado ao
+   enum (seguro: `SchemaMigration` ja converte ENUM->VARCHAR no H2 antigo).
 6. Decisao **manual** (operador decide) com **sugestao automatica** por maioria
    simples (2/3 favoraveis -> Deferido; 2/3 desfavoraveis -> Indeferido).
 7. **Numeracao NN/AAAA:** manual em 2026; **automatica** (sequencial por ano)
@@ -84,15 +102,27 @@ o dominio e as regras a seguir.
    **Passo 2 (Envio)** gera a copia anonimizada para as equipes
    (`SOLICITACAO_AVALIADOR`, so iniciais), nome oficial
    `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
-   (`SolicitacaoAvaliadorService.nomeArquivoOficial`); AVISA (nao bloqueia) se um
-   medico for da mesma equipe/instituicao do solicitante.
+   (`SolicitacaoAvaliadorService.nomeArquivoOficial`). Esse anexo e um PDF UNICO
+   CONSOLIDADO = folha-rosto (gerada pelo sistema, so iniciais —
+   `SolicitacaoAvaliadorService.gerar`) + os documentos clinicos ANONIMIZADOS
+   anexados ao processo (`TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR`, apenas os PDF),
+   unidos por `SolicitacaoAvaliadorService.consolidar`. A solicitacao ORIGINAL
+   (`SOLICITACAO_RECEBIDA`) NUNCA entra nesse PDF — contem o nome completo do
+   paciente, e os avaliadores julgam sem saber quem e o paciente (imparcialidade).
+   Documentos clinicos nao-PDF sao ignorados do merge com AVISO
+   nao-bloqueante (flash `aviso`). Os documentos clinicos sao anexados na propria
+   aba Envio via `POST /processos/{id}/documento-clinico`. AVISA (nao bloqueia)
+   se um medico for da mesma equipe/instituicao do solicitante.
 9. **Sinalizar em TEMPO REAL** a etapa atual e o que falta
    (`FluxoProcessoService.montarEtapas()` -> `EtapaFluxo`). A tela de detalhe
    organiza as fases em ABAS: 1.Recebimento 2.Envio 3.Respostas 4.Decisao
    5.Finalizacao (aba ativa conforme o status).
 10. **Relatorio Final em PDF** ao encerrar (gerado automaticamente).
-11. E-mail aos medicos **oculta dados pessoais** do paciente (LGPD) — mostra
-    apenas iniciais (`Iniciais.java`).
+11. E-mail/material aos medicos AVALIADORES **oculta o nome** do paciente —
+    mostra apenas iniciais (`Iniciais.java`) — para preservar a IMPARCIALIDADE do
+    julgamento (convencao da equipe de Urgencia Renal, NAO e LGPD). Ja os e-mails/
+    documentos a EQUIPE SOLICITANTE (pedido de info complementar, resposta de
+    Deferido/Indeferido) levam o NOME COMPLETO do paciente.
 
 ## Mapa do codigo
 
@@ -148,7 +178,8 @@ o dominio e as regras a seguir.
   de Avaliacao
 - Oficio gerado automaticamente ao indeferir
 - Relatorio Final gerado e anexado automaticamente ao decidir
-- Identificacao do paciente por iniciais (M.R.M.) — LGPD
+- Identificacao do paciente por iniciais (M.R.M.) para os AVALIADORES —
+  imparcialidade do julgamento (solicitante recebe o nome completo)
 - E-mail templates prontos por etapa
 - Usuarios no banco (Spring Security, BCrypt), CRUD restrito a ADMIN
 - Auditoria de todas as acoes (tela /auditoria para ADMIN)
