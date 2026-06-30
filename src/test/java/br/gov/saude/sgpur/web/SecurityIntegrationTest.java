@@ -57,6 +57,13 @@ class SecurityIntegrationTest {
     }
 
     @Test
+    @WithMockUser(roles = "AVALIADOR")
+    void avaliadorNaoAcessaProcessos() throws Exception {
+        mvc.perform(get("/processos")).andExpect(status().isForbidden());
+        mvc.perform(get("/")).andExpect(status().isForbidden());
+    }
+
+    @Test
     void relatorioAnualExigeAutenticacao() throws Exception {
         mvc.perform(get("/relatorios/anual"))
             .andExpect(status().is3xxRedirection())

@@ -188,6 +188,7 @@ public class ProcessoController {
         Optional<StatusProcesso> sugestao = processoService.sugerirDecisao(p);
         model.addAttribute("sugestao", sugestao.orElse(null));
         model.addAttribute("favoraveis", processoService.contarFavoraveis(p));
+        model.addAttribute("deferidoPeloCoordenador", processoService.deferidoPeloCoordenador(p));
         model.addAttribute("emails", emailTemplateService.gerar(p));
         // IDs dos pareceres que ja possuem e-mail de resposta anexado
         java.util.Set<Long> pareceresComResposta = p.getAnexos().stream()
@@ -659,11 +660,13 @@ public class ProcessoController {
                 + "Registre o recebimento da informacao (retomar analise) antes de decidir.");
             return "redirect:/processos/" + id + "#respostas";
         }
-        // Regra (maioria simples): Deferido exige >=2 favoraveis; Indeferido >=2 desfavoraveis.
+        // Regra: Deferido exige votos suficientes (coordenador pode deferir sozinho ou 2/3).
+        long minFavoraveis = processoService.temVotoCoordenadorFavoravel(atual)
+            ? 1 : ProcessoService.FAVORAVEIS_PARA_DEFERIR;
         if (decisao == StatusProcesso.DEFERIDO
-                && processoService.contarFavoraveis(atual) < ProcessoService.FAVORAVEIS_PARA_DEFERIR) {
+                && processoService.contarFavoraveis(atual) < minFavoraveis) {
             ra.addFlashAttribute("erro", "Deferimento exige no minimo "
-                + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " pareceres favoraveis.");
+                + minFavoraveis + " parecer(es) favoravel(is).");
             return "redirect:/processos/" + id;
         }
         if (decisao == StatusProcesso.INDEFERIDO

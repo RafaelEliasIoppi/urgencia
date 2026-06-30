@@ -58,6 +58,8 @@ public class DataSeed {
                 new MembroUrgenciaRenal("HCl", "Ana Lucia", null),
                 new MembroUrgenciaRenal("CET", "Rogerio Caruso Bezerra", null)
             );
+            // CET - Rogerio Caruso Bezerra e o coordenador CET-RS
+            membros.get(7).setCoordenador(true);
             repo.saveAll(membros);
         };
     }

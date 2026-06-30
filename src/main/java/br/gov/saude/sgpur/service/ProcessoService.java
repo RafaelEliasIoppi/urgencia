@@ -272,12 +272,16 @@ public class ProcessoService {
     }
 
     /**
-     * Sugestao de decisao por MAIORIA SIMPLES (2 de 3):
-     * - 2+ pareceres favoraveis -> DEFERIDO (mesmo antes do 3o responder).
-     * - 2+ pareceres desfavoraveis -> INDEFERIDO (mesmo antes do 3o responder).
-     * - caso contrario (sem maioria ainda) -> Optional vazio.
+     * Sugestao de decisao:
+     * - Se o coordenador CET-RS votou FAVORAVEL -> DEFERIDO (peso unico).
+     * - Senao, maioria simples (2 de 3): 2+ favoraveis -> DEFERIDO;
+     *   2+ desfavoraveis -> INDEFERIDO.
+     * - Sem maioria ainda -> Optional vazio.
      */
     public Optional<StatusProcesso> sugerirDecisao(Processo processo) {
+        if (temVotoCoordenadorFavoravel(processo)) {
+            return Optional.of(StatusProcesso.DEFERIDO);
+        }
         long favoraveis = contarFavoraveis(processo);
         long naoFavoraveis = contarNaoFavoraveis(processo);
 
@@ -288,6 +292,32 @@ public class ProcessoService {
             return Optional.of(StatusProcesso.INDEFERIDO);
         }
         return Optional.empty();
+    }
+
+    /** True se o coordenador CET-RS votou FAVORAVEL neste processo. */
+    public boolean temVotoCoordenadorFavoravel(Processo processo) {
+        return processo.getPareceres().stream()
+            .anyMatch(p -> p.getResultado() == ResultadoParecer.FAVORAVEL
+                && p.getMembro() != null && p.getMembro().isCoordenador());
+    }
+
+    /**
+     * True se o processo foi deferido pelo voto do coordenador CET-RS
+     * (status DEFERIDO + coordenador votou FAVORAVEL).
+     */
+    public boolean deferidoPeloCoordenador(Processo processo) {
+        return processo.getStatus() == StatusProcesso.DEFERIDO
+            && temVotoCoordenadorFavoravel(processo);
+    }
+
+    /** Quantos pareceres favoraveis sao necessarios para Deferir (considerando coordenador). */
+    public long favoraveisNecessariosParaDeferir(Processo processo) {
+        return temVotoCoordenadorFavoravel(processo) ? 1 : FAVORAVEIS_PARA_DEFERIR;
+    }
+
+    /** Quantos pareceres desfavoraveis sao necessarios para Indeferir. */
+    public long desfavoraveisNecessariosParaIndeferir() {
+        return DESFAVORAVEIS_PARA_INDEFERIR;
     }
 
     /** Registra a decisao final manual do servidor. */
@@ -303,11 +333,12 @@ public class ProcessoService {
                 "Processo aguardando informacao complementar do solicitante. "
                 + "Registre o recebimento da informacao (retomar analise) antes de decidir.");
         }
-        // Regra (maioria simples): Deferido exige >=2 favoraveis; Indeferido >=2 desfavoraveis.
+        // Regra: Deferido exige votos suficientes (coordenador pode deferir sozinho ou 2/3).
+        long minFavoraveis = temVotoCoordenadorFavoravel(p) ? 1 : FAVORAVEIS_PARA_DEFERIR;
         if (decisao == StatusProcesso.DEFERIDO
-                && contarFavoraveis(p) < FAVORAVEIS_PARA_DEFERIR) {
+                && contarFavoraveis(p) < minFavoraveis) {
             throw new IllegalStateException("Deferimento exige no minimo "
-                + FAVORAVEIS_PARA_DEFERIR + " pareceres favoraveis.");
+                + minFavoraveis + " parecer(es) favoravel(is).");
         }
         if (decisao == StatusProcesso.INDEFERIDO
                 && contarNaoFavoraveis(p) < DESFAVORAVEIS_PARA_INDEFERIR) {

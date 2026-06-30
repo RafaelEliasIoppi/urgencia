@@ -34,6 +34,10 @@ public class MembroUrgenciaRenal {
     @Column(nullable = false)
     private boolean ativo = true;
 
+    /** Coordenador CET-RS: seu voto favoravel DEFERE o processo independentemente dos demais pareceres. */
+    @Column(nullable = false)
+    private boolean coordenador = false;
+
     public MembroUrgenciaRenal() {
     }
 
@@ -87,5 +91,13 @@ public class MembroUrgenciaRenal {
 
     public void setAtivo(boolean ativo) {
         this.ativo = ativo;
+    }
+
+    public boolean isCoordenador() {
+        return coordenador;
+    }
+
+    public void setCoordenador(boolean coordenador) {
+        this.coordenador = coordenador;
     }
 }

@@ -11,7 +11,7 @@
             <h1 class="h3 mb-1">
                 <span th:text="${processo.identificacao()}">00/0000 - Paciente - RGCT</span>
                 <span class="badge align-middle" th:classappend="${processo.status.bootstrapBadge}"
-                      th:text="${processo.status.descricao}">status</span>
+                      th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
                 <span th:if="${statusSubrotulo != null}"
                       class="badge align-middle bg-warning text-dark"
                       th:text="${statusSubrotulo}">Aguardando parecer</span>

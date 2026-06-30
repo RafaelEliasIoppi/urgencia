@@ -30,6 +30,12 @@
                 <input type="checkbox" th:field="*{ativo}" class="form-check-input" id="ativo">
                 <label class="form-check-label" for="ativo">Ativo</label>
             </div>
+            <div class="form-check mt-2">
+                <input type="checkbox" th:field="*{coordenador}" class="form-check-input" id="coordenador">
+                <label class="form-check-label" for="coordenador">
+                    Coordenador CET-RS (voto favoravel defere o processo independentemente dos demais pareceres)
+                </label>
+            </div>
         </div>
         <div class="card-footer text-end">
             <a th:href="@{/membros}" class="btn btn-outline-secondary">Cancelar</a>
