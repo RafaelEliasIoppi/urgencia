@@ -147,8 +147,10 @@ public class RelatorioService {
         cabecalho(t2, "Medico", "Parecer", "Data da resposta");
         for (Parecer par : p.getPareceres()) {
             celula(t2, par.getMembro().getRotulo(), Element.ALIGN_LEFT, false);
-            celula(t2, par.getResultado() != null ? par.getResultado().getDescricao() : "Pendente",
-                Element.ALIGN_LEFT, false);
+            String textoParecer = (par.getResultado() != null)
+                ? par.getResultado().getDescricao()
+                : (p.getStatus().isFinalizado() ? "Dispensado pela maioria" : "Pendente");
+            celula(t2, textoParecer, Element.ALIGN_LEFT, false);
             celula(t2, par.getDataResposta() != null ? par.getDataResposta().format(DATA) : "-",
                 Element.ALIGN_LEFT, false);
             if (par.getJustificativa() != null && !par.getJustificativa().isBlank()) {
@@ -561,6 +563,9 @@ public class RelatorioService {
                 } else if (par.getResultado().name().equals("NAO_FAVORAVEL")) {
                     corResultadoPar = VERMELHO;
                 }
+            } else if (p.getStatus().isFinalizado()) {
+                textoResultadoPar = "Dispensado pela maioria";
+                corResultadoPar = CINZA;
             } else {
                 textoResultadoPar = "Pendente";
                 corResultadoPar = CINZA;

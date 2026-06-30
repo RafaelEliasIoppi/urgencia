@@ -66,6 +66,19 @@ public class SolicitacaoAvaliadorService {
             throw new IllegalArgumentException("Nenhum PDF para consolidar.");
         }
         if (validos.size() == 1) {
+            // Valida se o PDF tem ao menos uma pagina (evita "The document has no pages" no carimbo)
+            try {
+                PdfReader reader = new PdfReader(validos.get(0));
+                int paginas = reader.getNumberOfPages();
+                reader.close();
+                if (paginas == 0) {
+                    throw new IllegalStateException(
+                        "O documento clinico anexado esta vazio (0 paginas). "
+                        + "Remova-o e anexe novamente o arquivo original.");
+                }
+            } catch (java.io.IOException e) {
+                throw new IllegalStateException("Falha ao ler o documento clinico PDF: " + e.getMessage());
+            }
             return validos.get(0);
         }
         Document doc = new Document();
@@ -119,9 +132,15 @@ public class SolicitacaoAvaliadorService {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         try {
             PdfReader reader = new PdfReader(pdf);
+            int paginas = reader.getNumberOfPages();
+            if (paginas == 0) {
+                reader.close();
+                throw new IllegalStateException(
+                    "O PDF consolidado esta vazio (0 paginas). "
+                    + "Verifique os documentos clinicos anexados e tente novamente.");
+            }
             PdfStamper stamper = new PdfStamper(reader, out);
             BaseFont bf = BaseFont.createFont(BaseFont.HELVETICA, BaseFont.CP1252, BaseFont.NOT_EMBEDDED);
-            int paginas = reader.getNumberOfPages();
             for (int i = 1; i <= paginas; i++) {
                 Rectangle tamanho = reader.getPageSizeWithRotation(i);
                 float xCentro = (tamanho.getLeft() + tamanho.getRight()) / 2f;

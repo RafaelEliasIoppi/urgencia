@@ -279,6 +279,10 @@ public class ProcessoController {
             .filter(a -> a.getTipo() == TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE)
             .findFirst();
         model.addAttribute("comprovanteEnvioSolicitante", comprovanteEnvioSolicitante.orElse(null));
+        Optional<Anexo> comprovanteEnvioAvaliadores = p.getAnexos().stream()
+            .filter(a -> a.getTipo() == TipoAnexo.EMAIL_ENVIADO_AVALIADORES)
+            .findFirst();
+        model.addAttribute("comprovanteEnvioAvaliadores", comprovanteEnvioAvaliadores.orElse(null));
 
         boolean liberadoRecebimento = true;
         boolean liberadoEnvio = recebimentoFeito;
@@ -506,7 +510,6 @@ public class ProcessoController {
 
     @PostMapping("/{id}/registrar-envio")
     public String registrarEnvio(@PathVariable Long id,
-                                 @RequestParam(value = "arquivo", required = false) MultipartFile arquivo,
                                  RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         LocalDate hoje = LocalDate.now();
@@ -547,17 +550,20 @@ public class ProcessoController {
             return "redirect:/processos/" + id + "#envio";
         }
 
-        // So a partir daqui o envio e efetivado.
-        p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
-        processoService.salvar(p);
-        // Etapa 5: processo passa de SOLICITADO para ENVIADO.
-        processoService.registrarEnvio(id);
-
+        // PRIMEIRO: gera o PDF consolidado com cabecalho carimbado.
+        // Se falhar, o envio NAO e efetivado (evita processo em ENVIADO sem
+        // o PDF dos avaliadores — "The document has no pages").
         try {
             anexoStorage.removerPorTipo(id, TipoAnexo.SOLICITACAO_AVALIADOR);
             byte[] consolidado = solicitacaoAvaliadorService.consolidar(partes);
             byte[] pdfSolicitacao = solicitacaoAvaliadorService.carimbarCabecalho(consolidado, p);
             String nomeSolicitacao = SolicitacaoAvaliadorService.nomeArquivoOficial(p);
+
+            // SO depois de gerar o PDF com sucesso, efetiva o envio.
+            p.getPareceres().forEach(par -> par.setDataEnvio(hoje));
+            processoService.salvar(p);
+            processoService.registrarEnvio(id);
+
             anexoStorage.salvarBytes(p, TipoAnexo.SOLICITACAO_AVALIADOR,
                 "Copia da solicitacao para envio as equipes (documentos clinicos anonimizados com cabecalho; nome completo suprimido)",
                 nomeSolicitacao, "application/pdf", pdfSolicitacao);
@@ -573,23 +579,39 @@ public class ProcessoController {
             String msg = (e instanceof IOException)
                 ? "Falha ao gerar a solicitacao PDF: " + e.getMessage()
                 : e.getMessage();
-            ra.addFlashAttribute("erro", "Envio registrado, mas " + msg);
+            ra.addFlashAttribute("erro", msg);
             return "redirect:/processos/" + id + "#envio";
         }
 
-        if (arquivo != null && !arquivo.isEmpty()) {
-            try {
-                anexoStorage.salvar(p, TipoAnexo.EMAIL_ENVIADO_AVALIADORES,
-                    "E-mail de envio aos avaliadores (" + hoje + ")", arquivo);
-                auditoria.registrar("ANEXO_ADICIONADO",
-                    "Processo " + p.getNumero() + " - " + TipoAnexo.EMAIL_ENVIADO_AVALIADORES.getDescricao());
-            } catch (IOException e) {
-                ra.addFlashAttribute("erro", "Envio registrado, mas falhou ao anexar o arquivo: " + e.getMessage());
-                return "redirect:/processos/" + id + "#envio";
-            }
-        }
         auditoria.registrar("ENVIO_AVALIADORES_REGISTRADO", "Processo " + p.getNumero());
         ra.addFlashAttribute("msg", "Envio aos avaliadores registrado em " + hoje.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")) + ".");
+        return "redirect:/processos/" + id + "#envio";
+    }
+
+    /**
+     * Anexa o comprovante de envio (e-mail) aos avaliadores, separadamente
+     * do registro de envio. Permite que o operador anexe o comprovante antes
+     * ou depois de registrar o envio.
+     */
+    @PostMapping("/{id}/comprovante-envio-avaliadores")
+    public String anexarComprovanteEnvioAvaliadores(@PathVariable Long id,
+                                                     @RequestParam("arquivo") MultipartFile arquivo,
+                                                     RedirectAttributes ra) {
+        if (arquivo == null || arquivo.isEmpty()) {
+            ra.addFlashAttribute("erro", "Selecione um arquivo para anexar.");
+            return "redirect:/processos/" + id + "#envio";
+        }
+        Processo p = processoService.buscar(id);
+        try {
+            anexoStorage.removerPorTipo(id, TipoAnexo.EMAIL_ENVIADO_AVALIADORES);
+            anexoStorage.salvar(p, TipoAnexo.EMAIL_ENVIADO_AVALIADORES,
+                "Comprovante de envio aos avaliadores", arquivo);
+            auditoria.registrar("ANEXO_ADICIONADO",
+                "Processo " + p.getNumero() + " - " + TipoAnexo.EMAIL_ENVIADO_AVALIADORES.getDescricao());
+            ra.addFlashAttribute("msg", "Comprovante de envio anexado.");
+        } catch (IOException e) {
+            ra.addFlashAttribute("erro", "Falha ao anexar o comprovante: " + e.getMessage());
+        }
         return "redirect:/processos/" + id + "#envio";
     }
 

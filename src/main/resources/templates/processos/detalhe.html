@@ -19,6 +19,11 @@
                 <span class="badge align-middle fs-6 px-3 py-1 rounded-pill"
                       th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
+                <span th:if="${processo.status.finalizado}"
+                      class="badge align-middle bg-dark text-white rounded-pill px-3 py-1 ms-1"
+                      title="Processo concluido e encerrado">
+                    <i class="bi bi-lock-fill"></i> Encerrado
+                </span>
                 <span th:if="${statusSubrotulo != null}"
                       class="badge align-middle bg-warning text-dark rounded-pill px-3 py-1"
                       th:text="${statusSubrotulo}">Aguardando parecer</span>
@@ -247,20 +252,29 @@
                         <strong th:text="${#strings.listJoin(medicosMesmaEquipe, '; ')}">medicos</strong>.
                         Confirme se nao ha conflito de interesse antes de enviar.
                     </div>
-                    <!-- Copia anonimizada para envio as equipes (gerada no envio) -->
-                    <div th:if="${solicitacaoPdf != null}" class="alert alert-light border py-2 mb-3">
-                        <i class="bi bi-file-earmark-pdf text-danger"></i>
-                        Copia para as equipes (nome do paciente suprimido):
-                        <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
-                           th:text="${solicitacaoPdf.nomeArquivo}">arquivo</a>
+
+                    <!-- Status do envio (se ja registrado) -->
+                    <div th:if="${envioFeito}" class="alert alert-success py-2 mb-3">
+                        <i class="bi bi-check-circle"></i>
+                        Envio registrado em
+                        <strong th:text="${#temporals.format(processo.pareceres[0].dataEnvio, 'dd/MM/yyyy')}"></strong>
+                        para os 3 avaliadores.
+                        <span th:if="${solicitacaoPdf != null}" class="ms-3">
+                            <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
+                               class="btn btn-sm btn-outline-danger" title="Baixar solicitacao de avaliacao gerada automaticamente">
+                                <i class="bi bi-file-earmark-pdf"></i> Solicitacao PDF
+                            </a>
+                        </span>
                     </div>
-                    <!-- Documentos clinicos anonimizados (consolidados no PDF dos avaliadores) -->
-                    <div class="border rounded p-3 mb-3 bg-light">
-                        <h6 class="text-muted small mb-2">
-                            <i class="bi bi-files"></i> Documentos clinicos anonimizados
+
+                    <!-- ========== PASSO 1: Documentos clinicos ========== -->
+                    <div th:unless="${envioFeito}" class="border-start border-3 border-primary ps-3 mb-4">
+                        <h6 class="fw-bold text-primary mb-2">
+                            <span class="badge bg-primary me-2 rounded-pill">1</span>
+                            Anexar documentos clinicos anonimizados
                         </h6>
                         <p class="small text-muted mb-2">
-                            Anexe aqui o(s) documento(s) clinico(s) <strong>ja anonimizados</strong> (sem o nome do
+                            Anexe o(s) documento(s) clinico(s) <strong>ja anonimizados</strong> (sem o nome do
                             paciente). Ao registrar o envio eles serao fundidos em um unico PDF e cada pagina
                             recebera um <strong>cabecalho carimbado</strong> com o numero do processo e as iniciais do
                             paciente (sem alterar o conteudo). A solicitacao original NUNCA entra neste PDF
@@ -300,58 +314,71 @@
                                 </button>
                             </div>
                         </form>
+                        <div th:if="${documentosClinicos.isEmpty()}" class="alert alert-info py-2 mb-0 mt-2">
+                            <i class="bi bi-info-circle"></i>
+                            Anexe ao menos um documento clinico (PDF) para registrar o envio.
+                        </div>
                     </div>
 
-                    <!-- Data de envio (exibe se ja registrada) -->
-                    <div th:if="${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}" class="alert alert-success py-2 mb-3">
-                        <i class="bi bi-check-circle"></i>
-                        Envio registrado em
-                        <strong th:text="${#temporals.format(processo.pareceres[0].dataEnvio, 'dd/MM/yyyy')}"></strong>
-                        para os 3 avaliadores.
-                        <span th:if="${solicitacaoPdf != null}" class="ms-3">
-                            <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
-                               class="btn btn-sm btn-outline-danger" title="Baixar solicitacao de avaliacao gerada automaticamente">
-                                <i class="bi bi-file-earmark-pdf"></i> Solicitacao PDF
-                            </a>
-                        </span>
-                    </div>
-                    <div th:if="${processo.pareceres.isEmpty() or processo.pareceres[0].dataEnvio == null}" class="alert alert-warning py-2 mb-3">
-                        <i class="bi bi-hourglass"></i> Envio ainda nao registrado.
-                    </div>
-                    <div th:if="${documentosClinicos.isEmpty() and (processo.pareceres.isEmpty() or processo.pareceres[0].dataEnvio == null)}"
-                         class="alert alert-info py-2 mb-3">
-                        <i class="bi bi-info-circle"></i>
-                        Anexe o(s) documento(s) clinico(s) (PDF) acima para gerar o processo dos avaliadores
-                        antes de registrar o envio.
-                    </div>
-                    <!-- Acao unica de registro de envio -->
-                    <form th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
-                          enctype="multipart/form-data" class="row g-2 align-items-end">
-                        <div class="col-md-6">
-                            <label class="form-label">PDF do e-mail de envio aos 3 avaliadores (opcional)</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg">
+                    <!-- ========== PASSO 2: Comprovante de envio ========== -->
+                    <div th:unless="${envioFeito}" class="border-start border-3 border-secondary ps-3 mb-4">
+                        <h6 class="fw-bold text-secondary mb-2">
+                            <span class="badge bg-secondary me-2 rounded-pill">2</span>
+                            Anexar comprovante de envio (opcional)
+                        </h6>
+                        <p class="small text-muted mb-2">
+                            Anexe o PDF ou e-mail de envio enviado aos 3 avaliadores como comprovante.
+                        </p>
+                        <div th:if="${comprovanteEnvioAvaliadores != null}" class="alert alert-success py-2 mb-2">
+                            <i class="bi bi-check-circle"></i>
+                            Comprovante anexado:
+                            <a th:href="@{/processos/anexos/{id}/download(id=${comprovanteEnvioAvaliadores.id})}"
+                               th:text="${comprovanteEnvioAvaliadores.nomeArquivo}">arquivo</a>
                         </div>
-                        <div class="col-md-6 d-flex align-items-end">
+                        <form th:action="@{/processos/{id}/comprovante-envio-avaliadores(id=${processo.id})}" method="post"
+                              enctype="multipart/form-data" class="row g-2 align-items-end">
+                            <div class="col-md-8">
+                                <label class="form-label small">Arquivo do e-mail de envio (PDF, EML, MSG)</label>
+                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg">
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary btn-sm">
+                                    <i class="bi bi-upload"></i> Anexar comprovante
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- ========== PASSO 3: Registrar envio ========== -->
+                    <div th:unless="${envioFeito}" class="border-start border-3 border-success ps-3 mb-3">
+                        <h6 class="fw-bold text-success mb-2">
+                            <span class="badge bg-success me-2 rounded-pill">3</span>
+                            Registrar envio
+                        </h6>
+                        <p class="small text-muted mb-2">
+                            Confirma o envio e gera o PDF consolidado com cabecalho para os avaliadores.
+                        </p>
+                        <form th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post">
                             <button class="btn btn-primary btn-sm">
                                 <i class="bi bi-calendar-check"></i> Registrar envio (data de hoje)
                             </button>
-                        </div>
                         </form>
+                    </div>
 
-                        <!-- Finalizacao explicita da etapa -->
-                        <div th:if="${envioFeito}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
-                            <div>
-                                <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                                <strong>Envio concluido!</strong>
-                                <span class="text-muted small ms-2">Documentos enviados aos 3 avaliadores.</span>
-                            </div>
-                            <button type="button" class="btn btn-success btn-sm"
-                                    onclick="document.querySelector('.wizard-step[href=&quot;#pane-respostas&quot;]').click()">
-                                <i class="bi bi-arrow-right"></i> Avancar para Respostas
-                            </button>
+                    <!-- Finalizacao explicita da etapa -->
+                    <div th:if="${envioFeito}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
+                        <div>
+                            <i class="bi bi-check-circle-fill fs-5 me-2"></i>
+                            <strong>Envio concluido!</strong>
+                            <span class="text-muted small ms-2">Documentos enviados aos 3 avaliadores.</span>
                         </div>
+                        <button type="button" class="btn btn-success btn-sm"
+                                onclick="document.querySelector('.wizard-step[href=&quot;#pane-respostas&quot;]').click()">
+                            <i class="bi bi-arrow-right"></i> Avancar para Respostas
+                        </button>
                     </div>
                 </div>
+            </div>
                 </div><!-- /ABA 2 Envio -->
 
                 <!-- ABA 3: Respostas -->
@@ -434,8 +461,16 @@
                                     <input type="hidden" name="parecerId" th:value="${par.id}">
                                     <!-- dataEnvio oculto para preservar o valor ao salvar pareceres -->
                                     <input type="hidden" name="dataEnvio" th:value="${par.dataEnvio}">
+                                     <!-- Processo ja finalizado: pendentes viram "Dispensado pela maioria" -->
+                                    <th:block th:if="${processo.status.finalizado and par.resultado == null}">
+                                        <span class="badge bg-secondary">
+                                            <i class="bi bi-dash-circle"></i> Dispensado pela maioria
+                                        </span>
+                                        <input type="hidden" name="resultado" value="">
+                                    </th:block>
                                     <!-- Pareceres votados pelo portal sao IMUTAVEIS: operador nao pode alterar -->
-                                    <select name="resultado" class="form-select form-select-sm"
+                                    <select th:unless="${processo.status.finalizado and par.resultado == null}"
+                                            name="resultado" class="form-select form-select-sm"
                                             th:disabled="${pareceresPortal.contains(par.id)}"
                                             th:title="${pareceresPortal.contains(par.id)} ? 'Voto registrado pelo avaliador no portal — imutavel pelo operador.' : null">
                                         <option value="">-- pendente --</option>
@@ -468,9 +503,9 @@
                                         <i class="bi bi-paperclip"></i> Sim
                                     </span>
                                     <span th:unless="${pareceresComResposta.contains(par.id)}"
-                                          th:classappend="${par.origem != null and par.origem.name() == 'AVALIADOR_SISTEMA'} ? 'bg-primary' : 'bg-secondary'"
+                                          th:classappend="${par.origem != null and par.origem.name() == 'AVALIADOR_SISTEMA'} ? 'bg-primary' : (${processo.status.finalizado} ? 'bg-secondary' : 'bg-secondary')"
                                           class="badge"
-                                          th:text="${par.origem != null and par.origem.name() == 'AVALIADOR_SISTEMA'} ? 'Dispensado' : 'Nao'">Nao</span>
+                                          th:text="${par.origem != null and par.origem.name() == 'AVALIADOR_SISTEMA'} ? 'Dispensado' : (${processo.status.finalizado} ? 'Dispensado' : 'Nao')">Nao</span>
                                 </td>
                             </tr>
                             <!-- Justificativa do avaliador (material INTERNO do operador;
