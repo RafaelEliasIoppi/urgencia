@@ -9,6 +9,8 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import jakarta.servlet.http.HttpServletResponse;
+
 /**
  * Tratamento global de excecoes para todas as pages/controllers.
  * Captura异常 nao tratadas e redireciona para paginas de erro amigaveis,
@@ -67,6 +69,17 @@ public class GlobalExceptionHandler {
         model.addAttribute("error", "Erro ao processar arquivo");
         model.addAttribute("message", ex.getMessage());
         return "error";
+    }
+
+    /**
+     * Recurso estatico nao encontrado (favicon.ico, etc).
+     * Retorna 404 silencioso — sem log de ERROR.
+     */
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public void handleNoResource(org.springframework.web.servlet.resource.NoResourceFoundException ex,
+                                  HttpServletResponse response) throws java.io.IOException {
+        log.debug("Recurso estatico nao encontrado: {}", ex.getMessage());
+        response.sendError(HttpServletResponse.SC_NOT_FOUND);
     }
 
     /**
