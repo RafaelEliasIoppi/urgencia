@@ -100,6 +100,47 @@
                     </div>
                 </div>
             </div>
+
+            <!-- E-mails prontos (ao lado, fora do fluxo principal) -->
+            <div class="card mt-3 animate-fade-in-d1" id="emails">
+                <div class="card-header bg-white border-bottom-0">
+                    <i class="bi bi-envelope-paper text-secondary"></i> Textos de e-mail prontos
+                </div>
+                <div class="card-body pt-0">
+                    <p class="small text-muted mb-2">Textos pre-preenchidos para copiar e colar.
+                        No envio aos medicos os dados pessoais do paciente sao omitidos.</p>
+                    <div class="accordion" id="accEmails">
+                        <div class="accordion-item" th:each="mail, it : ${emails}">
+                            <h2 class="accordion-header">
+                                <button class="accordion-button collapsed small py-2" type="button"
+                                        data-bs-toggle="collapse" th:data-bs-target="'#mail' + ${it.index}">
+                                    <i class="bi me-1" th:classappend="'bi-' + ${mail.icone}"></i>
+                                    <span class="small" th:text="${mail.titulo}">titulo</span>
+                                </button>
+                            </h2>
+                            <div th:id="'mail' + ${it.index}" class="accordion-collapse collapse"
+                                 data-bs-parent="#accEmails">
+                                <div class="accordion-body px-2 py-2">
+                                    <label class="form-label small fw-semibold">Assunto</label>
+                                    <div class="input-group input-group-sm mb-2">
+                                        <input type="text" class="form-control" th:id="'assunto' + ${it.index}"
+                                               th:value="${mail.assunto}" readonly>
+                                        <button class="btn btn-outline-secondary btn-copiar"
+                                                type="button" th:data-alvo="'assunto' + ${it.index}">Copiar</button>
+                                    </div>
+                                    <label class="form-label small fw-semibold">Corpo</label>
+                                    <textarea class="form-control mb-2" th:id="'corpo' + ${it.index}"
+                                              rows="5" readonly th:text="${mail.corpo}"></textarea>
+                                    <button class="btn btn-primary btn-sm w-100 btn-copiar"
+                                            type="button" th:data-alvo="'corpo' + ${it.index}">
+                                        <i class="bi bi-clipboard"></i> Copiar corpo
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Coluna direita -->
@@ -470,7 +511,7 @@
                                     </th:block>
                                     <!-- Pareceres votados pelo portal sao IMUTAVEIS: operador nao pode alterar -->
                                     <select th:unless="${processo.status.finalizado and par.resultado == null}"
-                                            name="resultado" class="form-select form-select-sm"
+                                            name="resultado" class="form-select form-select-sm parecer-select"
                                             th:disabled="${pareceresPortal.contains(par.id)}"
                                             th:title="${pareceresPortal.contains(par.id)} ? 'Voto registrado pelo avaliador no portal — imutavel pelo operador.' : null">
                                         <option value="">-- pendente --</option>
@@ -546,7 +587,7 @@
                             <input type="hidden" name="parecerId" th:value="${par.id}">
                             <input type="file" name="arquivo" class="form-control form-control-sm"
                                    accept=".pdf,.eml,.msg" required>
-                            <button class="btn btn-outline-primary btn-sm text-nowrap">
+                            <button class="btn btn-outline-primary btn-sm text-nowrap btn-anexar-resposta">
                                 <i class="bi bi-upload"></i> Anexar
                             </button>
                         </form>
@@ -803,45 +844,6 @@
                 </div><!-- /tab-content -->
             </div><!-- /th:with abas -->
 
-            <!-- E-mails prontos -->
-            <div class="card mb-4" id="emails">
-                <div class="card-header"><i class="bi bi-envelope-paper"></i> Textos de e-mail prontos</div>
-                <div class="card-body">
-                    <p class="small text-muted">Textos pre-preenchidos para copiar e colar no seu e-mail.
-                        No envio aos medicos os dados pessoais do paciente sao omitidos.</p>
-                    <div class="accordion" id="accEmails">
-                        <div class="accordion-item" th:each="mail, it : ${emails}">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button"
-                                        data-bs-toggle="collapse" th:data-bs-target="'#mail' + ${it.index}">
-                                    <i class="bi me-2" th:classappend="'bi-' + ${mail.icone}"></i>
-                                    <span th:text="${mail.titulo}">titulo</span>
-                                </button>
-                            </h2>
-                            <div th:id="'mail' + ${it.index}" class="accordion-collapse collapse"
-                                 data-bs-parent="#accEmails">
-                                <div class="accordion-body">
-                                    <label class="form-label small fw-semibold">Assunto</label>
-                                    <div class="input-group input-group-sm mb-2">
-                                        <input type="text" class="form-control" th:id="'assunto' + ${it.index}"
-                                               th:value="${mail.assunto}" readonly>
-                                        <button class="btn btn-outline-secondary btn-copiar"
-                                                type="button" th:data-alvo="'assunto' + ${it.index}">Copiar</button>
-                                    </div>
-                                    <label class="form-label small fw-semibold">Corpo</label>
-                                    <textarea class="form-control mb-2" th:id="'corpo' + ${it.index}"
-                                              rows="10" readonly th:text="${mail.corpo}"></textarea>
-                                    <button class="btn btn-primary btn-sm btn-copiar"
-                                            type="button" th:data-alvo="'corpo' + ${it.index}">
-                                        <i class="bi bi-clipboard"></i> Copiar corpo
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Anexos -->
             <div class="card" id="anexos">
                 <div class="card-header"><i class="bi bi-paperclip"></i> Anexos (e-mails e documentos)</div>
@@ -906,6 +908,34 @@
     }
     sel.addEventListener('change', toggleMotivo);
     toggleMotivo();
+
+    // Confirmacao ao alterar parecer ja preenchido
+    document.querySelectorAll('.parecer-select').forEach(function (select) {
+        select.addEventListener('change', function () {
+            if (this.dataset.valorAnterior && this.dataset.valorAnterior !== this.value) {
+                if (!confirm('Alterar o parecer deste avaliador? O resultado anterior sera substituido.')) {
+                    this.value = this.dataset.valorAnterior;
+                    return;
+                }
+            }
+            this.dataset.valorAnterior = this.value;
+        });
+        // Salva o valor inicial
+        select.dataset.valorAnterior = select.value;
+    });
+
+    // Confirmacao ao anexar resposta de avaliador
+    document.querySelectorAll('.btn-anexar-resposta').forEach(function (btn) {
+        btn.addEventListener('click', function (e) {
+            var form = this.closest('form');
+            var fileInput = form.querySelector('input[type="file"]');
+            if (fileInput && fileInput.files.length > 0) {
+                if (!confirm('Anexar este arquivo como resposta do avaliador?')) {
+                    e.preventDefault();
+                }
+            }
+        });
+    });
 
     // Copiar textos de e-mail
     document.querySelectorAll('.btn-copiar').forEach(function (btn) {
