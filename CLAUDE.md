@@ -102,20 +102,23 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   endpoints que faziam isso (`POST /processos/{id}/resposta-avaliador` e
   `POST /processos/{id}/pareceres`, em `ProcessoDecisaoController`) e os
   respectivos forms na tela de detalhe (card "Respostas dos Avaliadores")
-  foram **removidos**. `OrigemParecer.OPERADOR_EMAIL` e o requisito de anexo
-  `TipoAnexo.RESPOSTA_AVALIADOR` **continuam existindo só para leitura**
-  (badge "Origem: Operador", coluna "Resposta anexada" etc.) de processos
-  antigos já registrados assim antes dessa mudança — não removidos do enum
-  nem da lógica de exibição, só deixaram de ser um caminho ativo. O card de
-  Respostas na tela de detalhe agora só acompanha o resultado de cada
-  avaliador e permite enviar lembrete por e-mail
-  (`POST /processos/{id}/lembrete-avaliador`/`lembrete-pendentes`, que
-  continuam existindo — só avisam o avaliador para ir votar no portal, não
-  registram parecer). Como a decisão exige ≥2 pareceres e o voto autenticado
-  dispensa anexo, a regra antiga "resposta recebida exige anexo antes de
-  decidir" só se aplica hoje a pareceres legados com `origem =
-  OPERADOR_EMAIL`/`null` (`pareceresRecebidosSemAnexo`, ainda impõe isso no
-  serviço e no controller do endpoint `/decidir`).
+  foram **removidos**. **`OrigemParecer.OPERADOR_EMAIL` e `TipoAnexo.
+  RESPOSTA_AVALIADOR` foram removidos por completo do enum no commit
+  `041dc43` (2026-07-29)** — não havia nenhuma linha em produção usando
+  esses valores (banco tratado como vazio, confirmado pelo usuário antes da
+  remoção), então não é mais um caso de "legado só leitura": o valor
+  literalmente não existe mais no código, não compila. Foi removido junto
+  todo o código que só existia para ler/exibir esses valores (badge "Origem:
+  Operador", coluna "Resposta anexada" etc.). O card de Respostas na tela de
+  detalhe agora só acompanha o resultado de cada avaliador e permite enviar
+  lembrete por e-mail (`POST /processos/{id}/lembrete-avaliador`/
+  `lembrete-pendentes`, que continuam existindo — só avisam o avaliador para
+  ir votar no portal, não registram parecer). O requisito de anexo antes de
+  decidir também foi removido junto (`pareceresRecebidosSemAnexo` não existe
+  mais em `ProcessoValidator`/`ProcessoService`): como hoje só existe o voto
+  autenticado (`AVALIADOR_SISTEMA`, que dispensa anexo), `decidir` exige
+  apenas os ≥2 pareceres emitidos (maioria simples), sem checagem de anexo
+  nenhuma.
 - **Deferido exige anexar o comprovante de inserção da urgência renal no SNT**
   (`TipoAnexo.COMPROVANTE_SNT`) e enviá-lo junto na resposta ao solicitante; a
   etapa "Comprovante SNT" bloqueia a conclusão até o anexo existir (simétrico
@@ -132,9 +135,11 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   (não foi substituído).
 - Status (ciclo expandido, reflete a planilha): `Solicitado` → `Enviado` →
   { `Deferido` / `Indeferido` / `Solicita informação` } (+ `Cancelado`).
-  Finais: Deferido/Indeferido/Cancelado. `Em análise` é mantido como sinônimo
-  legado de `Enviado` (registros antigos continuam válidos). Ver
-  `docs/PLANO-FLUXO.md`.
+  Finais: Deferido/Indeferido/Cancelado. **Atualização de 2026-07-29 (commit
+  `041dc43`): `StatusProcesso.EM_ANALISE` foi removido do enum** — não havia
+  nenhuma linha em produção usando esse valor (confirmado pelo usuário antes
+  da remoção), então deixou de existir como sinônimo legado de `Enviado`; o
+  enum só tem os 6 valores citados acima. Ver `docs/PLANO-FLUXO.md`.
 - **Processo ENCERRADO trava a edição:** quando o status é final
   (Deferido/Indeferido/Cancelado), `ProcessoValidator.edicaoBloqueada` é `true`
   e **toda alteração é rejeitada** — imposto no controller (guarda
@@ -247,10 +252,13 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   veioDoPortal(p)` **continua existindo** (não foi removido), mas hoje serve
   só para achar o `solicitacaoOnlineOrigemId` e exibir o link "Ver
   solicitação original" no card de Recebimento da tela de detalhe — não
-  influencia mais nenhum gating. Os valores de enum `TipoAnexo.
-  SOLICITACAO_RECEBIDA`/`CAPA_PROCESSO` e o método `PdfRelatorioBuilder.
-  adicionarCapa` (reaproveitado pelo Relatório Final, com outros parâmetros)
-  continuam no código para leitura de processos antigos.
+  influencia mais nenhum gating. **Atualização de 2026-07-29 (commit
+  `041dc43`): os valores de enum `TipoAnexo.SOLICITACAO_RECEBIDA`/
+  `CAPA_PROCESSO` foram removidos por completo** (0 linhas em produção,
+  confirmado antes da remoção) — não é mais "legado de leitura", o valor não
+  existe mais no enum. O método `PdfRelatorioBuilder.adicionarCapa`
+  **continua existindo** (reaproveitado pelo Relatório Final, com outros
+  parâmetros) — só os dois valores de `TipoAnexo` acima saíram.
 - **Passo 2 (Envio):** ao registrar o envio o sistema gera a **cópia anonimizada
   para as equipes** (`SOLICITACAO_AVALIADOR`, só iniciais), nome oficial
   `Processo CET-RS NN-AAAA - Paciente X.X.X.pdf`
@@ -280,21 +288,27 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   PDF inline). **É
   obrigatório ao menos um documento clínico PDF anexado:** `registrarEnvio`
   **bloqueia** (flash `erro`, sem efetivar o envio) se não houver nenhum. A
-  **solicitação original** (`SOLICITACAO_RECEBIDA`) **NUNCA** entra nesse PDF
-  (contém o nome completo). Documentos clínicos não-PDF são ignorados do merge com
-  **aviso não-bloqueante** (flash `aviso`). **O comprovante de envio aos
-  avaliadores (`EMAIL_ENVIADO_AVALIADORES`) deixou de ser exigido em
-  2026-07-27** (fluxo antigo, do tempo em que o envio aos avaliadores era só
-  por e-mail): os avaliadores hoje votam autenticados no Portal do Avaliador
-  (`/avaliador`), que nunca dependeu desse anexo (`AvaliadorController` só
-  checa o vínculo do parecer, nunca `EMAIL_ENVIADO_AVALIADORES`) — o
+  **solicitação original** (a informação completa da `SolicitacaoOnline` de
+  origem, com o nome completo) **NUNCA** entra nesse PDF — desde que o
+  cadastro manual acabou (2026-07-27) ela nem é mais anexada ao `Processo`
+  como `TipoAnexo` (o valor que existia pra isso, `SOLICITACAO_RECEBIDA`, foi
+  removido do enum em 2026-07-29 por falta de uso — ver bullet "Passo 1"
+  acima). Documentos clínicos não-PDF são ignorados do merge com **aviso
+  não-bloqueante** (flash `aviso`). **O comprovante de envio aos avaliadores
+  deixou de ser exigido em 2026-07-27** (fluxo antigo, do tempo em que o
+  envio aos avaliadores era só por e-mail): os avaliadores hoje votam
+  autenticados no Portal do Avaliador (`/avaliador`), que nunca dependeu
+  desse anexo (`AvaliadorController` só checa o vínculo do parecer) — o
   requisito era um gate sem função posterior. `registrarEnvio` e
   `ProcessoValidator.validarRegistroEnvio` não checam mais esse anexo, e a
   seção "Anexar comprovante de envio" e o endpoint
   `POST /processos/{id}/comprovante-envio-avaliadores` foram removidos da
-  aba Envio. O enum `TipoAnexo.EMAIL_ENVIADO_AVALIADORES` **permanece** (só
-  não é mais exigido) — processos antigos em produção já têm esse anexo
-  gravado, removê-lo do enum quebraria o carregamento deles. Os 2 sub-passos
+  aba Envio. **Atualização de 2026-07-29 (commit `041dc43`): o enum
+  `TipoAnexo.EMAIL_ENVIADO_AVALIADORES` foi removido por completo** — não
+  "permanece só sem ser exigido" como versões anteriores deste arquivo
+  diziam; não havia nenhuma linha em produção usando esse valor (confirmado
+  pelo usuário antes da remoção), então não havia mais risco de quebrar
+  carregamento de processo antigo. Os 2 sub-passos
   restantes da aba Envio (documentos clínicos, registrar envio) continuam
   obrigatórios. O método legado `SolicitacaoAvaliadorService.gerar`
   (folha-rosto) foi **removido em 2026-07-27** por falta de qualquer
@@ -342,11 +356,11 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
 Antes, convivia o voto pelo operador (e-mail) e o voto autenticado do próprio
 médico no sistema. Agora **parecer só é registrado pelo avaliador autenticado
 no Portal** (`origem = AVALIADOR_SISTEMA`) — o operador não lança/edita mais
-resultado de parecer manualmente por nenhum caminho. `OrigemParecer.
-OPERADOR_EMAIL` e o requisito de anexo `TipoAnexo.RESPOSTA_AVALIADOR`
-permanecem no código **só para leitura/histórico** de pareceres já
-registrados assim antes dessa mudança (nada foi apagado do banco nem do
-enum) — não é mais um caminho ativo de escrita. Ver detalhe da remoção em
+resultado de parecer manualmente por nenhum caminho. **Atualização de
+2026-07-29 (commit `041dc43`): `OrigemParecer.OPERADOR_EMAIL` e `TipoAnexo.
+RESPOSTA_AVALIADOR` foram removidos do enum**, não apenas do caminho de
+escrita — não sobrou nenhuma linha em produção usando esses valores, então
+não fazia sentido manter "legado só leitura". Ver detalhe da remoção em
 "Regras de negócio" acima.
 
 ### Perfil AVALIADOR
@@ -359,18 +373,18 @@ enum) — não é mais um caminho ativo de escrita. Ver detalhe da remoção em
 - Seed dev-only: `avaliador1` / `avaliador123`, vinculado ao primeiro membro ativo.
 
 ### OrigemParecer (domain/OrigemParecer.java)
-- `OPERADOR_EMAIL` — **legado, só leitura.** Identificava o parecer lançado
-  pelo operador após receber a resposta por e-mail, exigindo
-  `TipoAnexo.RESPOSTA_AVALIADOR` como comprovante. Desde 2026-07-27 não há
-  mais nenhum endpoint/form que grave esse valor — só existe em pareceres
-  antigos já persistidos, exibidos normalmente (badge "Origem: Operador").
-- `AVALIADOR_SISTEMA` — **único caminho ativo hoje.** Médico se autentica no
+- **Histórico:** existiu `OPERADOR_EMAIL` (parecer lançado pelo operador após
+  receber a resposta por e-mail, exigindo `TipoAnexo.RESPOSTA_AVALIADOR` como
+  comprovante) até 2026-07-29, quando foi **removido do enum** no commit
+  `041dc43` — sem nenhuma linha em produção usando esse valor, o usuário
+  pediu para tratar o banco como vazio e eliminar de vez o valor e todo o
+  código que só existia para lê-lo/exibi-lo (não ficou como "legado só
+  leitura"). Hoje `OrigemParecer` só tem um valor.
+- `AVALIADOR_SISTEMA` — **único valor do enum hoje.** Médico se autentica no
   portal e vota diretamente; o registro autenticado (usuario + `dataHoraVoto`
-  + IP no log de auditoria) substitui o anexo. `pareceresRecebidosSemAnexo`
-  ignora esses pareceres.
-- Origem `null` (legado, anterior a essa coluna existir) equivale a
-  `OPERADOR_EMAIL` — mesma regra de só leitura.
-- Novos campos em `Parecer`: `origem`, `dataHoraVoto`, `votadoPor`.
+  + IP no log de auditoria) substitui o anexo — não há mais nenhum requisito
+  de anexo antes de decidir.
+- Campos em `Parecer`: `origem`, `dataHoraVoto`, `votadoPor`.
 
 ### Segurança
 - `SecurityConfig`: `/avaliador/**` exige `ROLE_AVALIADOR`; OPERADOR/ADMIN ficam
@@ -379,11 +393,13 @@ enum) — não é mais um caminho ativo de escrita. Ver detalhe da remoção em
 
 ### AvaliadorController (web/AvaliadorController.java)
 - `GET /avaliador` — lista pareceres pendentes do membro logado (status
-  ENVIADO/EM_ANALISE, resultado nulo, dataEnvio preenchida). Exibe **somente
+  ENVIADO, resultado nulo, dataEnvio preenchida). Exibe **somente
   iniciais** do paciente — nunca nome completo, equipe solicitante ou
-  co-avaliadores.
+  co-avaliadores. (`StatusProcesso.EM_ANALISE` foi removido do enum em
+  2026-07-29, commit `041dc43` — versões antigas deste arquivo citavam
+  "ENVIADO/EM_ANALISE" aqui, hoje é só `ENVIADO`.)
 - `GET /avaliador/{processoId}` — formulário de voto. 403 se não for avaliador do
-  processo, se o parecer já foi emitido, ou se o status não é ENVIADO/EM_ANALISE.
+  processo, se o parecer já foi emitido, ou se o status não é ENVIADO.
 - `POST /avaliador/{processoId}/votar` — grava `resultado`, `dataResposta`,
   `dataHoraVoto`, `votadoPor`, `origem=AVALIADOR_SISTEMA`; chama
   `atualizarStatusPorPareceres`; registra auditoria com IP.
@@ -399,7 +415,7 @@ enum) — não é mais um caminho ativo de escrita. Ver detalhe da remoção em
   iniciais e link `{app.base-url}/avaliador` para copiar/colar.
 - `app.base-url` configurável em `application.yml` (default `http://localhost:3000`,
   variável de ambiente `SGPUR_BASE_URL` em prod).
-- Template "convite-portal" incluído em `gerar(p)` quando status ENVIADO/EM_ANALISE.
+- Template "convite-portal" incluído em `gerar(p)` quando status ENVIADO.
 
 ## Perfis e permissões (SecurityConfig)
 - **ADMIN**: acesso total, incluindo `/usuarios/**` (cadastro de LOGINS) e
@@ -1020,4 +1036,15 @@ isso continua sendo exclusivo de abrir a conversa de fato):
   tela E fica parado (não marca lida) até abrir o detalhe de fato; mesma
   coisa na direção operador→solicitante; as 3 telas de chat confirmadas
   SEM o script global (evita duplicar) mas COM `tocarNotificacao` definido.
+
+## Vistoria de 2026-07-31 (texto desatualizado sobre enums removidos)
+Uma vistoria pontual achou que este arquivo, em vários trechos ("Regras de
+negócio" e "Portal do Avaliador — Fase 1 MVP"), ainda descrevia
+`OrigemParecer.OPERADOR_EMAIL`, `StatusProcesso.EM_ANALISE` e os `TipoAnexo`
+legados (`SOLICITACAO_RECEBIDA`, `CAPA_PROCESSO`, `EMAIL_ENVIADO_AVALIADORES`,
+`RESPOSTA_AVALIADOR`) como "legado, só leitura" — falso desde o commit
+`041dc43` (2026-07-29), que removeu esses valores **por completo** do enum
+(não só do caminho de escrita). Corrigido nesta sessão para refletir que os
+valores não existem mais no código, sem mexer em nenhuma regra de negócio ou
+comportamento — só o texto do guia estava desatualizado.
 

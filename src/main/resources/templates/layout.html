@@ -153,7 +153,7 @@
      seu proprio poll de chat especifico (chatAtivoNestaTela=true), pra nao
      duplicar som/toast. So checa contagem (nunca marca como lida) - abrir a
      conversa de fato continua sendo o que marca como lida. -->
-<script th:if="${solicitanteHabilitado}" th:unless="${chatAtivoNestaTela}"
+<script th:if="${solicitanteHabilitado == true and chatAtivoNestaTela != true}"
         sec:authorize="hasAnyRole('ADMIN','OPERADOR')" th:inline="javascript">
     (function () {
         var url = /*[[@{/processos/solicitacoes-online/nao-lidas-count}]]*/ '';
@@ -182,7 +182,7 @@
         setInterval(poll, 20000);
     })();
 </script>
-<script th:if="${solicitanteHabilitado}" th:unless="${chatAtivoNestaTela}"
+<script th:if="${solicitanteHabilitado == true and chatAtivoNestaTela != true}"
         sec:authorize="hasRole('SOLICITANTE')" th:inline="javascript">
     (function () {
         var url = /*[[@{/solicitante/nao-lidas-count}]]*/ '';

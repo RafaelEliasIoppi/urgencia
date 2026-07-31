@@ -80,9 +80,15 @@
                         <td th:text="${#temporals.format(r.dataVencimento, 'dd/MM/yyyy')}">01/01/2026</td>
                         <td class="small text-muted d-none d-md-table-cell" th:text="${r.dataUltimaRenovacao != null} ? ${#temporals.format(r.dataUltimaRenovacao, 'dd/MM/yyyy')} : '-'">-</td>
                         <td>
-                            <span class="badge"
-                                  th:classappend="${r.situacao.name() == 'ATIVA'} ? 'bg-primary' : (${r.situacao.name() == 'RENOVADA'} ? 'bg-success' : (${r.situacao.name() == 'EXPIRADA'} ? 'bg-warning text-dark' : 'bg-secondary'))"
-                                  th:text="${r.situacao.descricao}">Ativa</span>
+                            <!-- Classe do badge por situacao via th:switch, em vez de ternarios
+                                 aninhados em th:classappend (regra do CLAUDE.md contra ternario
+                                 aninhado > 3 niveis). -->
+                            <th:block th:switch="${r.situacao.name()}">
+                                <span th:case="'ATIVA'" class="badge bg-primary" th:text="${r.situacao.descricao}">Ativa</span>
+                                <span th:case="'RENOVADA'" class="badge bg-success" th:text="${r.situacao.descricao}">Ativa</span>
+                                <span th:case="'EXPIRADA'" class="badge bg-warning text-dark" th:text="${r.situacao.descricao}">Ativa</span>
+                                <span th:case="*" class="badge bg-secondary" th:text="${r.situacao.descricao}">Ativa</span>
+                            </th:block>
                             <span th:if="${r.situacao.name() == 'ATIVA' and r.dataVencimento lt hoje}"
                                   class="badge bg-danger ms-1">Vencida</span>
                         </td>

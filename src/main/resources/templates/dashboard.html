@@ -213,10 +213,31 @@
                             <th:block th:if="${c.definido}">
                                 <div class="fw-medium text-truncate" style="font-size:.8rem;max-width:12rem;"
                                      th:text="${c.medico}" th:title="${c.medico}">Medico</div>
-                                <span class="badge rounded-1 mt-1" th:classappend="${c.cor} == 'success' ? 'text-bg-success' : (${c.cor} == 'danger' ? 'text-bg-danger' : (${c.cor} == 'warning' ? 'text-bg-warning text-dark' : (${c.cor} == 'info' ? 'text-bg-info' : 'text-bg-light text-muted')))">
-                                    <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                    <span th:text="${c.texto}">situacao</span>
-                                </span>
+                                <!-- Mapeamento cor logica (CelulaMedico.cor) -> classe Bootstrap via
+                                     th:switch, em vez de ternarios aninhados em th:classappend (regra
+                                     do CLAUDE.md contra ternario aninhado > 3 niveis). -->
+                                <th:block th:switch="${c.cor}">
+                                    <span th:case="'success'" class="badge rounded-1 mt-1 text-bg-success">
+                                        <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                        <span th:text="${c.texto}">situacao</span>
+                                    </span>
+                                    <span th:case="'danger'" class="badge rounded-1 mt-1 text-bg-danger">
+                                        <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                        <span th:text="${c.texto}">situacao</span>
+                                    </span>
+                                    <span th:case="'warning'" class="badge rounded-1 mt-1 text-bg-warning text-dark">
+                                        <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                        <span th:text="${c.texto}">situacao</span>
+                                    </span>
+                                    <span th:case="'info'" class="badge rounded-1 mt-1 text-bg-info">
+                                        <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                        <span th:text="${c.texto}">situacao</span>
+                                    </span>
+                                    <span th:case="*" class="badge rounded-1 mt-1 text-bg-light text-muted">
+                                        <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
+                                        <span th:text="${c.texto}">situacao</span>
+                                    </span>
+                                </th:block>
                             </th:block>
                             <th:block th:unless="${c.definido}">
                                 <span class="fst-italic text-muted" style="font-size:.75rem;">— nao definido —</span>
