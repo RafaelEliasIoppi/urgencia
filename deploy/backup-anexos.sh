@@ -1,9 +1,11 @@
 #!/usr/bin/env bash
 # Backup do diretorio de anexos do SAUR (documentos clinicos, oficios,
 # comprovantes SNT etc.) - roda na VM Oracle, pensado para agendamento via
-# cron. NAO faz backup do banco: o banco e o Neon (externo), com backup/PITR
-# geridos no console do Neon - confirme la se o plano usado tem retencao
-# habilitada (ver nota no README-deploy.md).
+# cron. NAO faz backup do banco: desde 2026-07-25 o Postgres roda localmente
+# nesta mesma VM (migrado do Neon - ver CLAUDE.md), e tem sua propria rotina
+# de backup (pg_dump + rclone, agendada via crontab do usuario postgres) que
+# NAO esta neste repositorio. Confirme na VM que esse backup do banco existe
+# e esta rodando - este script cobre só os anexos em disco.
 #
 # Uso:
 #   BACKUP_DEST=/mnt/backup/sgpur ./backup-anexos.sh

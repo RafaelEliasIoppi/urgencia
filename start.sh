@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Sobe o SAUR (Linux / macOS / Git Bash).
 # Uso:  ./start.sh            -> perfil dev (H2)
-#       ./start.sh prod       -> perfil prod (PostgreSQL/Neon via application-local.yml ou env vars)
+#       ./start.sh prod       -> perfil prod (PostgreSQL via application-local.yml ou env vars;
+#                                producao real roda em Postgres local na VM Oracle desde 2026-07-25,
+#                                nao mais no Neon - ver CLAUDE.md)
 set -e
 PERFIL="${1:-dev}"
 case "$PERFIL" in

@@ -37,8 +37,6 @@ public interface SolicitacaoOnlineRepository extends JpaRepository<SolicitacaoOn
         """)
     Optional<SolicitacaoOnline> findParaDetalhe(@Param("id") Long id);
 
-    List<SolicitacaoOnline> findByUsuarioSolicitanteIdOrderByDataEnvioDesc(Long usuarioSolicitanteId);
-
     /**
      * Versao para a tela "Minhas solicitacoes", que agora precisa checar
      * {@code processoGerado.status} (para saber se aguarda informacao

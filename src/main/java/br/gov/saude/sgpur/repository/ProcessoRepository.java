@@ -13,8 +13,6 @@ import java.util.Optional;
 
 public interface ProcessoRepository extends JpaRepository<Processo, Long> {
 
-    List<Processo> findAllByOrderByAnoDescSequencialDesc();
-
     /**
      * Processos encerrados (arquivo): recebe a colecao de status finais
      * (DEFERIDO/INDEFERIDO/CANCELADO), mais recentes primeiro.

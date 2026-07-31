@@ -35,12 +35,6 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
      */
     List<Parecer> findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(Long membroId);
 
-    /**
-     * Pareceres ja votados pelo membro (resultado != null), do mais recente para
-     * o mais antigo. Usado pelo historico do Portal do Avaliador.
-     */
-    List<Parecer> findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc(Long membroId);
-
     /** Localiza o parecer de um membro especifico em um processo especifico. */
     Optional<Parecer> findByProcessoIdAndMembroId(Long processoId, Long membroId);
 
@@ -73,8 +67,9 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
     List<Parecer> findPendentesComProcesso(@Param("membroId") Long membroId);
 
     /**
-     * Mesmo criterio de {@link #findByMembroIdAndResultadoIsNotNullOrderByDataRespostaDesc},
-     * com o Processo associado carregado via fetch join.
+     * Pareceres ja votados pelo membro (resultado != null), do mais recente para
+     * o mais antigo, com o Processo associado carregado via fetch join. Usado
+     * pelo historico do Portal do Avaliador.
      */
     @Query("select p from Parecer p left join fetch p.processo "
         + "where p.membro.id = :membroId and p.resultado is not null order by p.dataResposta desc")

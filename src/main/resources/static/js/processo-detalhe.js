@@ -69,6 +69,11 @@ window.mostrarToast = function (mensagem, tipo) {
                 var orig = btn.innerHTML;
                 btn.innerHTML = '<i class="bi bi-check2"></i> Copiado!';
                 setTimeout(function () { btn.innerHTML = orig; }, 1500);
+            }).catch(function () {
+                // Sem isso, uma falha do clipboard (permissao negada, contexto
+                // nao seguro etc.) ficava muda - nenhum outro fetch/acao deste
+                // arquivo engole erro sem avisar o usuario (ver chamarComEspera).
+                mostrarToast('Nao foi possivel copiar o texto. Copie manualmente.', 'error');
             });
         });
     });

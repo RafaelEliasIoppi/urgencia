@@ -40,10 +40,10 @@ sky-to-indigo (#sky-600 → #indigo-600) diferente do `btn-primary` instituciona
 - `src/main/resources/templates/dashboard.html` — reescrito (Bootstrap, sem Tailwind)
 
 ### Observação
-O arquivo `static/css/tailwind-dashboard.css` ainda existe no repositório mas
-não é mais referenciado por nenhum template. Pode ser removido em uma limpeza
-futura quando a equipe confirmar que ninguém mais usa. O procedimento de
-regeneração descrito em `docs/PLANO-FLUXO.md` não é mais necessário.
+O arquivo `static/css/tailwind-dashboard.css` foi removido do repositório na
+limpeza de 2026-07-29 (não sobrava nenhum template referenciando-o desde esta
+migração). O procedimento de regeneração descrito em `docs/PLANO-FLUXO.md`
+não é mais necessário (a seção correspondente naquele arquivo está obsoleta).
 
 ---
 

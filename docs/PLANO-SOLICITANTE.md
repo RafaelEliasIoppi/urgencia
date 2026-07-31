@@ -1,11 +1,16 @@
-# PLANO — Módulo experimental "Solicitação Online" (novo perfil SOLICITANTE)
+# PLANO — Módulo "Solicitação Online" (perfil SOLICITANTE)
 
-Status: **proposta de arquitetura, ainda não implementada.**
-Objetivo: permitir que a equipe solicitante abra o pedido de urgência renal
-*direto no sistema*, como alternativa ao fluxo atual (solicitação chega por
-e-mail e o operador cadastra manualmente). **Os dois caminhos convivem** — o
-processo pode nascer por e-mail (como hoje) ou pelo portal (novo). Módulo
-**opcional/experimental**, deve poder ser desligado sem afetar o fluxo atual.
+Status: **implementado e em produção** (module flag
+`app.solicitante.habilitado`/`SGPUR_SOLICITANTE_HABILITADO`). Este documento
+descreve o plano de arquitetura original; **desde 2026-07-27 todo `Processo`
+nasce de uma `SolicitacaoOnline` convertida pelo operador** — não existe mais
+cadastro manual "do zero" nem o convívio dos "dois caminhos" descrito
+abaixo (ver seção "Regras de negócio" do `CLAUDE.md`, "Passo 1 (Recebimento):
+SEMPRE automático desde 2026-07-27"). Mantido como referência histórica da
+decisão de arquitetura (entidade de staging separada, não afrouxar o
+`Processo`); os detalhes operacionais atuais (cancelamento, mensagens,
+resultado exibido ao solicitante etc.) estão documentados no `CLAUDE.md`, que
+é a fonte da verdade mais recente em caso de divergência com o texto abaixo.
 
 ## O que o solicitante NÃO faz (confirmado pelo usuário)
 

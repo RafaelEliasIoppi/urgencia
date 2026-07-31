@@ -1,7 +1,18 @@
 # Deploy do SAUR — Oracle Cloud "Always Free" (São Paulo)
 
-VM gratuita (não dorme), disco persistente e perto do banco Neon (sa-east-1).
-A aplicação roda como serviço `systemd` e o Nginx faz o proxy na porta 80.
+> **Desatualizado em relação à produção atual (mantido como histórico do
+> setup inicial).** Este guia descreve a configuração original, com o banco
+> no **Neon** (externo). **Desde 2026-07-25 a produção real roda com
+> PostgreSQL local na própria VM** (`localhost:5432`, db `sgpur`, usuário
+> `sgpur`) — ver seção "Deploy" do `CLAUDE.md` para o estado atual (IP da VM,
+> domínio, deploy automático via GitHub Actions, backup do Postgres local).
+> Em particular, a frase "**Não há perda de dados do banco ao recriar a
+> VM**" mais abaixo **não é mais verdadeira**: hoje o banco mora na própria
+> VM, então recriá-la sem restaurar o Postgres a partir de backup **perde os
+> dados**.
+
+VM gratuita (não dorme), disco persistente. A aplicação roda como serviço
+`systemd` e o Nginx faz o proxy na porta 80.
 
 > Stack alvo: Ubuntu 22.04 · Java 21 (Temurin) · JAR `sgpur` · Nginx.
 
@@ -120,9 +131,13 @@ ssh ubuntu@<IP> 'sudo mv /tmp/sgpur.jar /opt/sgpur/sgpur.jar && sudo chown sgpur
 
 ## Observações
 - Os **anexos** ficam em `/opt/sgpur/data/anexos` (disco persistente da VM) — faça
-  backup periódico junto com o banco Neon.
-- O banco é o **Neon** (externo); a VM só roda o app. Não há perda de dados do
-  banco ao recriar a VM.
+  backup periódico junto com o banco.
+- **Desatualizado:** esta seção descrevia o setup original com o banco no
+  Neon (externo à VM, sem risco ao recriá-la). **Não é mais o caso** — desde
+  2026-07-25 o Postgres roda localmente na própria VM (ver banner no topo
+  deste arquivo e a seção "Deploy" do `CLAUDE.md`), então o banco **também**
+  precisa de backup próprio (pg_dump) e recriar a VM sem restaurar esse
+  backup perde os dados.
 - O `sgpur.env` contém segredos: está no `.gitignore` e tem permissão `600`.
 
 ## Backup dos anexos (cron)
@@ -156,11 +171,13 @@ Ajuste `BACKUP_DEST` (obrigatório) e opcionalmente `ANEXOS_DIR` e
 `RETENCAO_DIAS` (dias de retenção de backups locais em `.tar.gz`; default 14).
 Ver comentários no topo do script para detalhes.
 
-> **Lembrete (ação manual do usuário, fora do escopo deste script):**
-> confirme no **console do Neon** se o projeto/plano usado tem **backup
-> automático / PITR (point-in-time recovery)** habilitado para o banco. Este
-> script cobre só os anexos em disco — o banco propriamente dito depende da
-> política de backup contratada no Neon.
+> **Desatualizado:** este lembrete assumia o banco no Neon (com backup/PITR
+> gerido no console deles). **Desde 2026-07-25 o Postgres roda localmente na
+> VM** — não há mais um Neon a conferir. Este script cobre só os anexos em
+> disco; o banco precisa do próprio backup (`pg_dump` + rotina de retenção,
+> já rodando na VM via crontab do usuário `postgres` conforme a sessão de
+> 2026-07-28 do `CLAUDE.md` — o script correspondente não está neste
+> repositório, foi criado direto na VM).
 
 ## Se a rede bloquear SSH (proxy corporativo)
 

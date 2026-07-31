@@ -1,6 +1,8 @@
 # Sobe o SAUR (Windows / PowerShell).
 # Uso:  .\start.ps1            -> perfil dev (H2)
-#       .\start.ps1 prod       -> perfil prod (PostgreSQL/Neon via application-local.yml ou env vars)
+#       .\start.ps1 prod       -> perfil prod (PostgreSQL via application-local.yml ou env vars;
+#                                  producao real roda em Postgres local na VM Oracle desde 2026-07-25,
+#                                  nao mais no Neon - ver CLAUDE.md)
 param([string]$Perfil = "dev")
 
 # --- Java 21 (forca o JDK 21, mesmo que JAVA_HOME aponte para outra versao) ---

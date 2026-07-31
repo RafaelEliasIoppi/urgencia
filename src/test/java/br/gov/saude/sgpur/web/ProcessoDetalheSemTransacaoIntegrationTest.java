@@ -2,16 +2,25 @@ package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
+import br.gov.saude.sgpur.domain.MensagemSolicitacao;
+import br.gov.saude.sgpur.domain.MensagemSolicitacao.RemetenteMensagem;
 import br.gov.saude.sgpur.domain.OrigemParecer;
 import br.gov.saude.sgpur.domain.Parecer;
+import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
+import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.StatusProcesso;
+import br.gov.saude.sgpur.domain.StatusSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.TipoAnexo;
+import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.AnexoRepository;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
+import br.gov.saude.sgpur.repository.MensagemSolicitacaoRepository;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.ProcessoRepository;
+import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,6 +43,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.view;
 
@@ -81,10 +91,17 @@ class ProcessoDetalheSemTransacaoIntegrationTest {
     private AnexoRepository anexoRepo;
     @Autowired
     private AnexoStorageService anexoStorage;
+    @Autowired
+    private SolicitacaoOnlineRepository solicitacaoOnlineRepo;
+    @Autowired
+    private MensagemSolicitacaoRepository mensagemRepo;
+    @Autowired
+    private UsuarioRepository usuarioRepo;
 
     private Long processoId;
     private Long processoDeferidoId;
     private Long anexoClinicoId;
+    private Long mensagemDeOutroOperadorId;
     // AnexoStorageService renomeia o arquivo para o nome padrao
     // (NomePadraoAnexo.gerar) - guardamos o nome REAL gravado para conferir a
     // renderizacao dos anexos na tela.
@@ -95,10 +112,14 @@ class ProcessoDetalheSemTransacaoIntegrationTest {
     @BeforeEach
     @Transactional
     void preparar() throws Exception {
+        mensagemRepo.deleteAll();
+        solicitacaoOnlineRepo.deleteAll();
         anexoRepo.deleteAll();
         parecerRepo.deleteAll();
         processoRepo.deleteAll();
         membroRepo.deleteAll();
+        usuarioRepo.findByUsername("operador-it").ifPresent(usuarioRepo::delete);
+        usuarioRepo.findByUsername("solicitante-detalhe-it").ifPresent(usuarioRepo::delete);
 
         // 3 avaliadores: dois COM e-mail e um SEM (exercita os dois ramos do
         // template na aba Respostas - botao de lembrete x aviso "sem e-mail").
@@ -161,6 +182,56 @@ class ProcessoDetalheSemTransacaoIntegrationTest {
         nomeAnexoPortal = anexoStorage.salvarBytes(p, TipoAnexo.DOCUMENTO_PORTAL_NAO_ANONIMIZADO,
                 "Documento do portal pendente de anonimizacao", "portal-original.pdf",
                 "application/pdf", "%PDF-1.4 portal".getBytes()).getNomeArquivo();
+
+        // Usuario OPERADOR real (username usado pelo @WithMockUser dos testes de
+        // mensagem abaixo) - enviarMensagem/apagarMensagem resolvem o operador
+        // logado via usuarioRepo.findByUsername, entao precisa existir de verdade.
+        Usuario operador = new Usuario();
+        operador.setUsername("operador-it");
+        operador.setSenha("{noop}x");
+        operador.setNome("Operador Detalhe Teste");
+        operador.setEmail("operador.detalhe@example.com");
+        operador.setPerfil(Perfil.OPERADOR);
+        usuarioRepo.saveAndFlush(operador);
+
+        Usuario solicitante = new Usuario();
+        solicitante.setUsername("solicitante-detalhe-it");
+        solicitante.setSenha("{noop}x");
+        solicitante.setNome("Solicitante Detalhe Teste");
+        solicitante.setEmail("solicitante.detalhe@example.com");
+        solicitante.setPerfil(Perfil.SOLICITANTE);
+        solicitante.setEquipeSolicitante("HCPA");
+        usuarioRepo.saveAndFlush(solicitante);
+
+        // Solicitacao de origem CONVERTIDA, vinculada ao processo p - e o que
+        // permite o chat na tela de detalhe do processo (enviarMensagem/
+        // apagarMensagem resolvem a SolicitacaoOnline via
+        // solicitacaoOnlineRepository.findIdByProcessoGeradoId).
+        SolicitacaoOnline origem = new SolicitacaoOnline();
+        origem.setUsuarioSolicitante(solicitante);
+        origem.setPacienteNome(p.getPacienteNome());
+        origem.setPacienteRgct(p.getPacienteRgct());
+        origem.setSolicitanteEquipe(p.getSolicitanteEquipe());
+        origem.setSolicitanteEmail(p.getSolicitanteEmail());
+        origem.setDataSituacaoEspecial(p.getDataSituacaoEspecial());
+        origem.setJustificativaClinica("Quadro grave.");
+        origem.setStatus(StatusSolicitacaoOnline.CONVERTIDA);
+        origem.setProcessoGerado(p);
+        solicitacaoOnlineRepo.saveAndFlush(origem);
+
+        // Mensagem de OUTRO operador (remetenteId != o do operador logado no
+        // teste) - forca IllegalArgumentException em mensagemService.apagar
+        // ("Voce nao pode apagar esta mensagem."), mesmo padrao usado em
+        // SolicitacaoOnlineTriagemSemTransacaoIntegrationTest.
+        MensagemSolicitacao msgDeOutro = new MensagemSolicitacao();
+        msgDeOutro.setSolicitacaoOnline(origem);
+        msgDeOutro.setRemetente(RemetenteMensagem.OPERADOR);
+        msgDeOutro.setRemetenteId(999999L);
+        msgDeOutro.setTexto("Mensagem de outro operador");
+        msgDeOutro.setDataEnvio(java.time.LocalDateTime.now());
+        msgDeOutro.setLida(false);
+        mensagemRepo.saveAndFlush(msgDeOutro);
+        mensagemDeOutroOperadorId = msgDeOutro.getId();
 
         // Segundo processo, ja DEFERIDO e SEM comprovante SNT: usado para o
         // caminho de erro de negocio da aba Finalizacao.
@@ -293,5 +364,49 @@ class ProcessoDetalheSemTransacaoIntegrationTest {
         mvc.perform(post("/processos/" + processoId + "/reabrir").with(csrf()))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(flash().attributeExists("erro"));
+    }
+
+    /**
+     * POST .../mensagem/{id}/apagar sobre uma mensagem que NAO pertence ao
+     * operador logado: {@code mensagemService.apagar} lanca
+     * {@code IllegalArgumentException} (erro de negocio esperado, nao bug).
+     * Mesmo padrao ja coberto para os controllers irmaos
+     * ({@code SolicitacaoOnlineTriagemController}/{@code SolicitanteController}
+     * em seus respectivos testes "SemTransacao") - faltava aqui para
+     * {@link ProcessoDetalheController#apagarMensagem}. Antes da correcao
+     * (transacao de classe), isto resultaria em
+     * {@code UnexpectedRollbackException} -> HTTP 500. Com a transacao de
+     * classe removida, o controller deve devolver o redirect normal com o
+     * flash de erro tratado pelo catch - e a mensagem, que nao era do
+     * operador, continua intacta (nao apagada).
+     */
+    @Test
+    @WithMockUser(username = "operador-it", roles = "OPERADOR")
+    void apagarMensagemDeOutroOperadorDevolveFlashDeErroSemHttp500EMantemMensagemIntacta() throws Exception {
+        mvc.perform(post("/processos/" + processoId + "/mensagem/" + mensagemDeOutroOperadorId + "/apagar")
+                        .with(csrf()))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(redirectedUrl("/processos/" + processoId))
+                .andExpect(flash().attributeExists("erro"));
+
+        MensagemSolicitacao aindaLa = mensagemRepo.findById(mensagemDeOutroOperadorId).orElseThrow();
+        assertThat(aindaLa.isDeletada()).isFalse();
+        assertThat(aindaLa.getTexto()).isEqualTo("Mensagem de outro operador");
+    }
+
+    /**
+     * POST .../mensagem/{id}/apagar/ajax (variante AJAX) com a mesma mensagem
+     * de outro operador: deve devolver 400 JSON tratado, nunca 500. Mesmo
+     * padrao de {@link #apagarMensagemDeOutroOperadorDevolveFlashDeErroSemHttp500EMantemMensagemIntacta}.
+     */
+    @Test
+    @WithMockUser(username = "operador-it", roles = "OPERADOR")
+    void apagarMensagemAjaxDeOutroOperadorDevolve400SemHttp500() throws Exception {
+        mvc.perform(post("/processos/" + processoId + "/mensagem/" + mensagemDeOutroOperadorId + "/apagar/ajax")
+                        .with(csrf()))
+                .andExpect(status().isBadRequest());
+
+        MensagemSolicitacao aindaLa = mensagemRepo.findById(mensagemDeOutroOperadorId).orElseThrow();
+        assertThat(aindaLa.isDeletada()).isFalse();
     }
 }

@@ -52,8 +52,12 @@ jobs:
 
       - name: Health check (HTTPS)
         run: |
-          # Boot contra o Neon leva ~76s (ver CLAUDE.md) - o timeout antigo
-          # (sleep 5 + 5 retries de 5s = ~30s no total) dava falso-negativo:
-          # o deploy tinha funcionado, so o healthcheck desistia cedo demais.
+          # Boot completo (app + conexao ao banco) pode levar dezenas de
+          # segundos (ver CLAUDE.md) - o timeout antigo (sleep 5 + 5 retries
+          # de 5s = ~30s no total) dava falso-negativo: o deploy tinha
+          # funcionado, so o healthcheck desistia cedo demais. Valor de sleep
+          # mantido conservador mesmo apos a migracao do banco (Neon -> Postgres
+          # local na VM, 2026-07-25), que tende a deixar o boot mais rapido,
+          # nao mais lento.
           sleep 60
           curl -Ikf --retry 10 --retry-delay 5 https://urgenciarenal.duckdns.org/login

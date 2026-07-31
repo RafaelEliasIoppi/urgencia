@@ -141,16 +141,6 @@ public class UsuarioService {
     }
 
     /**
-     * @deprecated use {@link #alternarAtivo(Long, String)} - esta sobrecarga nao
-     * protege contra auto-desativacao nem contra desativar o ultimo ADMIN ativo.
-     */
-    @Deprecated
-    @Transactional
-    public void alternarAtivo(Long id) {
-        alternarAtivo(id, null);
-    }
-
-    /**
      * Ativa/desativa o usuario. Bloqueia a operacao (IllegalStateException) quando
      * ela desativaria a propria conta logada ({@code usernameLogado}) ou quando
      * desativaria o ultimo ADMIN ativo do sistema - evita auto-lockout do acesso a
@@ -167,16 +157,6 @@ public class UsuarioService {
         }
         u.setAtivo(!u.isAtivo());
         repo.save(u);
-    }
-
-    /**
-     * @deprecated use {@link #excluir(Long, String)} - esta sobrecarga nao protege
-     * contra auto-exclusao nem contra excluir o ultimo ADMIN ativo.
-     */
-    @Deprecated
-    @Transactional
-    public void excluir(Long id) {
-        excluir(id, null);
     }
 
     /**

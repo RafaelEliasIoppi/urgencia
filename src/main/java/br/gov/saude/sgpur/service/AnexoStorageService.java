@@ -294,12 +294,6 @@ public class AnexoStorageService {
         removerPasta(resolverDirProcesso(processo).normalize());
     }
 
-    /** @deprecated Use {@link #removerPastaProcesso(Processo)}. */
-    @Deprecated
-    public void removerPastaProcesso(Long processoId) {
-        removerPasta(raiz.resolve("processo-" + processoId).normalize());
-    }
-
     private void removerPasta(Path pasta) {
         try {
             if (Files.exists(pasta)) {

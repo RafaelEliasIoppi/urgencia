@@ -1,113 +1,176 @@
 # Plano do Fluxo — SAUR (Urgência Renal)
 
 Mapeia o fluxo real do usuário (10 etapas da planilha Excel) para o código, o
-novo ciclo de status e o que ficou pendente.
+ciclo de status e os endpoints reais de cada uma das 6 abas do processo.
 
-## Ciclo de status (expandido)
+> Atualizado em 2026-07-31. Ver `CLAUDE.md` (raiz do repo) para o texto
+> completo e mais recente das regras de negócio — este documento é um mapa
+> de apoio, focado na correspondência etapa → controller/service/template.
+
+## Ciclo de status
 
 ```
             cadastro                 registrar envio
-  (e-mail recebido)             (aos 3 médicos)
+    (Portal do Solicitante,      (aos 3 medicos, com
+     triado e convertido)         PDF consolidado)
         │                              │
         ▼                              ▼
    SOLICITADO  ───────────────────►  ENVIADO ─────────────┐
                                        │                   │
-                  médico pede info     │   2/3 favoráveis  │  senão
-                       ▼               │        ▼          ▼
-              SOLICITA_INFORMACAO ─────┤    DEFERIDO   INDEFERIDO
-              (volta a ENVIADO quando  │   (final)     (final, exige
-               a info é resolvida)     │                ofício+motivo)
-                                       │
-   CANCELADO (final) ◄─────────────────┘  a qualquer momento (manual)
-
-  Legado: EM_ANALISE == sinônimo de ENVIADO (em andamento, não final).
+                  medico pede info     │   maioria simples │  senao
+                       ▼               │   (2/3, ou 1 se   ▼
+              SOLICITA_INFORMACAO ─────┤   coordenador)
+              (volta a ENVIADO quando  │        ▼          ▼
+               a info e resolvida)     │    DEFERIDO   INDEFERIDO
+                                       │   (final)     (final, exige
+   CANCELADO (final) ◄─────────────────┘                ofício+motivo)
+     a qualquer momento ate a decisao final
+     (manual pelo operador OU pelo solicitante)
 ```
 
-- **Em andamento (não finalizado):** SOLICITADO, ENVIADO, EM_ANALISE,
-  SOLICITA_INFORMACAO.
-- **Finais:** DEFERIDO, INDEFERIDO, CANCELADO.
-- Enum: `domain/StatusProcesso.java` — `isFinalizado()`, `isEmAndamento()`,
-  e helpers de cor/ícone de badge (`getBadgeIcone`, `getBootstrapBadge`).
-  (`getBadgeClasse` foi removido em 2026-07-25 por não ter nenhum chamador.)
+- **Em andamento (não finalizado):** `SOLICITADO`, `ENVIADO`,
+  `SOLICITA_INFORMACAO`.
+- **Finais:** `DEFERIDO`, `INDEFERIDO`, `CANCELADO`.
+- Enum: `domain/StatusProcesso.java` — **só tem esses 6 valores.**
+  `isFinalizado()`/`isEmAndamento()` e os helpers de cor/ícone de badge
+  (`getBadgeIcone`, `getBootstrapBadge`).
 
-### Decisão sobre `EM_ANALISE`
-Mantido como **sinônimo legado de ENVIADO** (posicionado entre ENVIADO e a
-decisão). Motivos:
-- Compatibilidade de dados: processos antigos gravados como `EM_ANALISE`
-  continuam válidos (o enum ainda aceita o valor; sem Flyway, não há migração).
-- Compatibilidade de testes/templates que referenciam o valor.
-- Semanticamente equivale a "já enviado, aguardando decisão", que é o papel de
-  ENVIADO. Novos processos **não** nascem mais EM_ANALISE (nascem SOLICITADO).
+### `EM_ANALISE` foi removido (não é mais legado, não existe mais)
+
+Até 2026-07-29 (commit `041dc43`) existia `StatusProcesso.EM_ANALISE`, mantido
+como "sinônimo legado de `ENVIADO`" para compatibilidade com processos antigos
+gravados com esse valor. Confirmado pelo usuário que **não havia nenhuma linha
+em produção** usando `EM_ANALISE`, e o valor foi **removido do enum por
+completo** nesse commit — não é mais um caso de "aceito por compatibilidade",
+é um valor que **não compila mais** se referenciado. Qualquer texto/código que
+ainda cite `EM_ANALISE` está desatualizado.
 
 ### Migração de dados
-Não há Flyway (dev=H2, prod=Neon). A expansão é **aditiva**: novos valores no
-enum + coluna `status` ampliada para `length=30` (cabe `SOLICITA_INFORMACAO`).
-Registros antigos permanecem `EM_ANALISE` e são tratados como "em andamento".
+
+Não há Flyway/Liquibase (dev = H2, prod = **Postgres rodando na própria VM
+Oracle**, `localhost:5432`, banco `sgpur` — migrado do Neon em 2026-07-25
+depois que o Neon estourou a cota gratuita; ver `CLAUDE.md` seção Deploy).
+`ddl-auto: update` é aditivo: novas colunas/valores de enum não fazem
+backfill nem atualizam `CHECK` constraints automaticamente — ver a seção
+"Convenções de código" do `CLAUDE.md` para o procedimento manual exigido a
+cada mudança desse tipo.
 
 ## As 6 etapas do checklist (fluxo dividido em 6 abas)
 
-| # | Etapa | Controller (endpoint) | Service | Template |
+Cada etapa é montada por `FluxoProcessoService.montarEtapas`/
+`montarPassosWizard` (fonte única, usada tanto pela timeline vertical quanto
+pelo wizard horizontal da tela de detalhe) e só fica **CONCLUÍDA** se a
+própria condição **e** todas as anteriores também estiverem concluídas.
+
+| # | Etapa | Endpoint(s) reais | Service | Template |
 |---|---|---|---|---|
-| 1 | Recebimento | `ProcessoDetalheController.recebimento` | `ProcessoService.registrarRecebimento` | `detalhe.html#recebimento` |
-| 2 | Envio (documentos clínicos + comprovante + registrar) | `ProcessoDecisaoController.registrarEnvio` / `.anexarDocumentoClinico` / `.anexarComprovanteEnvioAvaliadores` | `SolicitacaoAvaliadorService.consolidar` + `carimbarCabecalho` / `ProcessoService.registrarEnvio` | `detalhe.html#envio` |
-| 3 | Respostas (pareceres) | `ProcessoDecisaoController.salvarPareceres` / `.respostaAvaliador` | `ProcessoService.atualizarStatusPorPareceres` + `tentarDecisaoAutomatica` | `detalhe.html#respostas` |
-| 4 | Decisão | `ProcessoDecisaoController.decidir` | `ProcessoService.decidir` + `DecisaoFinalService.gerarDocumentos` | `detalhe.html#decisao` |
-| 5 | Ofício/Comprovante | `ProcessoAnexoController.uploadOficio` / `.uploadComprovanteSnt` / `.finalizacao` | `AnexoStorageService` | `detalhe.html#finalizacao` |
-| 6 | Resposta ao solicitante | `ProcessoAnexoController.respostaSolicitante` / `ProcessoDecisaoController.enviarEmailPronto` | `EmailSenderService` + `EmailTemplateService` | `detalhe.html#finalizacao` |
+| 1 | Recebimento | **Nenhum** — sempre automático, sem upload nem endpoint próprio | `FluxoProcessoService.montarEtapas` marca `true` incondicionalmente | `detalhe.html#pane-recebimento` |
+| 2 | Envio | `POST /processos/{id}/documento-clinico` (`ProcessoDecisaoController.anexarDocumentoClinico`) · `POST /processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao` (`ProcessoDetalheController.confirmarAnonimizacao`, trava de anonimização) · `POST /processos/{id}/registrar-envio` (`ProcessoDecisaoController.registrarEnvio`) | `RegistroEnvioService.registrar` + `enviarConvitesAvaliadores` / `SolicitacaoAvaliadorService.consolidar` + `carimbarCabecalho` / `ProcessoValidator.validarRegistroEnvio` | `detalhe.html#pane-envio` |
+| 3 | Respostas | `POST /avaliador/{processoId}/votar` (`AvaliadorController.registrarVoto`, único caminho de voto) · `POST /processos/{id}/lembrete-avaliador` / `.../lembrete-pendentes` (lembrete manual, não registra parecer) · `POST /processos/{id}/retomar-analise` (`ProcessoDecisaoController.retomarAnalise`, sai da pausa "Solicita informação") | `ProcessoService.atualizarStatusPorPareceres` + `tentarDecisaoAutomatica` + `retomarAposInformacao` | `detalhe.html#pane-respostas` (acompanha) · `avaliador/votar.html` (vota) |
+| 4 | Decisão | `POST /processos/{id}/decidir` (`ProcessoDecisaoController.decidir`) | `ProcessoService.decidir` + `ProcessoValidator` (contagem de votos/pausa/motivo) + `DecisaoFinalService.gerarDocumentos` | `detalhe.html#pane-decisao` |
+| 5 | Ofício/Comprovante | `POST /processos/{id}/oficio-upload` · `POST /processos/{id}/comprovante-snt` · `POST /processos/{id}/finalizacao` (datas do ofício) — todos em `ProcessoAnexoController` | `AnexoStorageService` + `OficioService` | `detalhe.html#pane-finalizacao` |
+| 6 | Resposta ao solicitante | `POST /processos/{id}/finalizar` (`ProcessoDecisaoController.finalizar`) — ação única, dispara o e-mail automaticamente | `ProcessoService.finalizarResposta` (envia e-mail com o anexo obrigatório + marca `emailEnviadoSolicitante=true`) | `detalhe.html#pane-finalizacao` |
 
-- O controller monolítico `ProcessoController` foi dividido em:
-  `ProcessoListaController` (busca/filtro/paginação), `ProcessoDetalheController`
-  (detalhe/recebimento), `ProcessoDecisaoController` (envio/pareceres/decisão/
-  e-mails/lembretes) e `ProcessoAnexoController` (upload/download/exclusão de
-  anexos, ofício, comprovantes, relatório).
-- Operador acessa o processo via `GET /processos/{id}` (`ProcessoDetalheController`),
-  que monta o modelo completo com abas, checklist, pareceres, anexos e textos de
-  e-mail. Cada aba chama seu próprio endpoint POST.
-- A decisão automática (`tentarDecisaoAutomatica`) é chamada após salvar
-  pareceres, retomar análise e na resposta-avaliador — não precisa mais de um
-  passo separado do operador para maioria simples.
+Notas importantes sobre a tabela acima (histórico ↔ estado atual):
 
-## Regra de decisão (inalterada)
+- **Passo 1 (Recebimento) é sempre automático desde 2026-07-27.** Não existe
+  mais cadastro manual "do zero": `GET/POST /processos` (`novo`/`salvar` em
+  `ProcessoDetalheController`) **exigem** `origemSolicitacaoOnlineId` — todo
+  `Processo` nasce de uma `SolicitacaoOnline` convertida pelo Portal do
+  Solicitante. O antigo endpoint `POST /{id}/recebimento`
+  (`ProcessoDetalheController.registrarRecebimento`, upload da solicitação
+  original + geração automática da capa) **foi removido** — não existe
+  processo real que ainda precise dele. Os valores de enum que essa etapa
+  usava (`TipoAnexo.SOLICITACAO_RECEBIDA`, `TipoAnexo.CAPA_PROCESSO`) também
+  **foram removidos do enum por completo** (commit `041dc43`,
+  2026-07-29) — hoje o `TipoAnexo` nem tem mais esses valores.
+- **Trava de anonimização (Passo 2, não documentada em versões anteriores
+  deste arquivo):** documentos que chegam pelo Portal do Solicitante entram
+  como `TipoAnexo.DOCUMENTO_PORTAL_NAO_ANONIMIZADO` (staging) e **nunca**
+  entram no PDF consolidado nem satisfazem `ProcessoValidator.
+  validarRegistroEnvio` enquanto o operador não confirmar explicitamente,
+  via `POST /{id}/documento-clinico/{anexoId}/confirmar-anonimizacao`, que
+  "Este documento foi anonimizado" (nome do paciente removido do corpo) —
+  aí sim o anexo é promovido para `TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR` e
+  passa a contar para o envio. É o único caminho de promoção; o operador
+  também pode simplesmente subir um arquivo já anonimizado direto por
+  `POST /{id}/documento-clinico`, que entra direto como
+  `DOCUMENTO_CLINICO_AVALIADOR`. Ação auditada (`ANONIMIZACAO_CONFIRMADA`,
+  com quem confirmou e qual anexo).
+- **O comprovante de envio aos avaliadores deixou de ser exigido em
+  2026-07-27** (os avaliadores hoje votam autenticados no Portal, que nunca
+  dependeu desse anexo). O valor de enum correspondente,
+  `TipoAnexo.EMAIL_ENVIADO_AVALIADORES`, **foi removido por completo do enum**
+  (commit `041dc43`) — não sobrou nem para leitura.
+- **Parecer só entra pelo Portal do Avaliador (desde 2026-07-27).** Os
+  endpoints que existiam para o operador lançar/editar parecer manualmente
+  (`POST /processos/{id}/resposta-avaliador` e
+  `POST /processos/{id}/pareceres`, em `ProcessoDecisaoController`) **foram
+  removidos**, junto com `OrigemParecer.OPERADOR_EMAIL` e
+  `TipoAnexo.RESPOSTA_AVALIADOR` (removidos do enum por completo no commit
+  `041dc43`). Hoje `OrigemParecer` só tem o valor `AVALIADOR_SISTEMA`.
+- **`decidir` hoje exige apenas os votos da maioria simples**, sem checagem
+  de anexo nenhuma (`pareceresRecebidosSemAnexo` não existe mais em
+  `ProcessoValidator`/`ProcessoService` — fazia sentido só quando conviviam
+  voto por operador/e-mail e voto autenticado; hoje só existe o voto
+  autenticado, que já é a prova de não-repúdio).
+- **Passo 6 é uma ação única** desde que `ProcessoService.finalizarResposta`
+  foi criado como fonte única da regra: um clique em "Finalizar" dispara o
+  e-mail (com o anexo obrigatório, comprovante SNT ou ofício, já embutido) e
+  marca `Processo.emailEnviadoSolicitante = true`. O upload manual de
+  `TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE` (print do e-mail) continua
+  disponível (`POST /{id}/comprovante-envio-solicitante`) mas **não é mais
+  exigido** para a etapa fechar — só o envio automático conta.
+
+## Regra de decisão (inalterada desde a criação do sistema)
+
 - Exatamente 3 médicos (`AVALIADORES_POR_PROCESSO = 3`).
-- 2 favoráveis = DEFERIDO (`FAVORAVEIS_PARA_DEFERIR = 2`); senão INDEFERIDO.
-- Decisão **manual** com **sugestão automática** (`sugerirDecisao`).
-- INDEFERIDO exige motivo + ofício (gerado em `decidir`).
-- **DEFERIDO exige** anexar o **comprovante de inserção da urgência renal no
-  SNT** (`TipoAnexo.COMPROVANTE_SNT`) antes de concluir a comunicação ao
-  solicitante. A etapa "Comprovante SNT" (`FluxoProcessoService`) bloqueia o
-  fluxo enquanto o anexo faltar, de forma simétrica ao ofício no indeferimento.
-  O comprovante é gerado fora do sistema (operador insere a urgência no SNT e
+- 2 favoráveis = DEFERIDO (`FAVORAVEIS_PARA_DEFERIR = 2`); 2 desfavoráveis =
+  INDEFERIDO (`DESFAVORAVEIS_PARA_INDEFERIR = 2`).
+- **Exceção do coordenador CET-RS:** se o `MembroUrgenciaRenal.coordenador`
+  votar Favorável, Deferido imediato com esse único voto
+  (`ProcessoValidator.temVotoCoordenadorFavoravel`/
+  `favoraveisNecessariosParaDeferir`). Indeferir continua exigindo sempre
+  ≥2 desfavoráveis — o coordenador não pesa mais para indeferir, e inclusive
+  fica **vedado** indeferir se ele já votou favorável (mesmo com 2
+  desfavoráveis registrados) — ver `ProcessoValidator.validarContagemVotos`.
+- Decisão **manual** (operador clica em Deferir/Indeferir/Cancelar) com
+  **sugestão automática** (`ProcessoValidator.sugerirDecisao`) — a decisão
+  automática de fato (sem clique do operador) também roda em dois gatilhos:
+  no evento (voto do avaliador, `ProcessoService.tentarDecisaoAutomatica`) e
+  numa varredura periódica de segurança (`DecisaoAutomaticaScheduler`,
+  configurável via `app.decisao-automatica.varredura.*`).
+- INDEFERIDO exige motivo + ofício (gerado em `decidir` via
+  `DecisaoFinalService`).
+- **DEFERIDO exige** o **comprovante de inserção da urgência renal no SNT**
+  (`TipoAnexo.COMPROVANTE_SNT`) antes de concluir a comunicação ao
+  solicitante (`ProcessoValidator.validarRespostaSolicitante`, checado tanto
+  no upload da etapa 5 quanto na finalização automática da etapa 6). O
+  comprovante é gerado fora do sistema (operador insere a urgência no SNT e
   salva o comprovante) e anexado ao processo.
 
 ## Painel (dashboard)
+
 - `web/HomeController` monta a planilha (`PainelLinha`) com os 3 médicos e o
   status de cada parecer; card "Em andamento" soma todos os status não-finais.
-- `templates/dashboard.html` usa os badges com as cores por status (slate,
-  azul, âmbar, violeta, verde, vermelho, cinza escuro) via helpers do enum.
+- `templates/dashboard.html` usa os badges com as cores por status via
+  helpers do enum (`getBootstrapBadge`).
 - `lista.html` e `detalhe.html` usam `status.bootstrapBadge`.
+- **O dashboard é 100% Bootstrap + `app.css`** (migrado do Tailwind no
+  commit `3bfba9b`, 2026-07-09). Não existe mais nenhum arquivo CSS gerado
+  por Tailwind no projeto (`static/css/tailwind-dashboard.css` foi apagado em
+  2026-07-29, junto com o `node_modules`/experimento bun/typescript nunca
+  usado — ver "Organização do repositório" no `CLAUDE.md`). **Não recriar**
+  esse arquivo nem reintroduzir Tailwind — o design system vive inteiramente
+  em `app.css` com variáveis `--rs-*`.
 
-## Pendências / pontos de atenção
+## Pontos de atenção
 
-- **Capa do processo não é gerada automaticamente:** o método
-  `RelatorioService.gerarCapaProcesso` não é chamado por nenhum controller —
-  a `CAPA_PROCESSO` só existe se alguém anexar manualmente. Avaliar se vale
-  automatizar no `registrarRecebimento`.
-- A transição para SOLICITA_INFORMACAO/ENVIADO é recalculada ao salvar
-  pareceres; nunca rebaixa um processo já finalizado.
-
-## Painel (Tailwind CSS estático/offline)
-
-### Como regenerar o CSS (após mudar classes do painel)
-
-1. Baixar o Tailwind CLI standalone (sem Node):
-   `tailwindcss-windows-x64.exe` v3.4.17 — github.com/tailwindlabs/tailwindcss/releases
-2. Config (`preflight:false`) com `content` apontando para **dois** arquivos:
-   - `src/main/resources/templates/dashboard.html`
-   - `src/main/java/br/gov/saude/sgpur/domain/StatusProcesso.java`
-     (contém as classes dinâmicas dos badges de status — slate/blue/amber/
-     violet/emerald/rose; o scanner não as veria só no HTML).
-3. Input: `@tailwind base; @tailwind components; @tailwind utilities;`
-4. `tailwindcss -c config.js -i input.css -o static/css/tailwind-dashboard.css --minify`
-
-> Importante: ao adicionar novas classes (ou novos status com novas cores no
-> enum), **regerar** o CSS, senão a classe não estará no arquivo estático.
+- A transição para `SOLICITA_INFORMACAO`/`ENVIADO` é recalculada a cada voto
+  (`atualizarStatusPorPareceres`); nunca rebaixa um processo já finalizado
+  (lança `IllegalStateException` se tentarem chamar isso sobre um processo
+  finalizado).
+- Processo ENCERRADO (`DEFERIDO`/`INDEFERIDO`/`CANCELADO`) trava as etapas
+  1-4 e o upload genérico/exclusão de anexos/lembretes
+  (`ProcessoValidator.edicaoBloqueada`); as etapas 5-6 continuam liberadas
+  (papelada pós-decisão). Só ADMIN reabre (`POST /processos/{id}/reabrir`).

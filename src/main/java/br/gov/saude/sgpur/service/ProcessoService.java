@@ -295,11 +295,6 @@ public class ProcessoService {
         return processoRepository.save(p);
     }
 
-    /** True se algum avaliador pediu informacao complementar (parecer SOLICITA_INFORMACAO). */
-    public boolean aguardandoInformacaoComplementar(Processo processo) {
-        return processo.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
-    }
-
     /** Atualiza apenas os dados descritivos do processo (numero e medicos nao mudam). */
     @Transactional
     public Processo atualizarDados(Long id, Processo form) {

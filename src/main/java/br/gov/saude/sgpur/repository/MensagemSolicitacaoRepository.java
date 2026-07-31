@@ -13,13 +13,9 @@ public interface MensagemSolicitacaoRepository extends JpaRepository<MensagemSol
 
     List<MensagemSolicitacao> findBySolicitacaoOnlineIdOrderByDataEnvioAsc(Long solicitacaoOnlineId);
 
-    long countBySolicitacaoOnlineIdAndLidaFalseAndRemetente(Long solicitacaoOnlineId, RemetenteMensagem remetente);
-
     long countByLidaFalseAndRemetente(RemetenteMensagem remetente);
 
     long countBySolicitacaoOnlineIdAndLidaFalseAndRemetenteAndRemetenteIdNot(Long solicitacaoOnlineId, RemetenteMensagem remetente, Long remetenteId);
-
-    long countBySolicitacaoOnlineIdAndLidaFalse(Long solicitacaoOnlineId);
 
     long countByLidaFalseAndRemetenteAndRemetenteIdNot(RemetenteMensagem remetente, Long remetenteId);
 
