@@ -1013,4 +1013,61 @@ class ProcessoServiceTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("cancelado");
     }
+
+    /**
+     * LACUNA CRITICA (regra deliberada e comentada no proprio metodo: "se o
+     * SMTP falha, nada e gravado - rollback de proposito", ao contrario de
+     * {@code RegistroEnvioService.enviarConvitesAvaliadores"). So o caminho
+     * feliz tinha teste ({@link #finalizarRespostaEnviaEmailESalvaMensagem()});
+     * este cobre a falha do SMTP.
+     *
+     * <p>O metodo envia o e-mail ANTES de mutar {@code p}/chamar
+     * {@code processoRepository.save} - por isso basta o mock devolver
+     * {@code false} e conferir que a MESMA instancia de {@code Processo} (nao
+     * uma copia) continua com os campos de resposta intocados: se um dia a
+     * ordem for invertida (mutar antes de checar o retorno do envio), este
+     * teste pega o regressao sem precisar de um {@code @SpringBootTest} - a
+     * mutacao em memoria aconteceria no mesmo objeto Java que o teste observa,
+     * banco real ou nao.</p>
+     */
+    @Test
+    void finalizarRespostaNaoGravaNadaQuandoEnvioDeEmailFalha() {
+        Processo p = comPareceres(ResultadoParecer.FAVORAVEL,
+                ResultadoParecer.FAVORAVEL, ResultadoParecer.NAO_FAVORAVEL);
+        p.setId(303L);
+        p.setStatus(StatusProcesso.DEFERIDO);
+        p.setSolicitanteEmail("solicitante@test.com");
+
+        Anexo comprovante = new Anexo();
+        comprovante.setTipo(TipoAnexo.COMPROVANTE_SNT);
+        comprovante.setNomeArquivo("comprovante.pdf");
+        p.addAnexo(comprovante);
+
+        when(processoRepository.findById(303L)).thenReturn(java.util.Optional.of(p));
+
+        var template = new EmailTemplate(
+                "deferido", "titulo", "icon",
+                "Assunto: Processo DEFERIDO", "Corpo do email de deferimento");
+        when(emailTemplateService.emailDeferido(p)).thenReturn(template);
+
+        when(anexoStorageService.buscarUltimoPorTipo(303L, TipoAnexo.COMPROVANTE_SNT))
+                .thenReturn(comprovante);
+        when(anexoStorageService.resolverArquivo(comprovante))
+                .thenReturn(java.nio.file.Paths.get("test.pdf"));
+        // SMTP fora do ar: enviarComAnexo devolve false (nao lanca).
+        when(emailSenderService.enviarComAnexo(
+                "solicitante@test.com", "Assunto: Processo DEFERIDO", "Corpo do email de deferimento",
+                java.nio.file.Paths.get("test.pdf").toFile(), "comprovante.pdf"))
+                .thenReturn(false);
+
+        assertThatThrownBy(() -> service.finalizarResposta(303L))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("Falha ao enviar e-mail");
+
+        // Nada gravado: nem o objeto em memoria foi mutado, nem o repositorio
+        // foi chamado para persistir a "resposta enviada" que nunca saiu.
+        assertThat(p.isEmailEnviadoSolicitante()).isFalse();
+        assertThat(p.getMensagemResposta()).isNull();
+        org.mockito.Mockito.verify(processoRepository, org.mockito.Mockito.never()).save(any());
+    }
 }
