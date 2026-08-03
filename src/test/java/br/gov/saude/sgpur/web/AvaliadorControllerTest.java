@@ -404,7 +404,7 @@ class AvaliadorControllerTest {
 
         verify(anexoStorage).salvar(eq(processo), eq(TipoAnexo.ANEXO_AVALIADOR), any(), any());
         verify(anexoRepo).save(anexo);
-        assert anexo.getParecer() == parecer;
+        org.assertj.core.api.Assertions.assertThat(anexo.getParecer()).isSameAs(parecer);
     }
 
     @Test

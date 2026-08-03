@@ -17,13 +17,9 @@ public interface MensagemSolicitacaoRepository extends JpaRepository<MensagemSol
 
     long countBySolicitacaoOnlineIdAndLidaFalseAndRemetenteAndRemetenteIdNot(Long solicitacaoOnlineId, RemetenteMensagem remetente, Long remetenteId);
 
-    long countByLidaFalseAndRemetenteAndRemetenteIdNot(RemetenteMensagem remetente, Long remetenteId);
-
     /** Total de mensagens do OPERADOR ainda nao lidas, somando TODAS as solicitacoes de um mesmo solicitante. */
     long countByRemetenteAndLidaFalseAndSolicitacaoOnlineUsuarioSolicitanteId(RemetenteMensagem remetente, Long usuarioSolicitanteId);
 
     @Query("SELECT DISTINCT m.solicitacaoOnline.id FROM MensagemSolicitacao m WHERE m.lida = false AND m.remetente = :remetente")
     Set<Long> findDistinctSolicitacaoOnlineIdsByLidaFalseAndRemetente(@Param("remetente") RemetenteMensagem remetente);
-
-    void deleteBySolicitacaoOnlineId(Long solicitacaoOnlineId);
 }

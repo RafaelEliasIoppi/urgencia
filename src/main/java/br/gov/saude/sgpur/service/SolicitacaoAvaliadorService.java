@@ -73,10 +73,8 @@ public class SolicitacaoAvaliadorService {
         if (validos.size() == 1) {
             // Valida se o PDF tem ao menos uma pagina (evita "The document has no pages" no
             // carimbo) - com mensagem especifica de documento unico.
-            try {
-                PdfReader reader = new PdfReader(validos.get(0));
+            try (PdfReader reader = new PdfReader(validos.get(0))) {
                 int paginas = reader.getNumberOfPages();
-                reader.close();
                 if (paginas == 0) {
                     throw new IllegalStateException(
                             "O documento clinico anexado esta vazio (0 paginas). "
@@ -161,11 +159,9 @@ public class SolicitacaoAvaliadorService {
         String linha2 = "Processo CET-RS " + nvl(p.getNumero()) + " - Paciente " + iniciais;
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        try {
-            PdfReader reader = new PdfReader(pdf);
+        try (PdfReader reader = new PdfReader(pdf)) {
             int paginas = reader.getNumberOfPages();
             if (paginas == 0) {
-                reader.close();
                 throw new IllegalStateException(
                         "O PDF consolidado esta vazio (0 paginas). "
                                 + "Verifique os documentos clinicos anexados e tente novamente.");
@@ -202,7 +198,6 @@ public class SolicitacaoAvaliadorService {
                 over.restoreState();
             }
             stamper.close();
-            reader.close();
             return out.toByteArray();
         } catch (DocumentException | java.io.IOException e) {
             throw new IllegalStateException("Falha ao carimbar o cabecalho do PDF dos avaliadores", e);

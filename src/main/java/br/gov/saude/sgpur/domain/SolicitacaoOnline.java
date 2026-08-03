@@ -10,6 +10,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -210,8 +211,14 @@ public class SolicitacaoOnline {
         this.observacoesTriagem = observacoesTriagem;
     }
 
+    /**
+     * Somente leitura: use {@link #addAnexo(AnexoSolicitacaoOnline)} para
+     * adicionar - mesmo motivo de {@code Processo.getAnexos()}: um
+     * {@code .add()} direto aqui deixaria o {@code AnexoSolicitacaoOnline}
+     * sem {@code solicitacaoOnline} setado, quebrando a navegacao inversa.
+     */
     public List<AnexoSolicitacaoOnline> getAnexos() {
-        return anexos;
+        return Collections.unmodifiableList(anexos);
     }
 
     public void setAnexos(List<AnexoSolicitacaoOnline> anexos) {

@@ -254,8 +254,12 @@ public class ExportacaoProcessoService {
                 : (par.isImpedido() ? "Impedido (conflito de interesse)" : "Pendente"));
             campo(sb, "  Data de envio", data(par.getDataEnvio()));
             campo(sb, "  Data da resposta", data(par.getDataResposta()));
-            campo(sb, "  Origem do voto", par.getOrigem() != null
-                ? par.getOrigem().getDescricao() : "Lancado pelo operador via e-mail");
+            // Origem so e preenchida quando o parecer ja foi votado (unico
+            // caminho hoje e o Portal do Avaliador, ver OrigemParecer) - null
+            // aqui significa apenas "ainda nao votado", nunca um lancamento
+            // manual pelo operador (esse caminho foi removido do enum em
+            // 2026-07-29, commit 041dc43).
+            campo(sb, "  Origem do voto", par.getOrigem() != null ? par.getOrigem().getDescricao() : null);
             campo(sb, "  Registrado em", dataHora(par.getDataHoraVoto()));
             campo(sb, "  Registrado por", par.getVotadoPor());
             campo(sb, "  Justificativa", par.getJustificativa());

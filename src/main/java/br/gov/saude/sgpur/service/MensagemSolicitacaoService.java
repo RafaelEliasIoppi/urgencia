@@ -92,11 +92,6 @@ public class MensagemSolicitacaoService {
         repository.save(msg);
     }
 
-    @Transactional
-    public void excluirPorSolicitacao(Long solicitacaoOnlineId) {
-        repository.deleteBySolicitacaoOnlineId(solicitacaoOnlineId);
-    }
-
     private static final DateTimeFormatter ISO_CHAT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     /**

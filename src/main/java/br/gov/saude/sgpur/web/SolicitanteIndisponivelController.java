@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
  */
 @Controller
 @RequestMapping("/solicitante")
-@ConditionalOnExpression("!${app.solicitante.habilitado:false}")
+@ConditionalOnExpression("!${app.solicitante.habilitado:true}")
 public class SolicitanteIndisponivelController {
 
     @GetMapping({"", "/**"})

@@ -154,14 +154,12 @@ public class RegistroEnvioService {
         for (int i = 0; i < partes.size(); i++) {
             byte[] bytes = partes.get(i);
             String nome = partesNomes.get(i);
-            try {
-                com.lowagie.text.pdf.PdfReader chk = new com.lowagie.text.pdf.PdfReader(bytes);
+            try (com.lowagie.text.pdf.PdfReader chk = new com.lowagie.text.pdf.PdfReader(bytes)) {
                 if (chk.getNumberOfPages() > 0) {
                     validos.add(bytes);
                 } else {
                     ignorados.add(nome + " (PDF sem paginas)");
                 }
-                chk.close();
             } catch (Exception e) {
                 ignorados.add(nome + " (PDF corrompido ou protegido por senha)");
             }
