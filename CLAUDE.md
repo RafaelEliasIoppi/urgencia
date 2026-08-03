@@ -634,6 +634,17 @@ diretórios `src/`, `docs/`, `deploy/`, `scripts/`, `teste-pdfs/`, `.github/`.
   Nenhum teste local pega isso sozinho: só se manifesta contra o Postgres
   real.
 
+  **Reconfirmado por SQL direto em produção em 2026-08-03** (vistoria SSH
+  real, não presumido): continuam existindo exatamente as mesmas **2**
+  constraints — `controle_urgencia_situacao_check` (4 valores) e
+  `mensagem_solicitacao_remetente_check` (2 valores) —, ambas completas.
+  Nenhuma constraint nova apareceu nas colunas de `anexo`, `usuario`,
+  `parecer`, `processo` ou `solicitacao_online`. Na mesma vistoria, também
+  foi confirmado por SQL que **nenhuma coluna `@Version` está com NULL**
+  hoje em `processo`, `parecer`, `usuario`, `membro_urgencia_renal` nem
+  `solicitacao_online` — os backfills manuais documentados neste arquivo
+  (`versao = 0 WHERE versao IS NULL`) continuam íntegros, sem regressão.
+
 ## Sessão de 2026-07-28 (correções na VM)
 Todas as pendências de infra resolvidas neste ciclo:
 
@@ -736,14 +747,47 @@ Nota: o **deploy automático via GitHub Actions foi corrigido em 2026-07-10**
 (o secret `SAUR_ORACLE_SSH_KEY` estava vazio/malformado desde 21/07, todo
 `Deploy` falhava; corrigido + também corrigido um falso-negativo no
 health-check que tinha timeout curto demais pro boot real de ~76s contra o
-Neon). Confirmado funcionando ponta a ponta (CI -> Deploy) - **não é mais
-pendência**, já está no ar.
+Neon). Confirmado funcionando ponta a ponta (CI -> Deploy) na época.
+**Atualização de 2026-08-03: voltou a ser pendência** — ver seção "Deploy"
+abaixo, o repositório foi migrado e o secret não acompanhou.
 
 ## Deploy
 Artefatos em `deploy/` (systemd, nginx, env de exemplo, guia). Host alvo:
 **Oracle Always Free (São Paulo)** — ver `deploy/README-deploy.md`.
 A **Vercel não hospeda o app Java** (histórico: só servia como front pro
 Neon, que nem é mais o banco de produção — ver status abaixo).
+
+**PENDÊNCIA ABERTA (achado em vistoria SSH real de 2026-08-03): deploy
+automático via GitHub Actions está QUEBRADO desde 2026-07-31.** O
+repositório foi migrado para `centraldetransplante-cyber/urgencia` (criado
+2026-07-31 12:32 UTC, **público**) — secrets do GitHub Actions **não
+acompanham** o código num push/migração de repo, e o secret
+`SAUR_ORACLE_SSH_KEY` nunca foi recadastrado no repositório novo. Os 3
+Deploys que rodaram desde a migração (31/07, 12:35/16:09/17:47 UTC) falharam
+todos na etapa de entrega, com:
+```
+Load key "/home/runner/.ssh/deploy_key": error in libcrypto
+ubuntu@163.176.163.213: Permission denied (publickey)
+```
+O CI (build/testes) passa normalmente — só a entrega (`scp`/`ssh` para a VM)
+quebra. **Correção:** recadastrar o secret `SAUR_ORACLE_SSH_KEY` nas
+configurações do repositório novo, colando o **conteúdo integral** da chave
+privada (`~/.ssh/saur_oracle`), incluindo as linhas `BEGIN`/`END` e a quebra
+de linha final — a ausência dessa quebra de linha final é a causa clássica
+de `error in libcrypto` (OpenSSH recusa a chave por formatação, não por
+conteúdo errado). Até isso ser feito, **todo deploy tem que ser manual**
+(procedimento de `scp` + `systemctl restart` já documentado no topo deste
+arquivo, seção "Como rodar / testar").
+
+**Versão em produção hoje (confirmado por SSH em 2026-08-03, não por
+suposição):** o jar rodando é o commit `a8c3b02` (`/opt/sgpur/sgpur.jar`,
+gerado 2026-07-30 02:30 UTC, 70.411.943 bytes) — confirmado por marcadores
+estruturais no jar: 9 classes em `br/gov/saude/sgpur/bootstrap/`, 0 sobras
+em `config/` e `Auditavel.class` presente, exatamente a reorganização de
+pacotes que `a8c3b02` introduziu. Os commits `6615143` e `d94381d` (ambos de
+31/07, já na `main`) **ainda não estão em produção** por causa da pendência
+acima — qualquer coisa que dependa deles (inclusive texto de documentação)
+só vale para o repositório, não para o sistema que está no ar.
 
 **Status em produção (2026-07-26)**: SAUR está no ar em
 https://urgenciarenal.duckdns.org/, envio de e-mail (SMTP Gmail) funcionando.
@@ -1047,4 +1091,67 @@ legados (`SOLICITACAO_RECEBIDA`, `CAPA_PROCESSO`, `EMAIL_ENVIADO_AVALIADORES`,
 (não só do caminho de escrita). Corrigido nesta sessão para refletir que os
 valores não existem mais no código, sem mexer em nenhuma regra de negócio ou
 comportamento — só o texto do guia estava desatualizado.
+
+**Risco encerrado em 2026-08-03:** a remoção do commit `041dc43` foi
+verificada por SQL direto no Postgres de produção (não mais "confirmado
+pelo usuário", ver seção da vistoria SSH abaixo) — `parecer.origem` só tem
+`AVALIADOR_SISTEMA`, `processo.status` só tem `DEFERIDO`/`INDEFERIDO`
+(nenhum processo em produção hoje está em outro status) e `anexo.tipo` só
+tem os 7 valores atuais do enum (`ANEXO_AVALIADOR`, `COMPROVANTE_SNT`,
+`DOCUMENTO_CLINICO_AVALIADOR`, `INFO_COMPLEMENTAR`,
+`OFICIO_INDEFERIMENTO`, `RELATORIO_FINAL`, `SOLICITACAO_AVALIADOR`).
+Nenhum valor removido está presente em nenhuma linha real. Trata-se de um
+risco **encerrado**, não mais um item "a confirmar".
+
+## Vistoria de 2026-08-03 (inspeção SSH real na VM de produção)
+
+Levantamento feito diretamente na VM (`ubuntu@163.176.163.213`) via SSH, não
+por suposição — todos os itens abaixo foram checados no servidor.
+
+1. **Deploy automático quebrado** — ver seção "Deploy" acima (pendência
+   reaberta: migração de repositório não migrou o secret
+   `SAUR_ORACLE_SSH_KEY`).
+2. **A VM é COMPARTILHADA, não dedicada ao SAUR.** Rodando na mesma
+   instância: `sgpur.service` (SAUR), `metamorph.service` (METAMORPH chat,
+   Flask + Gunicorn), `petrobras.service` (Petrobras Study Tracker) e
+   `sentinela.service` (Sentinela, bot de auditoria de segurança), além de
+   `nginx` e `postgresql@14-main` compartilhados. Recursos totais: **956 MB
+   de RAM** (529 usados, 88 livres, 272 disponíveis no momento da vistoria)
+   e disco de 45 G com 37 G livres. O SAUR roda com `-Xmx512m`. **A folga de
+   memória é apertada** — qualquer uma das outras 3 aplicações crescendo em
+   uso de RAM é um risco real de OOM no SAUR (e vice-versa). O certbot dessa
+   VM gerencia certificado para **4 domínios**: `urgenciarenal`,
+   `metamorphchat`, `petrobrasacademy` e `sentinela-bot` — não presumir que
+   qualquer mudança em nginx/certbot na VM é exclusiva do SAUR.
+3. **Versão em produção**: ver bloco "Versão em produção hoje" na seção
+   "Deploy" acima (commit `a8c3b02`).
+4. **Enums removidos**: ver bloco "Risco encerrado" logo acima.
+5. **Integridade do banco**: ver nota de 2026-08-03 na seção de CHECK
+   constraints/`@Version` acima. Volume atual em produção: 4 processos, 6
+   solicitações online, 8 usuários, 25 anexos.
+6. **Portal do Solicitante está LIGADO em produção** —
+   `/opt/sgpur/sgpur.env` tem `SGPUR_SOLICITANTE_HABILITADO=true` (confirmado
+   lendo o arquivo real na VM, não o `.example`). Isso resolve a ambiguidade
+   que `docs/PROTOCOLO-TESTE-PRODUCAO.md` registrava (o `sgpur.env` real é
+   gitignored, então não dava pra confirmar só pelo repositório) — a seção 13
+   desse protocolo foi atualizada para refletir o valor confirmado.
+7. **Backups saudáveis, com um risco futuro identificado.** Cron:
+   `0 3 * * *` (usuário `postgres`) roda `/opt/sgpur/backup-db.sh`; `0 5 * *
+   0` (root) roda a rotação de jars. Backups diários **ininterruptos de
+   2026-07-25 a 2026-08-03** (mais recente: `sgpur-20260803-030001.sql.gz`),
+   sync offsite via rclone para o Google Drive funcionando (inclui anexos).
+   **Risco:** o rclone avisa em toda execução que está usando o `client_id`
+   compartilhado/padrão do rclone, que **vai parar de funcionar durante
+   2026**. Quando isso acontecer, o backup offsite passa a falhar
+   **silenciosamente** (o backup local continua rodando normalmente, então
+   ninguém percebe pela ausência de erro visível) — e perder a VM sem backup
+   offsite já foi estabelecido como cenário catastrófico em vistorias
+   anteriores. **Correção recomendada:** criar um `client_id` próprio no
+   Google Cloud Console para o rclone, ver
+   https://rclone.org/drive/#making-your-own-client-id — não depender do
+   client_id compartilhado além de 2026.
+8. **Saúde geral confirmada**: `sgpur.service` está `active`/`enabled` desde
+   30/07 02:30 UTC, **zero erros** no log desde então. Certificado de
+   `urgenciarenal.duckdns.org` válido até 2026-10-05, `certbot.timer` ativo e
+   rodando normalmente.
 

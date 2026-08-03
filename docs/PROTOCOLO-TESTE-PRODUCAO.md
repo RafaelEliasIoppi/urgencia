@@ -316,7 +316,7 @@ O cancelamento pode ser feito por dois lados — teste os dois se possível:
       confirme responsividade da lista (`table-responsive`, botões de ação
       não estourando em mobile).
 
-## 13. Portal do Solicitante — estado real em produção (AMBÍGUO, ver nota)
+## 13. Portal do Solicitante — estado real em produção (CONFIRMADO: LIGADO)
 
 O Portal do Solicitante é controlado pela flag `app.solicitante.habilitado`
 (env var `SGPUR_SOLICITANTE_HABILITADO`). O código tem defaults diferentes
@@ -330,33 +330,25 @@ por perfil:
 - `deploy/sgpur.env.example` (o modelo do arquivo de env real da VM) **não
   define `SGPUR_SOLICITANTE_HABILITADO` em lugar nenhum.**
 
-**Não foi possível confirmar neste levantamento qual é o valor efetivo em
-produção hoje**, porque o `sgpur.env` real da VM está fora do repositório
-(gitignored, só existe no servidor) — não dá para inspecioná-lo por aqui.
+**Confirmado por inspeção SSH direta na VM em 2026-08-03** (versões
+anteriores deste protocolo marcavam esta seção como "ambígua", porque o
+`sgpur.env` real é gitignored e não dava para inspecionar só pelo
+repositório): o `/opt/sgpur/sgpur.env` real da VM tem
+`SGPUR_SOLICITANTE_HABILITADO=true` — o Portal do Solicitante está **ligado**
+em produção. As seções 2, 5b (parte do solicitante) e 10 (cancelamento pelo
+solicitante) deste protocolo **se aplicam normalmente**.
 
-Há, porém, um indício forte de que está **ligado** (`true`) na VM: desde
-2026-07-27 **todo** `Processo` só pode ser criado a partir de uma
-`SolicitacaoOnline` convertida (`ProcessoDetalheController.novo`/`salvar`
-retornam erro sem `origemSolicitacaoOnlineId`, e o próprio endpoint fica
-condicionado ao módulo — se estivesse desligado, seria **impossível cadastrar
-qualquer processo novo em produção**, o que contradiz o sistema estar em uso
-normal desde então). Mas isso é inferência, não confirmação direta.
-
-**Antes de testar esta seção, confirme o estado real rodando:**
+Se quiser confirmar visualmente antes de testar, rode:
 ```
 GET https://urgenciarenal.duckdns.org/solicitante
 ```
-como usuário deslogado ou com perfil que não seja SOLICITANTE:
-- Se o módulo estiver **desligado**, a rota mostra uma **tela de aviso**
-  (`solicitante/indisponivel.html`, via `SolicitanteIndisponivelController`)
-  — **não é mais um 404 cru** (isso mudou depois que um usuário SOLICITANTE
-  cadastrado ficava sem nenhum lugar navegável ao logar com o módulo
-  desligado; corrigido em 2026-07-26). Se você vir essa tela de aviso em vez
-  do formulário de nova solicitação, o módulo está desligado e as seções 2,
-  5b (parte do solicitante) e 10 (cancelamento pelo solicitante) deste
-  protocolo não se aplicam até alguém ligar a flag na VM.
-- Se aparecer o formulário/login do Portal do Solicitante normalmente, o
-  módulo está ligado — pode seguir o protocolo como descrito.
+como usuário deslogado ou com perfil que não seja SOLICITANTE — deve
+aparecer o formulário/login do Portal do Solicitante normalmente. (Se um dia
+a flag for desligada na VM, essa rota passa a mostrar uma tela de aviso
+própria, `solicitante/indisponivel.html` via
+`SolicitanteIndisponivelController`, em vez de 404 cru — mudança de
+2026-07-26 para usuários SOLICITANTE cadastrados não ficarem sem lugar
+navegável.)
 
 ## 14. Responsividade (mobile)
 
