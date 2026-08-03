@@ -41,6 +41,12 @@ deploy/ACESSO-VM.local.md
 *.key
 *.pem
 id_rsa*
+# A chave da VM Oracle nao tem extensao (~/.ssh/saur_oracle), entao nao era
+# pega por *.key/*.pem/id_rsa* — e este repo e PUBLICO. Regras abaixo cobrem
+# o nome dela e a pasta de trabalho onde ela e colada no Codespace.
+saur_oracle*
+*_ed25519*
+/.chaves-local/
 
 ### Pacote distribuivel (gerado) ###
 /dist/
