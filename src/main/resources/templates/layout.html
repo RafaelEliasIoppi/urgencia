@@ -18,7 +18,11 @@
            hash do conteudo (app-<hash>.css), mudando sozinho quando o CSS muda.
            Um ?v=timestamp gerado por request invalidava o cache a cada
            navegacao, obrigando o navegador a rebaixar o CSS inteiro em toda
-           tela. Comentario de parser (<!--/* */-->): nao vai para o HTML. */-->
+           tela.
+           NAO escrever a sintaxe literal de comentario de parser aqui dentro:
+           a sequencia de fechamento encerraria ESTE comentario mais cedo e o
+           resto do texto vazaria para a pagina (bug real, visivel em producao
+           em todas as telas ate 2026-08-03, porque isto e o layout base). */-->
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
