@@ -22,8 +22,10 @@ import java.nio.file.Path;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -282,6 +284,7 @@ class RegistroEnvioServiceTest {
         Parecer a = parecerPendente("Dr. A", "a@hcpa.br");
         Parecer b = parecerPendente("Dr. B", "b@hcpa.br");
         when(processoService.pareceresPendentesComEmail(1L)).thenReturn(java.util.List.of(a, b));
+        when(processoService.reivindicarConviteAvaliador(any(), anyInt())).thenReturn(true);
         when(emailTemplateService.emailConviteAvaliador(eq(processo), any())).thenReturn(templateConvite());
         when(emailSenderService.enviar(anyString(), anyString(), anyString())).thenReturn(true);
 
@@ -305,6 +308,7 @@ class RegistroEnvioServiceTest {
         Parecer comEmail = parecerPendente("Dr. B", "b@hcpa.br");
         when(processoService.pareceresPendentesComEmail(1L))
             .thenReturn(java.util.List.of(semEmail, comEmail));
+        when(processoService.reivindicarConviteAvaliador(any(), anyInt())).thenReturn(true);
         when(emailTemplateService.emailConviteAvaliador(eq(processo), any())).thenReturn(templateConvite());
         when(emailSenderService.enviar(anyString(), anyString(), anyString())).thenReturn(true);
 
@@ -321,6 +325,7 @@ class RegistroEnvioServiceTest {
     void falhaDeSmtpViraAvisoEAuditoriaSemLancarExcecao() {
         when(processoService.pareceresPendentesComEmail(1L))
             .thenReturn(java.util.List.of(parecerPendente("Dr. A", "a@hcpa.br")));
+        when(processoService.reivindicarConviteAvaliador(any(), anyInt())).thenReturn(true);
         when(emailTemplateService.emailConviteAvaliador(eq(processo), any())).thenReturn(templateConvite());
         when(emailSenderService.enviar(anyString(), anyString(), anyString())).thenReturn(false);
 
@@ -329,6 +334,50 @@ class RegistroEnvioServiceTest {
         assertThat(r.enviados()).isZero();
         assertThat(r.avisos()).containsExactly("Dr. A (falha no envio do e-mail)");
         verify(auditoria).registrar(eq("CONVITE_AVALIADOR_FALHA"), anyString());
+    }
+
+    /**
+     * TRAVA DE DUPLICIDADE (bug real de producao, 2026-08-03): quando
+     * {@code ProcessoService.reivindicarConviteAvaliador} devolve
+     * {@code false} - simulando outra execucao concorrente/duplo-clique que ja
+     * reivindicou o mesmo parecer dentro da janela - nenhum e-mail e enviado
+     * para esse avaliador, o resultado NAO conta como "enviado" nem como
+     * "aviso" (nao e erro para o operador), e a auditoria registra o motivo.
+     */
+    @Test
+    void parecerJaReivindicadoDentroDaJanelaNaoEnviaEmailDeNovo() {
+        Parecer a = parecerPendente("Dr. A", "a@hcpa.br");
+        when(processoService.pareceresPendentesComEmail(1L)).thenReturn(java.util.List.of(a));
+        when(processoService.reivindicarConviteAvaliador(any(), anyInt())).thenReturn(false);
+
+        RegistroEnvioService.ConvitesResultado r = service.enviarConvitesAvaliadores(1L);
+
+        assertThat(r.enviados()).isZero();
+        assertThat(r.avisos()).isEmpty();
+        verifyNoInteractions(emailSenderService, emailTemplateService);
+        verify(auditoria).registrar(eq("CONVITE_AVALIADOR_IGNORADO_DUPLICADO"), anyString());
+        verify(auditoria, never()).registrar(eq("CONVITE_AVALIADOR_ENVIADO"), anyString());
+    }
+
+    /**
+     * Espelho do teste acima: se a reivindicacao for concedida (janela ja
+     * passou / primeiro envio), o fluxo normal de envio continua intacto -
+     * garante que o teste anterior falha pelo motivo certo (o guard em si),
+     * nao por um mock mal configurado.
+     */
+    @Test
+    void parecerComReivindicacaoConcedidaEnviaEmailNormalmente() {
+        Parecer a = parecerPendente("Dr. A", "a@hcpa.br");
+        when(processoService.pareceresPendentesComEmail(1L)).thenReturn(java.util.List.of(a));
+        when(processoService.reivindicarConviteAvaliador(any(), anyInt())).thenReturn(true);
+        when(emailTemplateService.emailConviteAvaliador(eq(processo), any())).thenReturn(templateConvite());
+        when(emailSenderService.enviar(anyString(), anyString(), anyString())).thenReturn(true);
+
+        RegistroEnvioService.ConvitesResultado r = service.enviarConvitesAvaliadores(1L);
+
+        assertThat(r.enviados()).isEqualTo(1);
+        verify(emailSenderService).enviar("a@hcpa.br", "Assunto do convite", "Corpo do convite");
+        verify(auditoria, never()).registrar(eq("CONVITE_AVALIADOR_IGNORADO_DUPLICADO"), anyString());
     }
 
     /**

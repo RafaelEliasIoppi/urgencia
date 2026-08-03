@@ -387,6 +387,28 @@ public class ProcessoService {
         return parecerRepository.findByProcessoIdAndResultadoIsNullAndDataEnvioIsNotNull(processoId);
     }
 
+    /**
+     * Reivindica, de forma atomica no banco, o direito de mandar o convite ao
+     * Portal do Avaliador para este parecer agora - usado por
+     * {@code RegistroEnvioService.enviarConvitesAvaliadores} para nao mandar
+     * o mesmo convite 2x quando o operador clica duas vezes (ou dois POSTs
+     * concorrentes chegam) em "Registrar envio". {@code true} = pode enviar
+     * (o timestamp ja foi gravado, fechando a janela para quem vier logo
+     * depois); {@code false} = outra chamada ja reivindicou dentro da janela
+     * de {@code janelaMinutos} - quem chamou deve tratar como duplicata (nao
+     * como erro) e pular o envio deste avaliador.
+     *
+     * <p>Precisa de transacao propria porque delega a um {@code @Modifying}
+     * de linha unica ({@link ParecerRepository#reivindicarConviteSeElegivel})
+     * - sem ela o Spring Data lanca {@code TransactionRequiredException}.
+     */
+    @Transactional
+    public boolean reivindicarConviteAvaliador(Long parecerId, int janelaMinutos) {
+        LocalDateTime agora = LocalDateTime.now();
+        LocalDateTime limiteJanela = agora.minusMinutes(janelaMinutos);
+        return parecerRepository.reivindicarConviteSeElegivel(parecerId, agora, limiteJanela) > 0;
+    }
+
     /** True se o processo esta encerrado e, portanto, com a edicao travada. */
     public boolean edicaoBloqueada(Processo processo) {
         return validator.edicaoBloqueada(processo);

@@ -148,9 +148,14 @@ public class RelatorioService {
             pdfBuilder.celula(t2, par.getDataResposta() != null ? par.getDataResposta().format(DATA) : "-",
                 Element.ALIGN_LEFT, false);
             if (par.getJustificativa() != null && !par.getJustificativa().isBlank()) {
+                // 9pt preto (era 8pt cinza-claro): a justificativa clinica e
+                // o conteudo mais relevante da tabela para auditoria futura,
+                // nao devia ser a fonte mais apagada e menor do documento.
+                // Mantido o italico so para distinguir visualmente de dado
+                // estruturado (medico/parecer/data), sem depender de cor.
                 PdfPCell cj = new PdfPCell(new Phrase(
                     "Justificativa: " + par.getJustificativa(),
-                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA)));
+                    FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, Color.BLACK)));
                 cj.setColspan(3);
                 cj.setPadding(4);
                 cj.setBorderColor(PdfRelatorioBuilder.CINZA_BORDA);
@@ -168,7 +173,17 @@ public class RelatorioService {
 
         pdfBuilder.secao(doc, fSecao, "3. Decisao final");
         PdfPTable t3 = pdfBuilder.tabelaDados();
-        pdfBuilder.linha(t3, "Resultado", p.getStatus().getDescricao());
+        // Resultado com destaque equivalente ao da capa (negrito, fonte
+        // maior, CAIXA ALTA + cor semantica) - e o dado mais importante do
+        // documento e antes era so mais uma linha rotulo:valor em 9pt igual
+        // as demais. A cor e bonus: "DEFERIDO"/"INDEFERIDO" em caixa alta e
+        // negrito ja carrega a informacao mesmo impresso em P&B.
+        Color corResultado = switch (p.getStatus()) {
+            case DEFERIDO -> PdfRelatorioBuilder.VERDE_ESCURO;
+            case INDEFERIDO -> PdfRelatorioBuilder.VERMELHO;
+            default -> CINZA;
+        };
+        pdfBuilder.linhaDestaque(t3, "Resultado", p.getStatus().getDescricao(), corResultado);
         pdfBuilder.linha(t3, "Data da decisao",
             p.getDataDecisao() != null ? p.getDataDecisao().format(DATA_HORA) : "-");
         pdfBuilder.linha(t3, "Motivo do indeferimento", PdfRelatorioBuilder.nvl(p.getMotivoIndeferimento()));
@@ -201,7 +216,12 @@ public class RelatorioService {
             doc.add(new Paragraph("Nenhum anexo registrado.",
                 FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA)));
         } else {
-            PdfPTable t5 = new PdfPTable(new float[]{3, 4, 2});
+            // Tipo ganhou mais espaco (33% -> 47%) e Data encolheu (22% ->
+            // 16%, sobra de sobra para "dd/mm/aaaa"): TipoAnexo.getDescricao()
+            // costuma ser bem mais longo que o nome do arquivo ou a data,
+            // e quebrava em 2 linhas de forma irregular com as proporcoes
+            // antigas (3, 4, 2).
+            PdfPTable t5 = new PdfPTable(new float[]{4.5f, 3.5f, 1.5f});
             t5.setWidthPercentage(100);
             t5.setSpacingBefore(4);
             pdfBuilder.cabecalho(t5, "Tipo", "Arquivo", "Data");

@@ -59,6 +59,23 @@ public class Parecer {
     private LocalDateTime dataHoraVoto;
 
     /**
+     * Quando o convite ao Portal do Avaliador foi disparado pela ultima vez
+     * para este parecer. Nulo enquanto nunca foi enviado. Usado apenas para
+     * fechar a janela de duplo-clique/duplo-POST de
+     * {@code RegistroEnvioService.enviarConvitesAvaliadores} (bug real de
+     * producao em 2026-08-03: clique duplo em "Registrar envio" mandou o
+     * convite 2x para os 3 avaliadores) - NAO confundir com {@code dataEnvio}
+     * (data em que o processo foi enviado para avaliacao, imutavel pelo
+     * reenvio de convite) nem com {@code dataHoraVoto} (quando o medico
+     * efetivamente votou). Nullable de proposito: coluna nova numa tabela ja
+     * populada nasce NULL, que e semanticamente correto ("nunca enviado") e
+     * dispensa backfill manual em prod (ao contrario de uma coluna tratada
+     * como obrigatoria, ex. @Version - ver CLAUDE.md).
+     */
+    @Column(name = "convite_enviado_em")
+    private LocalDateTime conviteEnviadoEm;
+
+    /**
      * Username de quem registrou o voto (para nao-repudio). Operador que lancou
      * o resultado em nome do medico, ou o proprio medico autenticado.
      */
@@ -166,6 +183,14 @@ public class Parecer {
 
     public void setDataHoraVoto(LocalDateTime dataHoraVoto) {
         this.dataHoraVoto = dataHoraVoto;
+    }
+
+    public LocalDateTime getConviteEnviadoEm() {
+        return conviteEnviadoEm;
+    }
+
+    public void setConviteEnviadoEm(LocalDateTime conviteEnviadoEm) {
+        this.conviteEnviadoEm = conviteEnviadoEm;
     }
 
     public String getVotadoPor() {

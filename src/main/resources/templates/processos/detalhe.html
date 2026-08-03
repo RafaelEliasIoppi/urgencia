@@ -496,7 +496,8 @@
                             Confirma o envio e gera o PDF consolidado com cabecalho para os avaliadores.
                         </p>
                         <form th:unless="${processo.status.finalizado}"
-                              th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post">
+                              th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
+                              data-lock-submit="Registrando envio...">
                             <button class="btn btn-primary btn-sm">
                                 <i class="bi bi-calendar-check"></i> Registrar envio (data de hoje)
                             </button>
@@ -725,7 +726,8 @@
                             complementar (salvo o voto favoravel do coordenador, que defere
                             mesmo assim). Resolva a pendencia na aba <strong>3. Respostas</strong>.
                         </p>
-                        <form th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post">
+                        <form th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post"
+                              data-lock-submit="Registrando decisao...">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
                                     <label class="form-label">Decisao</label>
@@ -931,7 +933,8 @@
 
                             <!-- Botao unico de envio -->
                             <form th:if="${processo.status.finalizado}"
-                                  th:action="@{/processos/{id}/finalizar(id=${processo.id})}" method="post">
+                                  th:action="@{/processos/{id}/finalizar(id=${processo.id})}" method="post"
+                                  data-lock-submit="Enviando resposta...">
                                 <button type="submit" class="btn btn-success"
                                         th:disabled="${(processo.status.name() == 'DEFERIDO' and comprovanteSnT == null)
                                             or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)
@@ -1062,6 +1065,7 @@
 
 <script th:replace="~{layout :: scripts}"></script>
 <script th:replace="~{layout :: confirmarAcaoScript}"></script>
+<script th:replace="~{layout :: lockSubmitScript}"></script>
 <script th:src="@{/js/processo-detalhe.js}"></script>
 </body>
 </html>

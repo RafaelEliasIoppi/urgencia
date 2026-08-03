@@ -3,9 +3,11 @@ package br.gov.saude.sgpur.repository;
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -85,4 +87,25 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
         + "where p.processo.id = :processoId and p.membro.id = :membroId")
     Optional<Parecer> findByProcessoIdAndMembroIdComProcesso(
         @Param("processoId") Long processoId, @Param("membroId") Long membroId);
+
+    /**
+     * Reivindica atomicamente o envio do convite ao Portal do Avaliador para
+     * UM parecer: so marca {@code conviteEnviadoEm = :agora} se ele nunca foi
+     * enviado ({@code IS NULL}) ou se o ultimo envio foi antes de
+     * {@code :limiteJanela} (fora da janela de duplo-clique). E um UPDATE
+     * condicional de linha unica, nao um "ler no Java, decidir, gravar depois"
+     * - fecha de verdade a janela de corrida entre duas execucoes concorrentes
+     * de {@code RegistroEnvioService.enviarConvitesAvaliadores} (bug real de
+     * producao, 2026-08-03: duplo clique em "Registrar envio" mandou o convite
+     * 2x aos 3 avaliadores do processo 05/2026, ~3s de defasagem entre as duas
+     * execucoes). Retorna 1 se este chamador "ganhou" a reivindicacao (deve
+     * enviar o e-mail agora), 0 se outra execucao ja reivindicou dentro da
+     * janela (deve pular como duplicata).
+     */
+    @Modifying
+    @Query("update Parecer p set p.conviteEnviadoEm = :agora where p.id = :parecerId "
+        + "and (p.conviteEnviadoEm is null or p.conviteEnviadoEm < :limiteJanela)")
+    int reivindicarConviteSeElegivel(@Param("parecerId") Long parecerId,
+                                      @Param("agora") LocalDateTime agora,
+                                      @Param("limiteJanela") LocalDateTime limiteJanela);
 }

@@ -36,6 +36,15 @@ public class RegistroEnvioService {
 
     private static final Logger log = LoggerFactory.getLogger(RegistroEnvioService.class);
 
+    /**
+     * Janela (minutos) dentro da qual um 2o disparo de convite ao MESMO
+     * parecer e tratado como duplicata (duplo-clique/duplo-POST) e pulado,
+     * em vez de reenviar o e-mail. Passado esse tempo, e tratado como reenvio
+     * legitimo (ex.: processo reaberto e reenviado horas/dias depois) e volta
+     * a enviar normalmente. Ver {@code ProcessoService.reivindicarConviteAvaliador}.
+     */
+    static final int JANELA_DUPLICIDADE_CONVITE_MINUTOS = 5;
+
     private final ProcessoService processoService;
     private final SolicitacaoAvaliadorService solicitacaoAvaliadorService;
     private final AnexoStorageService anexoStorage;
@@ -235,6 +244,17 @@ public class RegistroEnvioService {
      *
      * <p>Usa {@code pareceresPendentesComEmail} (resultado nulo + dataEnvio
      * preenchida), entao num reenvio quem ja votou NAO recebe convite de novo.
+     *
+     * <p><b>Guarda de duplicidade (2026-08-03):</b> antes de mandar o e-mail
+     * de cada parecer, reivindica atomicamente {@code Parecer.conviteEnviadoEm}
+     * via {@code ProcessoService.reivindicarConviteAvaliador} - se outra
+     * chamada (duplo-clique no botao "Registrar envio", duplo-POST, refresh)
+     * ja reivindicou esse MESMO parecer ha menos de
+     * {@link #JANELA_DUPLICIDADE_CONVITE_MINUTOS} minutos, este parecer e
+     * pulado (auditoria {@code CONVITE_AVALIADOR_IGNORADO_DUPLICADO}, nunca
+     * tratado como erro/aviso ao operador). Passada a janela, volta a mandar
+     * normalmente - nao interfere no reenvio legitimo apos o ADMIN reabrir o
+     * processo (ver {@code RegistrarEnvioDuasVezesIntegrationTest}).
      */
     public ConvitesResultado enviarConvitesAvaliadores(Long processoId) {
         Processo p = processoService.buscar(processoId);
@@ -242,6 +262,17 @@ public class RegistroEnvioService {
         int enviados = 0;
         for (Parecer parecer : processoService.pareceresPendentesComEmail(processoId)) {
             MembroUrgenciaRenal membro = parecer.getMembro();
+            // TRAVA DE DUPLICIDADE: reivindicacao atomica no banco antes de
+            // mandar o e-mail. Se outra execucao (duplo-clique, duplo-POST,
+            // dois operadores simultaneos) ja reivindicou este MESMO parecer
+            // ha menos de JANELA_DUPLICIDADE_CONVITE_MINUTOS, pula sem tratar
+            // como erro/aviso - o convite ja foi (ou esta sendo) enviado.
+            if (!processoService.reivindicarConviteAvaliador(parecer.getId(), JANELA_DUPLICIDADE_CONVITE_MINUTOS)) {
+                auditoria.registrar("CONVITE_AVALIADOR_IGNORADO_DUPLICADO",
+                    "Processo " + p.getNumero() + " - " + membro.getNome()
+                    + " - convite ja enviado ha menos de " + JANELA_DUPLICIDADE_CONVITE_MINUTOS + " min, ignorado como duplicata");
+                continue;
+            }
             if (membro.getEmail() == null || membro.getEmail().isBlank()) {
                 avisos.add(membro.getNome() + " (sem e-mail cadastrado)");
                 auditoria.registrar("CONVITE_AVALIADOR_NAO_ENVIADO",
