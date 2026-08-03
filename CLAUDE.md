@@ -757,8 +757,17 @@ Artefatos em `deploy/` (systemd, nginx, env de exemplo, guia). Host alvo:
 A **Vercel não hospeda o app Java** (histórico: só servia como front pro
 Neon, que nem é mais o banco de produção — ver status abaixo).
 
-**PENDÊNCIA ABERTA (achado em vistoria SSH real de 2026-08-03): deploy
-automático via GitHub Actions está QUEBRADO desde 2026-07-31.** O
+**RESOLVIDO em 2026-08-03 (mesmo dia).** O secret foi recadastrado e o
+pipeline voltou a funcionar: run `30844431318` concluiu `✓ deploy in 2m8s`
+— **primeiro deploy automático bem-sucedido neste repositório**. Produção
+está em `d94381d`, validada por fora (HTTP 200 + o marcador de código novo
+servido em `/js/processo-detalhe.js`) e por dentro (jar de 19:13, serviço
+`active`, **0 erros** no log). O relato abaixo fica como histórico do
+incidente, porque a causa raiz (migração de repositório) volta a valer em
+qualquer migração futura.
+
+**O incidente (achado em vistoria SSH real de 2026-08-03): deploy
+automático via GitHub Actions ficou QUEBRADO de 2026-07-31 a 2026-08-03.** O
 repositório foi migrado para `centraldetransplante-cyber/urgencia` (criado
 2026-07-31 12:32 UTC, **público**) — secrets do GitHub Actions **não
 acompanham** o código num push/migração de repo, e o secret
@@ -775,19 +784,21 @@ configurações do repositório novo, colando o **conteúdo integral** da chave
 privada (`~/.ssh/saur_oracle`), incluindo as linhas `BEGIN`/`END` e a quebra
 de linha final — a ausência dessa quebra de linha final é a causa clássica
 de `error in libcrypto` (OpenSSH recusa a chave por formatação, não por
-conteúdo errado). Até isso ser feito, **todo deploy tem que ser manual**
-(procedimento de `scp` + `systemctl restart` já documentado no topo deste
-arquivo, seção "Como rodar / testar").
+conteúdo errado). Foi exatamente essa a correção aplicada em 03/08.
 
-**Versão em produção hoje (confirmado por SSH em 2026-08-03, não por
-suposição):** o jar rodando é o commit `a8c3b02` (`/opt/sgpur/sgpur.jar`,
-gerado 2026-07-30 02:30 UTC, 70.411.943 bytes) — confirmado por marcadores
-estruturais no jar: 9 classes em `br/gov/saude/sgpur/bootstrap/`, 0 sobras
-em `config/` e `Auditavel.class` presente, exatamente a reorganização de
-pacotes que `a8c3b02` introduziu. Os commits `6615143` e `d94381d` (ambos de
-31/07, já na `main`) **ainda não estão em produção** por causa da pendência
-acima — qualquer coisa que dependa deles (inclusive texto de documentação)
-só vale para o repositório, não para o sistema que está no ar.
+**Lição para migrações futuras:** ao trocar o repositório remoto, o código
+vai junto mas **os secrets do Actions não** — conferir
+`Settings → Secrets → Actions` no destino **antes** de confiar no pipeline.
+O sintoma engana: o CI fica verde (build/testes rodam sem secret), só a
+etapa de entrega falha, então "está tudo verde" não significa "está no ar".
+
+**Como identificar a versão em produção sem adivinhar** (técnica usada em
+03/08): comparar marcadores estruturais dentro do jar com o histórico do
+git — ex. `sudo unzip -l /opt/sgpur/sgpur.jar | grep bootstrap/` distingue
+`a8c3b02` (9 classes em `br/gov/saude/sgpur/bootstrap/`, 0 sobras em
+`config/`, `Auditavel.class` presente) de qualquer commit anterior à
+reorganização de pacotes. Arquivos estáticos servidos publicamente
+(`/js/*.js`) também funcionam como marcador barato, por `curl`, sem SSH.
 
 **Status em produção (2026-07-26)**: SAUR está no ar em
 https://urgenciarenal.duckdns.org/, envio de e-mail (SMTP Gmail) funcionando.
