@@ -1070,4 +1070,23 @@ class ProcessoServiceTest {
         assertThat(p.getMensagemResposta()).isNull();
         org.mockito.Mockito.verify(processoRepository, org.mockito.Mockito.never()).save(any());
     }
+
+    /**
+     * reivindicarConviteAvaliador so delega ao UPDATE condicional do
+     * repositorio ({@code reivindicarConviteSeElegivel}) e traduz "0 linhas
+     * afetadas" / "1 linha afetada" para false/true - a trava de duplicidade
+     * de verdade (concorrencia real, banco de verdade) e coberta pelo teste de
+     * integracao {@code ConviteAvaliadorDuplicidadeIntegrationTest}, que nao
+     * pode mockar o repositorio.
+     */
+    @Test
+    void reivindicarConviteAvaliadorDelegaAoUpdateCondicionalDoRepositorio() {
+        when(parecerRepository.reivindicarConviteSeElegivel(
+                org.mockito.ArgumentMatchers.eq(10L), any(), any())).thenReturn(1);
+        when(parecerRepository.reivindicarConviteSeElegivel(
+                org.mockito.ArgumentMatchers.eq(20L), any(), any())).thenReturn(0);
+
+        assertThat(service.reivindicarConviteAvaliador(10L, 5)).isTrue();
+        assertThat(service.reivindicarConviteAvaliador(20L, 5)).isFalse();
+    }
 }

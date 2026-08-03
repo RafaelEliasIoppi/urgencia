@@ -44,7 +44,15 @@ class PdfRelatorioBuilder {
     }
 
     Document abrirDocumentoA4(ByteArrayOutputStream out) throws DocumentException {
-        Document doc = new Document(PageSize.A4, 40, 40, 50, 40);
+        // Margem superior 30pt (era 50pt): o PdfCabecalhoStamper ja expande
+        // 55pt no topo fisico da pagina para desenhar o cabecalho carimbado
+        // (logo + 2 linhas + regua em y=topo-44) - com 50pt de margem aqui,
+        // sobravam quase 4,3cm vazios entre a regua do cabecalho e o
+        // primeiro texto do corpo. 30pt deixa ~1,4cm de respiro (verificado
+        // nas coordenadas: regua em ~853pt de 897pt de altura da pagina
+        // expandida; texto do corpo passa a comecar em 841.89-30=811.89pt,
+        // ainda ~41pt abaixo da regua - nao encosta nela).
+        Document doc = new Document(PageSize.A4, 40, 40, 30, 40);
         PdfWriter.getInstance(doc, out);
         doc.open();
         return doc;
@@ -357,11 +365,41 @@ class PdfRelatorioBuilder {
         t.addCell(c2);
     }
 
+    /**
+     * Linha rotulo:valor com destaque visual - usada para o dado mais
+     * importante de uma secao (hoje so o resultado da decisao, secao "3.
+     * Decisao final" do sumario). Fonte maior + negrito + CAIXA ALTA
+     * garantem que a informacao sobreviva a impressao em preto-e-branco; a
+     * cor semantica ({@code cor}) e reforco visual, nunca o unico portador
+     * do dado (mesmo principio ja usado na capa, {@link #adicionarCapa}).
+     */
+    void linhaDestaque(PdfPTable t, String rotulo, String valor, Color cor) {
+        Font fr = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, CINZA);
+        Font fv = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, cor);
+        PdfPCell c1 = new PdfPCell(new Phrase(rotulo, fr));
+        c1.setPadding(6);
+        c1.setBorderColor(CINZA_BORDA);
+        c1.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        PdfPCell c2 = new PdfPCell(new Phrase(valor.toUpperCase(), fv));
+        c2.setPadding(6);
+        c2.setBorderColor(CINZA_BORDA);
+        c2.setVerticalAlignment(Element.ALIGN_MIDDLE);
+        t.addCell(c1);
+        t.addCell(c2);
+    }
+
+    // Cor de preenchimento unificada para "titulo de bloco": a barra de
+    // secao (secao(), acima) e o cabecalho de tabela (abaixo) usam AZUL,
+    // igual ja fazia a tabela de avaliadores da capa (adicionarCapa) - antes
+    // o cabecalho de tabela usava CINZA cheio, uma segunda cor de "titulo"
+    // sem nenhuma regra visivel de quando usar qual. VERDE_ESCURO/VERMELHO
+    // ficam reservados exclusivamente para o resultado da decisao.
     void cabecalho(PdfPTable t, String... cols) {
         Font f = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
         for (String col : cols) {
             PdfPCell c = new PdfPCell(new Phrase(col, f));
-            c.setBackgroundColor(CINZA);
+            c.setBackgroundColor(AZUL);
+            c.setBorderColor(CINZA_BORDA);
             c.setPadding(4);
             t.addCell(c);
         }
