@@ -7,21 +7,28 @@
 
 <div class="container my-4 container-narrow">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0" th:text="${solicitacao.pacienteNome}">Paciente</h1>
+        <h1 class="h3 mb-0">
+            <span th:text="${solicitacao.pacienteNome}">Paciente</span>
+            <span th:if="${solicitacao.processoGerado != null}" class="text-muted fs-5 font-monospace"
+                  th:text="'#' + ${solicitacao.processoGerado.numero}">#00/0000</span>
+        </h1>
+        <!-- Vocabulario unificado com o oficio (Deferido/Indeferido), nao mais
+             misturado com "Aprovada"/"Reprovada" - mesmo termo em badge,
+             timeline e texto do resultado (Fase 6 do relatorio de UI). -->
         <span th:switch="${solicitacao.status.name()}">
             <span th:case="'ENVIADA'" class="badge bg-warning text-dark fs-6">Aguardando triagem</span>
             <span th:case="'CONVERTIDA'">
                 <span th:if="${solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                       th:switch="${solicitacao.processoGerado.status.name()}">
-                    <span th:case="'DEFERIDO'" class="badge bg-success fs-6">Aprovada</span>
-                    <span th:case="'INDEFERIDO'" class="badge bg-danger fs-6">Reprovada</span>
+                    <span th:case="'DEFERIDO'" class="badge bg-success fs-6">Deferido</span>
+                    <span th:case="'INDEFERIDO'" class="badge bg-danger fs-6">Indeferido</span>
                     <span th:case="'CANCELADO'" class="badge bg-secondary fs-6">Cancelado</span>
                 </span>
                 <span th:unless="${solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                       class="badge bg-success fs-6">Convertida em processo</span>
             </span>
-            <span th:case="'APROVADA'" class="badge bg-success fs-6">Aprovada</span>
-            <span th:case="'REPROVADA'" class="badge bg-danger fs-6">Reprovada</span>
+            <span th:case="'APROVADA'" class="badge bg-success fs-6">Deferido</span>
+            <span th:case="'REPROVADA'" class="badge bg-danger fs-6">Indeferido</span>
             <span th:case="'DEVOLVIDA'" class="badge bg-danger fs-6">Devolvida</span>
             <span th:case="'CANCELADA'" class="badge bg-secondary fs-6">Cancelada</span>
             <span th:case="'PROCESSO_EXCLUIDO'" class="badge bg-danger fs-6">Processo excluido</span>
@@ -161,14 +168,14 @@
     <div th:if="${solicitacao.status.name() == 'APROVADA' or (solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'DEFERIDO')}"
          class="alert alert-success">
         <i class="bi bi-check-circle-fill"></i>
-        <strong>Pedido aprovado!</strong>
+        <strong>Deferido!</strong>
         <span th:if="${solicitacao.status.name() == 'CONVERTIDA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
             <strong>DEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul.
         </span>
         <span th:if="${solicitacao.status.name() == 'APROVADA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            analisado e <strong>APROVADO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
+            analisado e <strong>DEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
             resultando no reconhecimento da urgencia renal. A resposta oficial foi enviada por e-mail a sua equipe
             (<span th:text="${solicitacao.solicitanteEmail}">email</span>), contendo o comprovante de insercao no
             Sistema Nacional de Transplantes (SNT) em anexo.
@@ -181,7 +188,7 @@
         <div class="mt-2">
             <a th:if="${comprovanteSntAnexo != null}"
                th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${comprovanteSntAnexo.id})}"
-               class="btn btn-sm btn-outline-success">
+               class="btn btn-outline-success">
                 <i class="bi bi-file-earmark-check"></i> Baixar comprovante de insercao no SNT
             </a>
             <span th:unless="${comprovanteSntAnexo != null}" class="small text-muted">
@@ -192,14 +199,14 @@
     <div th:if="${solicitacao.status.name() == 'REPROVADA' or (solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'INDEFERIDO')}"
          class="alert alert-danger">
         <i class="bi bi-x-circle-fill"></i>
-        <strong>Pedido nao aprovado.</strong>
+        <strong>Indeferido.</strong>
         <span th:if="${solicitacao.status.name() == 'CONVERTIDA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
             <strong>INDEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul.
         </span>
         <span th:if="${solicitacao.status.name() == 'REPROVADA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            analisado e <strong>NAO APROVADO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
+            analisado e <strong>INDEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
             resultando no indeferimento da urgencia renal. O oficio com os detalhes foi enviado por e-mail a sua equipe
             (<span th:text="${solicitacao.solicitanteEmail}">email</span>).
         </span>
@@ -214,7 +221,7 @@
         <div class="mt-2">
             <a th:if="${oficioIndeferimentoAnexo != null}"
                th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${oficioIndeferimentoAnexo.id})}"
-               class="btn btn-sm btn-outline-danger">
+               class="btn btn-outline-danger">
                 <i class="bi bi-file-earmark-text"></i> Baixar oficio de indeferimento
             </a>
             <span th:unless="${oficioIndeferimentoAnexo != null}" class="small text-muted">
@@ -342,26 +349,70 @@
         </a>
         <!-- podeCancelar vem do servidor (SolicitacaoOnlineService.podeCancelar):
              mesma regra que o endpoint aplica, para o botao nunca aparecer num
-             pedido que o servico vai recusar. A mensagem de confirmacao muda
-             conforme o pedido ja tenha virado processo em analise ou nao. -->
-        <form th:if="${podeCancelar}"
+             pedido que o servico vai recusar. Ainda ENVIADA (nao virou
+             processo): confirmacao simples generica (data-confirm-msg). -->
+        <form th:if="${podeCancelar and solicitacao.status.name() == 'ENVIADA'}"
               th:action="@{/solicitante/{id}/cancelar(id=${solicitacao.id})}" method="post"
-              th:attr="data-confirm-msg=${solicitacao.status.name() == 'ENVIADA'}
-                  ? 'Cancelar esta solicitacao? Ela nao sera analisada.'
-                  : 'Este pedido ja virou o processo ' + ${solicitacao.processoGerado.numero}
-                    + ' e esta em analise pelos medicos. Cancelar mesmo assim? A analise sera encerrada e nao ha como desfazer.'">
+              data-confirm-msg="Cancelar esta solicitacao? Ela nao sera analisada.">
             <button type="submit" class="btn btn-outline-danger">
-                <i class="bi bi-x-circle"></i>
-                <span th:text="${solicitacao.status.name() == 'ENVIADA'}
-                    ? 'Cancelar solicitacao' : 'Cancelar processo'">Cancelar solicitacao</span>
+                <i class="bi bi-x-circle"></i> Cancelar solicitacao
             </button>
         </form>
+        <!-- Ja virou processo em analise: mesma protecao do voto do avaliador
+             (modal dedicado + checkbox de ciencia, ver solicitante-cancelar.js)
+             - acao igualmente irreversivel, antes tinha so o modal generico
+             (Fase 6 do relatorio de UI). -->
+        <form th:if="${podeCancelar and solicitacao.status.name() != 'ENVIADA'}" id="formCancelarProcesso"
+              th:action="@{/solicitante/{id}/cancelar(id=${solicitacao.id})}" method="post">
+            <button type="button" class="btn btn-outline-danger"
+                    data-bs-toggle="modal" data-bs-target="#modalConfirmarCancelamentoProcesso">
+                <i class="bi bi-x-circle"></i> Cancelar processo
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="modal fade" id="modalConfirmarCancelamentoProcesso" tabindex="-1" aria-hidden="true"
+     th:if="${podeCancelar and solicitacao.status.name() != 'ENVIADA'}">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title h5"><i class="bi bi-shield-exclamation text-danger"></i> Cancelar processo em analise</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
+                    <i class="bi bi-exclamation-octagon-fill fs-5"></i>
+                    <div>
+                        <strong>Este pedido ja virou o processo
+                            <span th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</span>
+                            e esta em analise pelos medicos.</strong>
+                        Cancelar encerra a analise em curso agora mesmo e nao pode ser desfeito.
+                    </div>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="checkConfirmaCancelamentoProcesso">
+                    <label class="form-check-label" for="checkConfirmaCancelamentoProcesso">
+                        Entendo que esta acao e definitiva e confirmo o cancelamento.
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-arrow-left"></i> Voltar
+                </button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarCancelamentoProcessoFinal" disabled>
+                    <i class="bi bi-x-circle"></i> Confirmar cancelamento
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
 <div th:replace="~{layout :: confirmModal}"></div>
 <script th:replace="~{layout :: scripts}"></script>
 <script th:replace="~{layout :: confirmarAcaoScript}"></script>
+<script th:src="@{/js/solicitante-cancelar.js}"></script>
 <script th:src="@{/js/chat-solicitacao.js}"></script>
 <script th:inline="javascript">
     iniciarChatSolicitacao({
