@@ -68,7 +68,12 @@
                     <th class="ps-3">Processo</th>
                     <th>O que falta</th>
                     <th>Solicitante</th>
-                    <th class="pe-3">Situação</th>
+                    <!-- text-center no <th> E no <td>: a celula pode ter ate 3
+                         badges (status + Encerrado + Sem comprovante SNT), que
+                         quebram em varias linhas. Alinhados a esquerda, ficavam
+                         desencontrados do cabecalho e com aparencia irregular
+                         entre as linhas da tabela. -->
+                    <th class="pe-3 text-center">Situação</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -82,7 +87,7 @@
                     <td class="small">
                         <span class="badge badge-rs-blue fw-normal" th:text="${p.solicitanteEquipe}">Equipe</span>
                     </td>
-                    <td class="pe-3">
+                    <td class="pe-3 text-center">
                         <span class="badge rounded-pill" th:classappend="${p.status.bootstrapBadge}">
                             <i class="bi" th:classappend="'bi-' + ${p.status.badgeIcone}"></i>
                             <span th:text="${p.status.descricao}">status</span>
