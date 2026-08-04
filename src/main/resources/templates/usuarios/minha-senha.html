@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4" style="max-width: 480px;">
+<main id="conteudo" class="container my-4" style="max-width: 480px;">
     <h1 class="h3 mb-3">Trocar minha senha</h1>
 
     <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
@@ -13,7 +13,7 @@
     <form th:action="@{/usuarios/minha-senha}" method="post" class="card" id="formSenha">
         <div class="card-body">
             <div class="mb-3">
-                <label class="form-label">Senha atual *</label>
+                <label class="form-label" for="senhaAtual">Senha atual *</label>
                 <div class="input-group">
                     <input type="password" name="senhaAtual" class="form-control" id="senhaAtual"
                            required autofocus autocomplete="current-password">
@@ -24,7 +24,7 @@
                 </div>
             </div>
             <div class="mb-3">
-                <label class="form-label">Nova senha *</label>
+                <label class="form-label" for="novaSenha">Nova senha *</label>
                 <div class="input-group">
                     <input type="password" name="novaSenha" class="form-control" id="novaSenha"
                            required minlength="8" autocomplete="new-password">
@@ -36,7 +36,7 @@
                 <div class="form-text text-muted">Minimo 8 caracteres, com maiuscula, minuscula, numero e caractere especial.</div>
             </div>
             <div class="mb-3">
-                <label class="form-label">Confirmar nova senha *</label>
+                <label class="form-label" for="confirmacao">Confirmar nova senha *</label>
                 <div class="input-group">
                     <input type="password" name="confirmacao" class="form-control" id="confirmacao"
                            required minlength="8" autocomplete="new-password">
@@ -55,7 +55,7 @@
             <button type="submit" class="btn btn-primary">Salvar nova senha</button>
         </div>
     </form>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <script>

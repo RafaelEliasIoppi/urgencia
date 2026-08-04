@@ -303,6 +303,28 @@ window.mostrarToast = function (mensagem, tipo) {
         });
     });
 
+    // ===== Passo bloqueado do wizard: bloquear de verdade =====
+    // Ate 2026-08-04 um passo ainda nao liberado tinha apenas
+    // "cursor: not-allowed" no CSS - parecia desabilitado e abria normalmente
+    // ao clique. Nao era falha de seguranca (os formularios de dentro sao
+    // escondidos pelo servidor), mas fazia a tela mentir sobre o proprio
+    // estado. Decisao de produto (usuario, 2026-08-04): bloquear de verdade.
+    //
+    // Precisa ser capture=true: o handler do Bootstrap fica no proprio
+    // elemento; sem capturar na descida, ele abriria a aba antes deste
+    // preventDefault rodar. O aria-disabled/tabindex="-1" que tiram o passo
+    // da ordem de Tab sao aplicados no template (detalhe.html).
+    document.querySelectorAll('.wizard-step.bloqueada').forEach(function (passo) {
+        passo.addEventListener('click', function (ev) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var motivo = passo.getAttribute('title');
+            if (motivo && typeof window.mostrarToast === 'function') {
+                window.mostrarToast(motivo, 'info');
+            }
+        }, true);
+    });
+
     // Scroll hint: mostra sombra no final do wizard-wrapper se houver scroll
     var wizardWrapper = document.getElementById('wizardWrapper');
     if (wizardWrapper) {

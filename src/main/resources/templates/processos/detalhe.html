@@ -6,7 +6,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container-fluid px-lg-5 my-4">
+<main id="conteudo" class="container-fluid px-lg-5 my-4">
     <div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-3 animate-fade-in">
         <div>
             <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
@@ -189,14 +189,14 @@
                             <div th:id="'mail' + ${it.index}" class="accordion-collapse collapse"
                                  data-bs-parent="#accEmails">
                                 <div class="accordion-body px-2 py-2">
-                                    <label class="form-label small fw-semibold">Assunto</label>
+                                    <label class="form-label small fw-semibold" th:for="'assunto' + ${it.index}">Assunto</label>
                                     <div class="input-group input-group-sm mb-2">
                                         <input type="text" class="form-control" th:id="'assunto' + ${it.index}"
                                                th:value="${mail.assunto}" readonly>
                                         <button class="btn btn-outline-secondary btn-copiar"
                                                 type="button" th:data-alvo="'assunto' + ${it.index}">Copiar</button>
                                     </div>
-                                    <label class="form-label small fw-semibold">Corpo</label>
+                                    <label class="form-label small fw-semibold" th:for="'corpo' + ${it.index}">Corpo</label>
                                     <textarea class="form-control mb-2" th:id="'corpo' + ${it.index}"
                                               rows="5" th:text="${mail.corpo}"></textarea>
                                     <div class="d-flex gap-2">
@@ -289,9 +289,26 @@
                     <!-- Passos derivados de FluxoProcessoService.montarPassosWizard: mesma
                          fonte de verdade da timeline vertical (card "Progresso"), garantindo
                          que as duas linhas do tempo nunca fiquem fora de sincronia. -->
+                    <!-- ARIA das abas (corrigido em 2026-08-04): cada passo precisa de
+                         id proprio, porque os paineis apontam para ele via
+                         aria-labelledby="tab-<paneId>". Antes os ids nao existiam e as 5
+                         referencias apontavam para o vazio - o componente se declarava
+                         tablist/tab/tabpanel sem fornecer nada do que esses papeis exigem
+                         (nem aria-selected, nem aria-controls). Coberto por
+                         AcessibilidadeEstruturaTest.
+                         Passo BLOQUEADO: aria-disabled + tabindex="-1" tiram o passo da
+                         ordem de Tab e o anunciam como desabilitado; o clique em si e
+                         barrado no processo-detalhe.js (o preventDefault tem que rodar
+                         antes do handler do Bootstrap). Ate aqui o passo so tinha
+                         "cursor: not-allowed" no CSS e abria normalmente ao clique. -->
                     <a class="wizard-step" th:each="passo : ${passosWizard}"
+                       th:id="'tab-' + ${#strings.replace(passo.paneId, 'pane-', '')}"
                        th:classappend="${passo.estado.name() == 'CONCLUIDA'} ? 'concluida' : (${passo.estado.name() == 'ATUAL'} ? 'atual' : 'bloqueada')"
                        data-bs-toggle="tab" th:href="'#' + ${passo.paneId}" role="tab"
+                       th:attr="aria-controls=${passo.paneId},
+                                aria-selected=${abaAtivaPaneId == passo.paneId},
+                                aria-disabled=${passo.estado.name() == 'BLOQUEADA'},
+                                tabindex=${passo.estado.name() == 'BLOQUEADA'} ? '-1' : null"
                        th:title="${passo.tooltip}">
                         <!-- Icone por numero do passo via th:switch, em vez de ternarios
                              aninhados em th:classappend (regra do CLAUDE.md contra ternario
@@ -498,8 +515,8 @@
                               enctype="multipart/form-data" class="row g-2 align-items-end"
                               data-lock-submit="Enviando documento...">
                             <div class="col-md-7">
-                                <label class="form-label small">Documento clinico anonimizado (PDF)</label>
-                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required>
+                                <label class="form-label small" for="arquivo">Documento clinico anonimizado (PDF)</label>
+                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required id="arquivo">
                             </div>
                             <div class="col-md-5 d-flex align-items-end">
                                 <button class="btn btn-outline-primary btn-sm">
@@ -594,8 +611,8 @@
                           data-lock-submit="Retomando analise..."
                           data-confirm-msg="Confirmar o recebimento da informacao e retomar a analise? Os pareceres marcados como Solicita informacao serao reabertos.">
                         <div class="col-md-8">
-                            <label class="form-label small fw-semibold">Resposta com as informacoes complementares (opcional)</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg">
+                            <label class="form-label small fw-semibold" for="arquivo">Resposta com as informacoes complementares (opcional)</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg" id="arquivo">
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button class="btn btn-success btn-sm w-100">
@@ -805,7 +822,7 @@
                               data-lock-submit="Registrando decisao...">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
-                                    <label class="form-label">Decisao</label>
+                                    <label class="form-label" for="decisaoSelect">Decisao</label>
                                     <select name="decisao" class="form-select" id="decisaoSelect">
                                         <option th:each="s : ${decisaoValores}"
                                                 th:value="${s.name()}" th:text="${s.descricao}"
@@ -813,7 +830,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-8" id="motivoBox">
-                                    <label class="form-label">Motivo do indeferimento (obrigatorio se reprovado)</label>
+                                    <label class="form-label" for="motivoIndeferimentoInput">Motivo do indeferimento (obrigatorio se reprovado)</label>
                                     <div class="input-group">
                                         <input type="text" name="motivoIndeferimento" id="motivoIndeferimentoInput"
                                                class="form-control" th:value="${processo.motivoIndeferimento}">
@@ -901,16 +918,16 @@
                         </div>
                         <div th:unless="${processo.emailEnviadoSolicitante}" class="row g-2 align-items-end">
                             <div class="col-md-4">
-                                <label class="form-label small">Data emissao do oficio</label>
+                                <label class="form-label small" for="dataEmissaoOficio">Data emissao do oficio</label>
                                 <form th:action="@{/processos/{id}/finalizacao(id=${processo.id})}" method="post" id="formDatasOficio">
-                                    <input type="date" name="dataEmissaoOficio" class="form-control form-control-sm"
+                                    <input type="date" name="dataEmissaoOficio" id="dataEmissaoOficio" class="form-control form-control-sm"
                                            th:value="${processo.dataEmissaoOficio}"
                                            form="formDatasOficio">
                                 </form>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small">Data envio do oficio</label>
-                                <input type="date" name="dataEnvioOficio" class="form-control form-control-sm"
+                                <label class="form-label small" for="dataEnvioOficio">Data envio do oficio</label>
+                                <input type="date" name="dataEnvioOficio" id="dataEnvioOficio" class="form-control form-control-sm"
                                        th:value="${processo.dataEnvioOficio}"
                                        form="formDatasOficio">
                             </div>
@@ -934,12 +951,12 @@
                               enctype="multipart/form-data" class="row g-2 align-items-end mt-2"
                               data-lock-submit="Enviando oficio...">
                             <div class="col-md-8">
-                                <label class="form-label small">
+                                <label class="form-label small" for="arquivo">
                                     <span th:if="${oficioAnexo != null}">Substituir oficio (PDF)</span>
                                     <span th:unless="${oficioAnexo != null}">Anexar oficio manualmente (PDF)</span>
                                 </label>
                                 <input type="file" name="arquivo" class="form-control form-control-sm"
-                                       accept=".pdf" th:required="${oficioAnexo == null}">
+                                       accept=".pdf" th:required="${oficioAnexo == null}" id="arquivo">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <button class="btn btn-outline-danger btn-sm">
@@ -972,9 +989,9 @@
                              deferimento, e serve de base para indicadores de prazo. -->
                         <div th:unless="${processo.emailEnviadoSolicitante}" class="row g-2 align-items-end mb-2">
                             <div class="col-md-4">
-                                <label class="form-label small">Data de envio ao SNT</label>
+                                <label class="form-label small" for="dataEnvioSnt">Data de envio ao SNT</label>
                                 <form th:action="@{/processos/{id}/finalizacao(id=${processo.id})}" method="post" id="formDataSnt">
-                                    <input type="date" name="dataEnvioSnt" class="form-control form-control-sm"
+                                    <input type="date" name="dataEnvioSnt" id="dataEnvioSnt" class="form-control form-control-sm"
                                            th:value="${processo.dataEnvioSnt}"
                                            form="formDataSnt">
                                 </form>
@@ -995,11 +1012,11 @@
                               enctype="multipart/form-data" class="row g-2 align-items-end"
                               data-lock-submit="Enviando comprovante...">
                             <div class="col-md-8">
-                                <label class="form-label small">
+                                <label class="form-label small" for="arquivoComprovanteSnt">
                                     <span th:if="${comprovanteSnT != null}">Substituir comprovante SNT</span>
                                     <span th:unless="${comprovanteSnT != null}">Anexar comprovante SNT</span>
                                 </label>
-                                <input type="file" name="arquivo" class="form-control form-control-sm"
+                                <input type="file" name="arquivo" id="arquivoComprovanteSnt" class="form-control form-control-sm"
                                        accept=".pdf,.png,.jpg,.jpeg" th:required="${comprovanteSnT == null}">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
@@ -1111,19 +1128,19 @@
                           enctype="multipart/form-data" class="row g-2 align-items-end"
                           data-lock-submit="Enviando anexo...">
                         <div class="col-md-4">
-                            <label class="form-label">Tipo</label>
-                            <select name="tipo" class="form-select form-select-sm">
+                            <label class="form-label" for="tipo">Tipo</label>
+                            <select name="tipo" class="form-select form-select-sm" id="tipo">
                                 <option th:each="t : ${tipoAnexoValores}"
                                         th:value="${t.name()}" th:text="${t.descricao}"></option>
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Arquivo</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm" required>
+                            <label class="form-label" for="arquivo">Arquivo</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" required id="arquivo">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label">Descricao</label>
-                            <input type="text" name="descricao" class="form-control form-control-sm">
+                            <label class="form-label" for="descricao">Descricao</label>
+                            <input type="text" name="descricao" class="form-control form-control-sm" id="descricao">
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-primary btn-sm">Enviar</button>
@@ -1133,7 +1150,7 @@
             </div>
         </div>
     </div>
-</div>
+</main>
 
 <script th:src="@{/js/chat-solicitacao.js}"></script>
 <script th:inline="javascript">

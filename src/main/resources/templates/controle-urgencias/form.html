@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4" style="max-width: 640px;">
+<main id="conteudo" class="container my-4" style="max-width: 640px;">
     <h1 class="h3 mb-3" th:text="${registro.id} ? 'Editar urgencia' : 'Nova urgencia'">Urgencia</h1>
 
     <form th:action="@{/controle-urgencias}" th:object="${registro}" method="post" class="card">
@@ -18,18 +18,18 @@
             <input type="hidden" th:field="*{versao}">
 
             <div class="mb-3">
-                <label class="form-label">Nome do paciente *</label>
-                <input type="text" th:field="*{nomePaciente}" class="form-control" required>
-                <div class="text-danger small" th:errors="*{nomePaciente}"></div>
+                <label class="form-label" th:for="nomePaciente">Nome do paciente *</label>
+                <input type="text" th:field="*{nomePaciente}" class="form-control" required th:classappend="${#fields.hasErrors('nomePaciente')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('nomePaciente')} ? 'true' : null,aria-describedby=${#fields.hasErrors('nomePaciente')} ? 'nomePacienteErro' : null">
+                <div class="invalid-feedback d-block" id="nomePacienteErro" role="alert" th:errors="*{nomePaciente}"></div>
             </div>
 
             <div class="row mb-3">
                 <div class="col-md-6">
-                    <label class="form-label">RGCT / SNT</label>
+                    <label class="form-label" th:for="rgct">RGCT / SNT</label>
                     <input type="text" th:field="*{rgct}" class="form-control" placeholder="SNT-XXXX">
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">ABO</label>
+                    <label class="form-label" th:for="abo">ABO</label>
                     <select th:field="*{abo}" class="form-select">
                         <option value="">--</option>
                         <option value="A">A</option>
@@ -39,7 +39,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Vencimento</label>
+                    <label class="form-label" th:for="dataVencimento">Vencimento</label>
                     <!-- Obrigatorio so na edicao: no cadastro, vazio significa
                          "calcular automaticamente hoje + 30 dias"
                          (ControleUrgenciaService.criar). Na edicao o registro ja
@@ -57,12 +57,12 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Equipe solicitante</label>
+                <label class="form-label" th:for="equipe">Equipe solicitante</label>
                 <input type="text" th:field="*{equipe}" class="form-control" placeholder="Ex.: HCPA - Nefrologia">
             </div>
 
             <div class="mb-3">
-                <label class="form-label">Observacoes</label>
+                <label class="form-label" th:for="observacoes">Observacoes</label>
                 <textarea th:field="*{observacoes}" class="form-control" rows="3"></textarea>
             </div>
         </div>
@@ -72,7 +72,7 @@
             <button type="submit" class="btn btn-primary">Salvar</button>
         </div>
     </form>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <div th:replace="~{layout :: footer}"></div>

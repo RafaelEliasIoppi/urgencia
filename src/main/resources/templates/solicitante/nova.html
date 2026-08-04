@@ -45,12 +45,12 @@
             <h2 class="h6 text-muted">Equipe solicitante</h2>
             <div class="row g-3 mb-2">
                 <div class="col-md-8">
-                    <label class="form-label">Equipe / hospital</label>
-                    <input type="text" class="form-control" th:value="${equipe}" disabled readonly>
+                    <label class="form-label" for="equipeSolicitanteInfo">Equipe / hospital</label>
+                    <input type="text" id="equipeSolicitanteInfo" class="form-control" th:value="${equipe}" disabled readonly>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">E-mail</label>
-                    <input type="text" class="form-control" th:value="${email}" disabled readonly>
+                    <label class="form-label" for="emailSolicitanteInfo">E-mail</label>
+                    <input type="text" id="emailSolicitanteInfo" class="form-control" th:value="${email}" disabled readonly>
                 </div>
             </div>
             <p class="small text-muted">

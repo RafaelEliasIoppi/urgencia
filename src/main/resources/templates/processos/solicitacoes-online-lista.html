@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4">
+<main id="conteudo" class="container my-4">
     <h1 class="h3 mb-3"><i class="bi bi-inbox-fill"></i> Solicitacoes online — triagem</h1>
     <p class="small text-muted">
         Pedidos enviados diretamente pela equipe solicitante. Ao converter, voce revisa os dados
@@ -81,7 +81,7 @@
             </table>
         </div>
     </div>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <div th:replace="~{layout :: footer}"></div>
