@@ -367,7 +367,7 @@ tr.linha-inativa > td:first-child {
 .timeline-item {
     position: relative;
     padding-bottom: 1.25rem;
-    padding-left: .5rem;
+    padding-left: .15rem;
 }
 
 .timeline-item:last-child { padding-bottom: 0; }
