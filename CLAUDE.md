@@ -1392,6 +1392,96 @@ Solicitante. PR único aberto ao final contra `centraldetransplante-cyber/urgenc
 extensas em produção sem revisão visual humana, mesmo com toda a suíte e o
 E2E verdes.
 
+## Rascunho de solicitação (2026-08-04) — Fase 11, item 3
+
+A pedido explícito do usuário (item que a Fase 11 do relatório de UI listava
+como "não implementar sem aval"), o Portal do Solicitante ganhou a
+capacidade de salvar um **rascunho** do formulário de "Nova solicitação"
+(`/solicitante/nova`), para o solicitante continuar de onde parou se sair da
+página no meio do preenchimento.
+
+**Decisão de modelagem: entidade de staging separada
+(`RascunhoSolicitacaoOnline`), não um status novo em `SolicitacaoOnline`.**
+Motivo: `SolicitacaoOnline` tem `@NotBlank`/`@NotNull` em
+`pacienteNome`/`pacienteRgct`/`solicitanteEquipe`/`solicitanteEmail`/
+`dataSituacaoEspecial`/`justificativaClinica` — essas anotações protegem o
+pedido **real**, o que a equipe de Urgência Renal de fato analisa. Relaxar
+essas constraints para acomodar um rascunho parcialmente preenchido abriria
+uma classe de bug/risco nova: um pedido incompleto virando uma
+`SolicitacaoOnline` de verdade (e visível à triagem) sem passar pela
+validação completa, por um bug futuro em qualquer código que manipule essa
+entidade sem saber que ela agora pode estar "pela metade". A alternativa (2)
+— entidade separada, sem nenhuma validação obrigatória — não tem esse risco:
+`RascunhoSolicitacaoOnline` (`domain/RascunhoSolicitacaoOnline.java`) é uma
+tabela própria (`rascunho_solicitacao_online`), com os mesmos 4 campos que o
+solicitante preenche (`pacienteNome`, `pacienteRgct`,
+`dataSituacaoEspecial`, `justificativaClinica`) **sem `@NotBlank`/`@NotNull`
+nenhum** (só `@Size` nos campos de texto, que é null-safe — não rejeita
+branco/nulo, só limita o tamanho máximo). Um rascunho pode estar totalmente
+vazio sem erro.
+
+**Um rascunho por solicitante**: `usuario_solicitante_id` é `unique` em
+`RascunhoSolicitacaoOnline` — salvar um novo rascunho faz upsert (atualiza o
+existente), não acumula histórico. `RascunhoSolicitacaoOnlineService.salvar`
+é a fonte única dessa lógica de upsert.
+
+**Nunca aparece para o operador.** Nenhuma tela/consulta de triagem
+(`SolicitacaoOnlineTriagemController`, `SolicitacaoOnlineService.
+listarPendentesTriagem`/`listarTodas`) lê `RascunhoSolicitacaoOnlineRepository`
+— é uma tabela e um repositório completamente separados de
+`SolicitacaoOnlineRepository`, então a isolação é estrutural (não uma
+checagem de status que poderia ser esquecida em algum caminho novo). Coberto
+por `RascunhoSolicitacaoOnlineServiceTest.
+rascunhoSalvoNuncaApareceNaFilaDeTriagemDoOperador` (contexto real, H2:
+salva um rascunho e confirma que `solicitacao_online` continua vazia).
+
+**Fluxo:**
+- `GET /solicitante/nova` (`SolicitanteController.nova`): se houver rascunho
+  salvo para o usuário logado, pré-preenche os 4 campos do formulário e
+  expõe `rascunhoSalvoEm` (timestamp) ao model — o template mostra um aviso
+  "Rascunho carregado (salvo em dd/MM/yyyy HH:mm)" com um botão para
+  descartá-lo. Sem rascunho, comportamento inalterado (formulário em
+  branco, data de hoje pré-selecionada).
+- `POST /solicitante/nova/rascunho` (AJAX, `salvarRascunho`): salva/atualiza
+  o rascunho via `@RequestParam` individuais (não `@ModelAttribute` de
+  entidade — evita qualquer superfície de mass assignment nesse endpoint,
+  nem precisa de `@InitBinder` allowlist). Devolve JSON
+  `{"ok": true, "salvoEm": "..."}`. Botão "Salvar rascunho" em
+  `solicitante/nova.html`/`solicitante-nova.js`, salvamento **manual**
+  (autosave ficou fora de escopo desta primeira versão, como o pedido
+  original já sinalizava como aceitável).
+- `POST /solicitante/nova/rascunho/apagar`: descarta o rascunho salvo
+  explicitamente (redireciona de volta para `/solicitante/nova` em branco).
+- `POST /solicitante/nova` (`criar`, o envio final): **inalterado na
+  validação** — continua sendo o mesmo `@ModelAttribute("solicitacao")
+  SolicitacaoOnline` com o `@InitBinder` allowlist e todas as constraints
+  `@NotBlank`/`@NotNull` de sempre; o rascunho só pré-preenche o HTML, não
+  contorna nada no submit. Após `solicitacaoService.criar(...)` retornar com
+  sucesso, o controller apaga o rascunho do usuário
+  (`rascunhoService.apagar`, best-effort dentro de um try/catch próprio —
+  uma falha ali nunca desfaz o envio já commitado, só deixa um rascunho
+  órfão que reaparece inofensivo na próxima visita a `/nova`).
+
+**Testes** (padrão do CLAUDE.md — reler do banco e conferir campo a campo):
+`RascunhoSolicitacaoOnlineServiceTest` (upsert com campos parciais, upsert
+não duplica registro, `buscarPorUsuario` vazio, `apagar` com e sem rascunho
+existente, isolamento da fila de triagem) e testes novos em
+`SolicitanteControllerTest` (`novaSemRascunhoExistenteMostraFormularioEmBranco`,
+`novaComRascunhoExistentePreenchePreviamenteOFormulario`,
+`salvarRascunhoAceitaCamposParciaisEDevolveHorarioDeSalvamento`,
+`apagarRascunhoRedirecionaParaNovaComMensagemDeSucesso`,
+`criarAPartirDeUmRascunhoApagaORascunhoAposEnvioComSucesso` — este último
+confirma que o envio final a partir de um rascunho segue exigindo a mesma
+validação completa e apaga o rascunho só depois do sucesso).
+
+**Cuidado de merge conhecido**: este PR mexe em `SolicitanteController.java`
+e `solicitante/nova.html`; os PRs #3 (`feat/justificativa-obrigatoria-voto-negativo`)
+e #4 (Fase 6 da UI, `feat/ui-consolidacao-alertas-solicitante`, mexe em
+`solicitante/detalhe.html`) estavam abertos e não mesclados no momento desta
+implementação — conflito de merge esperado ao integrar os três, resolvido na
+hora da integração (arquivos tocados não coincidem entre este PR e o #4,
+exceto o controller compartilhado).
+
 ## Fase 11.2: registro do último lembrete enviado ao avaliador (2026-08-04)
 
 Item da "Fase 11 — Decisões de produto" do

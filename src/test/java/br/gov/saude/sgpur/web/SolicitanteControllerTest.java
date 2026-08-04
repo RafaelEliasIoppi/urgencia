@@ -12,6 +12,7 @@ import br.gov.saude.sgpur.service.AnexoSolicitacaoOnlineStorageService;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
+import br.gov.saude.sgpur.service.RascunhoSolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import org.junit.jupiter.api.BeforeEach;
@@ -59,6 +60,7 @@ class SolicitanteControllerTest {
     @MockitoBean private AnexoSolicitacaoOnlineStorageService anexoStorage;
     @MockitoBean private AnexoStorageService anexoStorageProcesso;
     @MockitoBean private TempoRespostaService tempoRespostaService;
+    @MockitoBean private RascunhoSolicitacaoOnlineService rascunhoService;
 
     @TempDir
     Path tempDir;
@@ -449,5 +451,107 @@ class SolicitanteControllerTest {
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/solicitante/50"))
             .andExpect(flash().attributeExists("erro"));
+    }
+
+    // ----- Rascunho de "Nova solicitacao" (Fase 11, item 3) -----
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void novaSemRascunhoExistenteMostraFormularioEmBranco() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        when(rascunhoService.buscarPorUsuario(1L)).thenReturn(Optional.empty());
+
+        mvc.perform(get("/solicitante/nova"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("solicitante/nova"))
+            .andExpect(model().attributeDoesNotExist("rascunhoSalvoEm"));
+    }
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void novaComRascunhoExistentePreenchePreviamenteOFormulario() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline rascunho =
+            new br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline();
+        rascunho.setId(10L);
+        rascunho.setUsuarioSolicitante(dono);
+        rascunho.setPacienteNome("Rascunho Fulano");
+        rascunho.setPacienteRgct("111111111-11111");
+        rascunho.setDataSituacaoEspecial(LocalDate.of(2026, 5, 1));
+        rascunho.setJustificativaClinica("Rascunho da justificativa.");
+        java.time.LocalDateTime salvoEm = java.time.LocalDateTime.of(2026, 8, 4, 10, 30);
+        rascunho.setAtualizadoEm(salvoEm);
+        when(rascunhoService.buscarPorUsuario(1L)).thenReturn(Optional.of(rascunho));
+
+        mvc.perform(get("/solicitante/nova"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("solicitante/nova"))
+            .andExpect(model().attribute("rascunhoSalvoEm", salvoEm))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Rascunho Fulano")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Rascunho da justificativa.")));
+    }
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void salvarRascunhoAceitaCamposParciaisEDevolveHorarioDeSalvamento() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline salvo =
+            new br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline();
+        salvo.setId(11L);
+        java.time.LocalDateTime agora = java.time.LocalDateTime.of(2026, 8, 4, 15, 0);
+        salvo.setAtualizadoEm(agora);
+        when(rascunhoService.salvar(eq(1L), eq("So o nome"), isNull(), isNull(), isNull()))
+            .thenReturn(salvo);
+
+        mvc.perform(post("/solicitante/nova/rascunho")
+                .param("pacienteNome", "So o nome")
+                .with(csrf()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.ok").value(true))
+            .andExpect(jsonPath("$.salvoEm").value(agora.toString()));
+
+        verify(rascunhoService).salvar(1L, "So o nome", null, null, null);
+    }
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void apagarRascunhoRedirecionaParaNovaComMensagemDeSucesso() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+
+        mvc.perform(post("/solicitante/nova/rascunho/apagar").with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/solicitante/nova"))
+            .andExpect(flash().attribute("msg", "Rascunho descartado."));
+
+        verify(rascunhoService).apagar(1L);
+    }
+
+    /**
+     * Envio final funciona a partir de um rascunho (o formulario ja vem
+     * pre-preenchido, mas o POST /nova continua sendo o mesmo endpoint de
+     * sempre, com a MESMA validacao completa - o rascunho nao contorna nada)
+     * e apaga o rascunho depois de criar a solicitacao de verdade.
+     */
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void criarAPartirDeUmRascunhoApagaORascunhoAposEnvioComSucesso() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        SolicitacaoOnline salva = new SolicitacaoOnline();
+        salva.setId(61L);
+        salva.setPacienteNome("Rascunho Fulano");
+        when(solicitacaoService.criar(any(SolicitacaoOnline.class), eq(dono), any()))
+            .thenReturn(salva);
+
+        mvc.perform(multipart("/solicitante/nova")
+                .param("pacienteNome", "Rascunho Fulano")
+                .param("pacienteRgct", "111111111-11111")
+                .param("dataSituacaoEspecial", LocalDate.now().toString())
+                .param("justificativaClinica", "Justificativa completa, quadro grave.")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/solicitante"));
+
+        verify(solicitacaoService).criar(any(SolicitacaoOnline.class), eq(dono), any());
+        verify(rascunhoService).apagar(1L);
     }
 }

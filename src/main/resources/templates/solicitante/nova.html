@@ -9,8 +9,24 @@
     <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
     <p class="small text-muted">* Campo obrigatório</p>
 
-    <form th:action="@{/solicitante/nova}" th:object="${solicitacao}" method="post"
-          enctype="multipart/form-data" class="card" data-lock-submit="Enviando solicitação...">
+    <div id="rascunhoAviso" class="alert alert-info d-flex justify-content-between align-items-center py-2"
+         th:if="${rascunhoSalvoEm}">
+        <span>
+            <i class="bi bi-file-earmark-text"></i>
+            Rascunho carregado (salvo em
+            <span th:text="${#temporals.format(rascunhoSalvoEm, 'dd/MM/yyyy HH:mm')}">--/--/---- --:--</span>).
+        </span>
+        <form th:action="@{/solicitante/nova/rascunho/apagar}" method="post" class="m-0"
+              data-confirm-msg="Descartar o rascunho salvo? Os dados preenchidos aqui serão perdidos.">
+            <button type="submit" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-trash"></i> Descartar rascunho
+            </button>
+        </form>
+    </div>
+
+    <form id="formNovaSolicitacao" th:action="@{/solicitante/nova}" th:object="${solicitacao}" method="post"
+          enctype="multipart/form-data" class="card" data-lock-submit="Enviando solicitação..."
+          th:attr="data-rascunho-url=@{/solicitante/nova/rascunho}">
         <div class="card-body">
             <h2 class="h6 text-muted">Equipe solicitante</h2>
             <div class="row g-3 mb-2">
@@ -93,9 +109,15 @@
                data-confirm-msg="Descartar o preenchimento desta solicitação? Os dados digitados serão perdidos.">
                 Cancelar
             </a>
-            <button type="submit" class="btn btn-primary">
-                <i class="bi bi-send"></i> Enviar solicitação
-            </button>
+            <div class="d-flex align-items-center gap-3">
+                <span id="rascunhoStatus" class="small text-muted"></span>
+                <button type="button" id="btnSalvarRascunho" class="btn btn-outline-secondary">
+                    <i class="bi bi-save"></i> Salvar rascunho
+                </button>
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-send"></i> Enviar solicitação
+                </button>
+            </div>
         </div>
     </form>
 </main>
