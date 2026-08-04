@@ -58,6 +58,7 @@ class ProcessoDetalheControllerTest {
     // pareceres + membro), para o template poder navegar a colecao ja fora da
     // transacao (open-in-view: false).
     @MockitoBean private br.gov.saude.sgpur.repository.ProcessoRepository processoRepository;
+    @MockitoBean private TempoRespostaService tempoRespostaService;
 
     private Processo processo;
 

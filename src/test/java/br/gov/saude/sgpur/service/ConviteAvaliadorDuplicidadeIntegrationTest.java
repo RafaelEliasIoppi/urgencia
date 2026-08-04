@@ -62,8 +62,6 @@ import static org.mockito.Mockito.when;
 class ConviteAvaliadorDuplicidadeIntegrationTest {
 
     @Autowired
-    private ProcessoService processoService;
-    @Autowired
     private RegistroEnvioService registroEnvioService;
     @Autowired
     private ProcessoRepository processoRepo;

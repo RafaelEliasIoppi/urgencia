@@ -49,6 +49,19 @@
     max-width: 760px;
 }
 
+/* Container das listas do Portal do Solicitante/Avaliador - substitui o
+   style="max-width: 980px;" antes repetido inline nesses templates. */
+.container-portal {
+    max-width: 980px;
+}
+
+/* Area de rolagem do chat (Portal do Solicitante/processo) - substitui o
+   style="max-height:250px;overflow-y:auto;" antes inline. */
+.chat-box {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, var(--rs-gray-50) 0%, var(--rs-gray-100) 100%);
@@ -221,15 +234,8 @@ tr.linha-inativa > td:first-child {
 .tabela-pareceres th:nth-child(3),
 .tabela-pareceres td:nth-child(3),
 .tabela-pareceres th:nth-child(4),
-.tabela-pareceres td:nth-child(4),
-.tabela-pareceres th:nth-child(5),
-.tabela-pareceres td:nth-child(5) {
+.tabela-pareceres td:nth-child(4) {
     white-space: nowrap;
-}
-.tabela-pareceres th:nth-child(6),
-.tabela-pareceres td:nth-child(6) {
-    min-width: 360px;
-    width: 40%;
 }
 .tabela-pareceres .badge {
     font-size: .7rem;
@@ -715,6 +721,32 @@ tr.linha-inativa > td:first-child {
 .stat-card-membros   { --stat-bg: var(--rs-blue-light); --stat-border: var(--rs-blue); --stat-text: var(--rs-blue); --stat-icon-bg: var(--rs-blue-light); --stat-icon-color: var(--rs-blue); }
 .stat-card-tempo     { --stat-bg: #fff; --stat-border: var(--rs-gray-200); --stat-text: var(--rs-gray-800); --stat-icon-bg: var(--rs-gray-100); --stat-icon-color: var(--rs-gray-500); }
 
+/* Estilo base repetido inline nos cards de resumo do Portal do Solicitante
+   (background/border/border-radius/box-shadow via variaveis --stat-*
+   definidas por .stat-card-total/andamento/deferido/indeferido/cancelado
+   acima) — extraido para evitar duplicar o mesmo style="..." em cada card. */
+.stat-card-portal {
+    background: var(--stat-bg);
+    border: 1px solid var(--stat-border);
+    border-radius: 16px;
+    box-shadow: var(--rs-shadow);
+}
+
+/* Cards de resumo tambem clicaveis (filtro da lista do solicitante,
+   static/js/solicitante-lista.js): sinaliza qual filtro esta ativo, ja que
+   sao <button> agora (nao mais <div> puramente decorativo). */
+.stat-card-filtro {
+    cursor: pointer;
+    transition: var(--rs-transition);
+}
+.stat-card-filtro:hover {
+    box-shadow: var(--rs-shadow-md);
+}
+.stat-card-filtro.active {
+    outline: 2px solid var(--stat-border);
+    outline-offset: 1px;
+}
+
 /* Tabela do dashboard: scroll vertical so em desktop (evita cortar conteudo em mobile) */
 @media (min-width: 768px) {
     .dashboard-tabela-scroll { max-height: 70vh; overflow-y: auto; }
@@ -814,18 +846,8 @@ tr.linha-inativa > td:first-child {
     .tabela-pareceres th:nth-child(3),
     .tabela-pareceres td:nth-child(3),
     .tabela-pareceres th:nth-child(4),
-    .tabela-pareceres td:nth-child(4),
-    .tabela-pareceres th:nth-child(5),
-    .tabela-pareceres td:nth-child(5) {
+    .tabela-pareceres td:nth-child(4) {
         white-space: normal;
-    }
-
-    /* G1: reduz a largura minima da coluna Acao em mobile para evitar
-       scroll horizontal excessivo */
-    .tabela-pareceres th:nth-child(6),
-    .tabela-pareceres td:nth-child(6) {
-        min-width: 220px;
-        width: auto;
     }
 
     #pane-envio .list-group-item {
@@ -847,6 +869,45 @@ tr.linha-inativa > td:first-child {
         height: 60vh;
         min-height: 320px;
     }
+}
+
+/* Cartao selecionavel do voto do avaliador (votar.html): alvo de toque
+   ~16px (so o circulo do radio) virou o cartao inteiro, minimo 44px de
+   altura (WCAG 2.5.5), para a decisao IRREVERSIVEL mais importante do
+   sistema. O <input type="radio"> continua visivel e real dentro do
+   <label> (nao usar o padrao btn-check do Bootstrap, que esconde o input
+   via clip/position:absolute - o Playwright falha ao .check() um
+   elemento nao acionavel; ver e2e/pages/AvaliadorPage.java). */
+.voto-opcao {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    min-height: 44px;
+    padding: .75rem 1rem;
+    border: 2px solid var(--rs-gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.voto-opcao:hover {
+    border-color: var(--rs-gray-400, #adb5bd);
+}
+.voto-opcao:has(.voto-opcao-radio:checked) {
+    border-color: var(--rs-blue);
+    background: var(--rs-blue-light);
+}
+.voto-opcao-radio {
+    margin-top: .2rem;
+    flex-shrink: 0;
+    transform: scale(1.3);
+}
+.voto-opcao-conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+.voto-opcao-titulo {
+    font-weight: 600;
 }
 
 /* === Responsivo: celulares pequenos (< 576px) === */

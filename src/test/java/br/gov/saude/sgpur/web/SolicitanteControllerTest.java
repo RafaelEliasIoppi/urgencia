@@ -150,7 +150,7 @@ class SolicitanteControllerTest {
         mvc.perform(get("/solicitante/50"))
             .andExpect(status().isOk())
             .andExpect(model().attribute("previsaoPrazo", "5 dias"))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("Previsao baseada no historico")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Previsão baseada no histórico")));
     }
 
     @Test

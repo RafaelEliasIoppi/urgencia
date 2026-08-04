@@ -1242,3 +1242,89 @@ sessão (branch `fix/vistoria-anexo-pausa-metricas-versao`):
    de auditoria agora só cita o id do processo, sem `dossie.nomePasta()`
    (que carrega `<Paciente> - Processo CET-RS NN-AAAA`).
 
+## Melhorias de UI dos Portais (2026-08-03/04, execução autônoma noturna)
+
+A pedido do usuário, foi produzido um relatório de diagnóstico + plano
+faseado de UI (`docs/RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md`, com
+Opus) cobrindo o Portal do Solicitante, o Portal do Avaliador e o card
+"Respostas dos Avaliadores" da tela de detalhe do processo. O plano foi
+executado de forma **autônoma** (sem supervisão visual humana em tempo
+real) na branch `feat/ui-solicitante-avaliador`, um commit por fase, cada
+um com suíte completa (0 falhas) + `.\e2e.ps1 -Headless` antes do commit.
+
+**Fases 1–10 implementadas** (com uma redução de escopo na Fase 6, ver
+abaixo). A Fase 8 (acentuação/microcopy) tinha sido inicialmente adiada
+nesta mesma sessão por volume/risco (reescrever a acentuação de todo texto
+visível em 6 templates, com dois botões localizados pelo E2E via texto
+exato) — **implementada depois, a pedido explícito do usuário**, ver
+detalhes logo abaixo. **Fase 11 (decisões de produto: justificativa
+obrigatória para voto negativo, registro de último lembrete, rascunho de
+solicitação) não deve ser implementada sem aval explícito do usuário** —
+está documentada no relatório, não no código.
+
+**Fase 8 (acentuação) — detalhes da execução:** corrigida a acentuação de
+todo texto visível nos 6 templates dos dois portais + o skip-link novo em
+`layout.html`. O botão "Enviar solicitacao" virou "Enviar solicitação" —
+`PortalSolicitantePage.java` (E2E) e o teste
+`SolicitanteControllerTest` (assert de `"Previsao baseada no historico"`)
+foram atualizados no mesmo commit. `StatusSolicitacaoOnline.descricao`
+também foi corrigido (sem consumidor em relatório/exportação, verificado
+antes). **`ResultadoParecer.descricao` ("Favoravel"/"Nao favoravel"/
+"Solicita informacao") foi DELIBERADAMENTE mantido sem acento** — alimenta
+`RelatorioService`, `RelatorioAnualService`, `RelatorioAvaliadorService`,
+`PdfRelatorioBuilder`, `ExportacaoProcessoService` e auditoria; mudar esse
+enum teria um raio de impacto real em documentos oficiais (PDFs), bem além
+do escopo de "acentuar templates". Os dois lugares onde esse valor
+aparecia de forma bem visível (badge de histórico em `avaliador/lista.html`
+e rótulo da opção de voto em `avaliador/votar.html`) foram corrigidos
+escrevendo o termo acentuado como literal num `th:switch` — mesmo padrão
+já usado desde a Fase 4 no card de Respostas dos Avaliadores — em vez de
+ler `${resultado.descricao}` diretamente. Se algum dia esse enum for
+revisado, os dois templates citados devem ser reconferidos.
+
+**Fase 6 (detalhe do solicitante) teve escopo reduzido**: a consolidação
+completa dos 8 blocos `alert` condicionais num único "cartão de situação"
+alimentado por um record novo no controller (itens 6.1/6.2/6.3/6.5 do
+relatório) **não foi feita** — é a mudança de maior superfície/risco do
+plano inteiro (o próprio relatório a marca como "⚠⚠ fase de maior risco" e
+recomenda um PR dedicado só para ela). Foram implementados os itens de
+menor risco da mesma fase: vocabulário unificado (Deferido/Indeferido, que
+antes aparecia como "Aprovada/Reprovada"/"Pedido aprovado!"/"APROVADO" em
+3 lugares diferentes da mesma tela), número do processo no `<h1>`, botão
+de download promovido, e a mesma proteção do voto do avaliador (modal +
+checkbox) para "Cancelar processo" quando já virou processo em análise.
+
+**Achado real durante a Fase 5** (pego pela suíte antes do commit, nunca
+chegou a produção): `th:attr="max=${T(java.time.LocalDate).now()}"` no
+campo de data de `solicitante/nova.html` quebrava a tela inteira com
+`TemplateProcessingException: "Instantiation of new objects and access to
+static classes or parameters is forbidden in this context"` — o Thymeleaf
+bloqueia `T(...)`/instanciação de objeto nesse tipo de contexto de
+expressão. Corrigido calculando a data máxima em JS puro
+(`solicitante-nova.js`) em vez de Thymeleaf/SpringEL. **Lição:** nunca usar
+`T(...)` em atributos Thymeleaf; se precisar de "hoje" no template, passe
+como model attribute do controller ou calcule em JS.
+
+**Erro de metodologia encontrado e corrigido no meio da sessão:** os
+primeiros comandos de verificação em background usavam o padrão
+`mvn ...; echo "EXIT=$?"` — como o **último** comando da cadeia (`echo`)
+sempre sucede, o exit code reportado ao orquestrador era **sempre 0**,
+mascarando silenciosamente uma falha real de teste (a mesma do parágrafo
+acima) nas primeiras tentativas de validação da Fase 5. As fases
+anteriores (1, 3, 4) foram reconferidas lendo o **conteúdo** dos logs
+diretamente (não só o exit code reportado) e estavam de fato limpas — o
+mascaramento não escondeu uma falha real nelas, só invalidou a forma como
+a verificação inicial tinha sido feita. A partir da Fase 5 o padrão passou
+a ser `mvn ...; RC=$?; ...; exit $RC`, que propaga o código real de saída.
+**Lição:** em qualquer verificação futura via comando encadeado com `;`,
+nunca terminar a cadeia num comando que sempre sucede (`echo`, `tee` sem
+`pipefail`) — sempre propagar o exit code do comando que importa.
+
+Nenhuma fase mexeu em regra de negócio, em `ProcessoValidator`/
+`ProcessoService` (decisão/maioria simples), na imparcialidade do
+avaliador (segue só iniciais) ou no whitelist de anexos do Portal do
+Solicitante. PR único aberto ao final contra `centraldetransplante-cyber/urgencia`,
+**sem merge automático** — decisão deliberada de não colocar mudanças de UI
+extensas em produção sem revisão visual humana, mesmo com toda a suíte e o
+E2E verdes.
+

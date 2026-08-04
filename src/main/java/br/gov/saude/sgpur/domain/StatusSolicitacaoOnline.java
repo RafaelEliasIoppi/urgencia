@@ -7,9 +7,9 @@ package br.gov.saude.sgpur.domain;
 public enum StatusSolicitacaoOnline {
     ENVIADA("Enviada, aguardando triagem"),
     CONVERTIDA("Convertida em processo"),
-    DEVOLVIDA("Devolvida para correcao"),
+    DEVOLVIDA("Devolvida para correção"),
     CANCELADA("Cancelada pelo solicitante"),
-    PROCESSO_EXCLUIDO("Processo excluido pela equipe"),
+    PROCESSO_EXCLUIDO("Processo excluído pela equipe"),
     APROVADA("Aprovada"),
     REPROVADA("Reprovada");
 

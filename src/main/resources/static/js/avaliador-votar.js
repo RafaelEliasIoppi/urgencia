@@ -35,6 +35,10 @@
         var radioMarcado = form.querySelector('input[name="resultado"]:checked');
         if (!radioMarcado) return;
         var label = form.querySelector('label[for="' + radioMarcado.id + '"]');
+        // So o titulo (ex.: "Favoravel"), nao a frase de consequencia que
+        // acompanha cada opcao (voto-opcao-consequencia) - o resumo do modal
+        // deve mostrar so o resultado escolhido.
+        var titulo = label ? label.querySelector('.voto-opcao-titulo') : null;
 
         // Mesmas cores/icones do formulario (bi-check-circle verde = Favoravel,
         // bi-x-circle vermelho = Nao favoravel, bi-question-circle amarelo =
@@ -47,7 +51,7 @@
         var texto = document.createElement('span');
         // textContent (nao innerHTML): o resumo e so texto, nunca deve
         // interpretar o conteudo do label como HTML.
-        texto.textContent = label ? label.textContent.trim() : radioMarcado.value;
+        texto.textContent = (titulo || label || radioMarcado).textContent.trim();
         resumoResultado.replaceChildren(icone, texto);
 
         checkConfirma.checked = false;

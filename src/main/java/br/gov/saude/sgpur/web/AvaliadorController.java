@@ -249,6 +249,25 @@ public class AvaliadorController {
         MembroUrgenciaRenal membro = resolverMembro(principal);
         Parecer parecer = resolverParecerPendente(processoId, membro);
 
+        // "Processo X de N pendentes" (Fase 10 do relatorio de UI): da nocao de
+        // progresso a quem tem varios pendentes, sem inventar nenhum estado novo -
+        // so a posicao deste processo na MESMA lista/ordem de pendentesDoMembro().
+        // Usa so dados DO PROPRIO membro logado, nunca informacao sobre o processo
+        // em si (ex.: quantos votos ja tem) - isso quebraria a imparcialidade.
+        List<Parecer> pendentesDoMembro = parecerRepo.findPendentesComProcesso(membro.getId())
+            .stream()
+            .filter(AvaliadorController::pendenteAtivoParaVoto)
+            .toList();
+        int posicaoPendente = 1;
+        for (int i = 0; i < pendentesDoMembro.size(); i++) {
+            if (pendentesDoMembro.get(i).getProcesso().getId().equals(processoId)) {
+                posicaoPendente = i + 1;
+                break;
+            }
+        }
+        model.addAttribute("posicaoPendente", posicaoPendente);
+        model.addAttribute("totalPendentesMembro", pendentesDoMembro.size());
+
         Processo processo = parecer.getProcesso();
         List<Anexo> pdfsAvaliador = anexoRepo
             .findByProcessoIdAndTipo(processoId, TipoAnexo.SOLICITACAO_AVALIADOR);
@@ -440,6 +459,21 @@ public class AvaliadorController {
 
         ra.addFlashAttribute("msg",
             "Voto registrado: " + resultado.getDescricao() + ". Obrigado pela avaliacao.");
+        // Oferece ir direto para o proximo pendente (Fase 10): quem tem varios
+        // atrasados nao precisa reabrir a lista e escanear de novo a cada voto.
+        // So dados do PROPRIO membro (nunca do processo que acabou de votar).
+        // resolverMembro de novo (barato, mesma consulta ja usada acima) em vez
+        // de voto.parecer().getMembro(): essa associacao nao foi necessariamente
+        // inicializada fora da transacao do voto (TX1 ja commitada e fechada).
+        MembroUrgenciaRenal membroLogado = resolverMembro(principal);
+        List<Parecer> restantes = parecerRepo.findPendentesComProcesso(membroLogado.getId())
+            .stream()
+            .filter(AvaliadorController::pendenteAtivoParaVoto)
+            .toList();
+        if (!restantes.isEmpty()) {
+            ra.addFlashAttribute("proximoPendenteId", restantes.get(0).getProcesso().getId());
+            ra.addFlashAttribute("totalPendentesRestantes", restantes.size());
+        }
         return "redirect:/avaliador";
     }
 

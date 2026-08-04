@@ -1,16 +1,16 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Nova solicitacao')}"></head>
+<head th:replace="~{layout :: head('Nova solicitação')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4 container-narrow">
-    <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitacao</h1>
-    <p class="small text-muted">* Campo obrigatorio</p>
+<main id="conteudo" class="container my-4 container-narrow">
+    <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
+    <p class="small text-muted">* Campo obrigatório</p>
 
     <form th:action="@{/solicitante/nova}" th:object="${solicitacao}" method="post"
-          enctype="multipart/form-data" class="card">
+          enctype="multipart/form-data" class="card" data-lock-submit="Enviando solicitação...">
         <div class="card-body">
             <h2 class="h6 text-muted">Equipe solicitante</h2>
             <div class="row g-3 mb-2">
@@ -24,7 +24,7 @@
                 </div>
             </div>
             <p class="small text-muted">
-                Preenchidos automaticamente a partir do seu cadastro (nao editaveis aqui).
+                Preenchidos automaticamente a partir do seu cadastro (não editáveis aqui).
             </p>
 
             <hr>
@@ -37,43 +37,68 @@
                 <div class="col-md-4">
                     <label class="form-label" th:for="pacienteRgct">RGCT / SNT *</label>
                     <input type="text" th:field="*{pacienteRgct}" class="form-control" placeholder="123456789-12345" required maxlength="60">
+                    <div class="form-text text-muted">
+                        Número de registro do paciente no Sistema Nacional de Transplantes (SNT).
+                        Encontre no cadastro do paciente na Central de Transplantes.
+                    </div>
                 </div>
             </div>
 
             <hr>
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label class="form-label" th:for="dataSituacaoEspecial">Data de solicitacao da urgencia renal *</label>
+                    <label class="form-label" th:for="dataSituacaoEspecial">Data em que a urgência foi identificada *</label>
                     <input type="date" th:field="*{dataSituacaoEspecial}" class="form-control" required>
+                    <div class="form-text text-muted">
+                        Data em que a equipe constatou a situação de urgência (não pode ser no futuro).
+                    </div>
                 </div>
             </div>
 
             <hr>
             <div>
-                <label class="form-label" th:for="justificativaClinica">Justificativa clinica *</label>
+                <label class="form-label" th:for="justificativaClinica">Justificativa clínica *</label>
+                <div class="alert alert-light border small mb-2">
+                    <strong><i class="bi bi-info-circle"></i> O que a equipe de Urgência Renal precisa saber:</strong>
+                    <ul class="mb-0 mt-1 ps-3">
+                        <li>Quadro clínico atual do paciente</li>
+                        <li>Exames que sustentam a urgência</li>
+                        <li>Tempo em diálise e intercorrências recentes</li>
+                        <li>Tratamentos já tentados</li>
+                        <li>Por que a urgência se aplica agora</li>
+                    </ul>
+                </div>
                 <textarea th:field="*{justificativaClinica}" class="form-control" rows="5" required
-                          placeholder="Descreva o quadro clinico e o motivo do pedido de urgencia renal."></textarea>
+                          placeholder="Descreva o quadro clínico e o motivo do pedido de urgência renal."></textarea>
+                <div class="form-text d-flex justify-content-between">
+                    <span>Quanto mais completo, menor a chance de a equipe pedir informação complementar.</span>
+                    <span id="justificativaContador" class="text-muted text-nowrap ms-2">0 caracteres</span>
+                </div>
             </div>
 
             <hr>
             <div>
-                <label class="form-label" th:for="documentos">Documentos clinicos</label>
+                <label class="form-label" th:for="documentos">Documentos clínicos</label>
                 <input type="file" id="documentos" name="documentos" class="form-control" multiple
                        accept=".pdf,.png,.jpg,.jpeg,.eml,.msg">
                 <div class="form-text text-muted">
-                    PDF, imagem (PNG/JPG) ou copia do e-mail (EML/MSG). Pode selecionar varios arquivos.
+                    PDF, imagem (PNG/JPG) ou cópia do e-mail (EML/MSG). Pode selecionar vários arquivos
+                    (até 25 MB cada).
                 </div>
-                <div id="documentosSelecionados" class="small text-muted mt-1"></div>
+                <ul id="documentosSelecionados" class="list-group mt-2"></ul>
             </div>
         </div>
-        <div class="card-footer text-end">
-            <a th:href="@{/solicitante}" class="btn btn-outline-secondary">Cancelar</a>
+        <div class="card-footer d-flex justify-content-between align-items-center">
+            <a th:href="@{/solicitante}" class="btn btn-link text-muted p-0"
+               data-confirm-msg="Descartar o preenchimento desta solicitação? Os dados digitados serão perdidos.">
+                Cancelar
+            </a>
             <button type="submit" class="btn btn-primary">
-                <i class="bi bi-send"></i> Enviar solicitacao
+                <i class="bi bi-send"></i> Enviar solicitação
             </button>
         </div>
     </form>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <script th:src="@{/js/solicitante-nova.js}"></script>
