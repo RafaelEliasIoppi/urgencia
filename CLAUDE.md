@@ -1712,6 +1712,15 @@ as 5 fases (A–E) e pediu para executá-las **em sessão futura** — o documen
 por fase fica no **§0** do relatório (marcar conforme concluir). Ao retomar,
 seguir direto, sem reperguntar fase a fase.
 
+**O `Anexo B` do relatório é a ordem de serviço**: lista arquivo por arquivo
+(e linha, nos uploads) de cada tarefa das 5 fases, escrita para uma sessão
+fria executar sem refazer o diagnóstico. **As duas decisões de produto que
+faltavam já foram tomadas pelo usuário (2026-08-04) e estão lá — não
+reperguntar:** (1) o passo bloqueado do wizard deve **bloquear de verdade**
+(`preventDefault` + `aria-disabled` + fora da ordem de Tab), não abrir em
+modo leitura; (2) entrega em **um PR por fase, mesclado por mim** assim que
+suíte + E2E passarem, para permitir reverter uma fase isolada.
+
 Principais achados (todos verificados por medição reproduzível — comandos no
 Anexo A do relatório; **reconferir antes de corrigir**, o código pode ter
 mudado desde a auditoria):

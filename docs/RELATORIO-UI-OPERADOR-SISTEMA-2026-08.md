@@ -31,11 +31,17 @@ Marcar cada fase abaixo à medida que for concluída (detalhe de cada uma no §9
 | **D** | Acentuação e microcopy do operador (67 + 27 ocorrências) | médio | baixo ⚠ E2E | ⬜ pendente |
 | **E** | Robustez de médio prazo — paginar Arquivo, página de erro, fonte local, filtros de auditoria, impressão | médio | baixo | ⬜ pendente |
 
-**Ordem recomendada:** A → B → C → D → E. As fases são independentes; A é a de
-maior relação ganho/esforço e cabe num único PR pequeno.
+**Ordem:** A → B → C → D → E, **um PR por fase**, mesclado assim que suíte +
+E2E passarem (decisão do usuário, 2026-08-04). As fases são independentes; A é
+a de maior relação ganho/esforço.
 
-**Ao retomar, ler antes:** §10 ("o que **não** recomendo fazer") e §11
-(critérios objetivos de aceite, verificáveis pelos comandos do Anexo A).
+**Ao retomar, ler antes:** o **Anexo B** (ordem de serviço: lista de arquivos
+por tarefa e as decisões de produto já tomadas), §10 ("o que **não** recomendo
+fazer") e §11 (critérios objetivos de aceite).
+
+**Decisões de produto já tomadas — não reperguntar:** passo bloqueado do wizard
+deve **bloquear de verdade**; entrega em **um PR por fase, mesclado por mim**;
+**as 5 fases estão aprovadas integralmente**. Detalhe no Anexo B.
 
 **Armadilha conhecida da Fase D:** o teste E2E localiza botões por texto exato.
 Qualquer rótulo de botão acentuado exige atualizar `PlaywrightTestBase` e
@@ -698,6 +704,125 @@ O cálculo de contraste usado na §5.3 segue a fórmula WCAG 2.1 de luminância
 relativa, com composição prévia das camadas de opacidade sobre a cor de fundo
 real — não sobre branco, o que produziria números otimistas demais nos casos do
 login e do rodapé.
+
+---
+
+---
+
+## Anexo B — Ordem de serviço (para executar sem refazer o diagnóstico)
+
+Lista de arquivos por tarefa, levantada em 2026-08-04. **Reconferir com os
+comandos do Anexo A antes de começar** — se o código mudou, a lista muda.
+
+### Decisões de produto já tomadas (não reperguntar)
+
+| Questão | Decisão do usuário (2026-08-04) |
+|---|---|
+| Passo bloqueado do wizard (§5.5) | **Bloquear de verdade**: clique e teclado ignorados (`preventDefault`, `aria-disabled="true"`, fora da ordem de Tab). O operador não navega para etapas onde não pode agir. |
+| Entrega | **Um PR por fase (A–E)**, mesclado por mim assim que suíte + E2E passarem. Permite reverter uma fase isolada se algo ficar estranho na tela. |
+| Escopo | **Todas as 5 fases aprovadas integralmente.** Executar em sequência A → B → C → D → E. |
+
+### FASE A — Higiene (PR 1)
+
+**A1 · Contraste** (`app.css`): `.timeline-item.pendente .timeline-title`
+`gray-400`→`gray-600`; `.tabela-pareceres thead th` `gray-500`→`gray-600`;
+`login.html` `text-white-50`→tom mais claro (2 ocorrências).
+
+**A2 · Trava de upload** — adicionar `data-lock-submit="Enviando arquivo..."`:
+
+| Arquivo | Linha |
+|---|---|
+| `processos/detalhe.html` | 495, 589, 929, 989, 1104 |
+| `solicitante/detalhe.html` | 73 |
+
+⚠ `avaliador/votar.html:124` **não** entra aqui: `avaliador-votar.js` chama
+`form.submit()`, que não dispara o evento `submit`. Ali a correção é spinner no
+botão `#btnConfirmarVotoFinal` antes do `form.submit()`.
+
+**A3 · Breakpoint** (`app.css:808`): `max-width: 768px` → `767.98px`.
+
+**A4 · Ordem de colunas** (`processos/detalhe.html:84,260`): `order-md-1`/
+`order-md-2` → `order-lg-1`/`order-lg-2`.
+
+**A5 · Miudezas**: favicon em `static/` (reusar o SVG gota+cruz do
+`layout.html`); `autocomplete="username"`/`"current-password"` em `login.html`;
+microcopy de `relatorios/anual.html:28` (não existe mais cadastro manual de
+processo); aviso "reanexe os documentos clínicos" no retorno com erro de
+`solicitante/nova.html`.
+
+### FASE B — Acessibilidade (PR 2)
+
+**B1 · `<main id="conteudo">` em 20 arquivos** — trocar o `<div class="container...">`
+externo por `<main id="conteudo" class="container...">` (`dashboard` e `error`
+já têm `<main>`, falta só o `id`):
+
+`arquivo/lista` · `auditoria/lista` · `controle-urgencias/form` ·
+`controle-urgencias/lista` · `dashboard` · `error` · `membros/form` ·
+`membros/lista` · `processos/detalhe` · `processos/editar` · `processos/form` ·
+`processos/lista` · `processos/solicitacoes-online-detalhe` ·
+`processos/solicitacoes-online-lista` · `relatorios/anual` ·
+`relatorios/avaliador` · `solicitante/indisponivel` · `usuarios/form` ·
+`usuarios/lista` · `usuarios/minha-senha`
+
+**B2 · 60 rótulos órfãos** (`for`/`id`; com `th:field` basta `th:for`, padrão já
+usado em `solicitante/nova.html`):
+
+| Arquivo | Qtd |
+|---|:---:|
+| `processos/detalhe` | 14 |
+| `processos/form` | 8 |
+| `processos/editar` · `usuarios/form` | 7 cada |
+| `controle-urgencias/form` | 6 |
+| `avaliador/votar` · `membros/form` · `usuarios/minha-senha` | 3 cada |
+| `login` · `processos/lista` · `solicitante/nova` | 2 cada |
+| `arquivo/lista` · `processos/solicitacoes-online-detalhe` · `usuarios/esqueci-senha` | 1 cada |
+
+**B3 · Validação**: `is-invalid` + `invalid-feedback` + `aria-invalid` +
+`aria-describedby` nos 5 forms com `th:errors` (`membros/form`,
+`processos/form`, `processos/editar`, `usuarios/form`,
+`controle-urgencias/form`).
+
+**B4 · ARIA das abas** (`processos/detalhe.html:289-306`): `th:id="'tab-' +
+${passo.paneId}"`, `aria-selected`, `aria-controls` — e **bloquear de verdade**
+o passo bloqueado, conforme a decisão registrada acima.
+
+### FASE C — Design system (PR 3)
+
+`.stat-card-portal` no `dashboard.html` (remove os 8 `style=` repetidos, dos 52
+do arquivo) · mesmo componente em `controle-urgencias/lista` e `membros/lista`,
+clicáveis onde houver filtro · paginação unificada no padrão "N / total" de
+`auditoria` · estado vazio unificado com ícone · mover o `<script>` inline de
+`login.html` para `static/js/` (regra do CLAUDE.md) · rótulo real na coluna
+"Designados / Avaliados / Fav." de `membros/lista`.
+
+### FASE D — Acentuação (PR 4)
+
+18 arquivos, 67 ocorrências em texto visível + atributos. Maiores:
+`processos/detalhe` (19) · `dashboard` (9) · `layout` (5 — menu e fragments de
+status, aparecem em toda tela) · `processos/form`, `relatorios/anual`,
+`relatorios/avaliador` (4 cada) · demais 1–3.
+
+⚠ **Não tocar em `ResultadoParecer.descricao`** (alimenta PDF oficial — §10).
+⚠ **Atualizar `e2e/pages/*Page.java` no mesmo commit** se algum texto de botão
+mudar: o E2E localiza por texto exato.
+
+### FASE E — Robustez (PR 5)
+
+Paginar `/arquivo` (`ArquivoController` + filtro no banco) · página de erro por
+faixa de status e destino por perfil (hoje é beco sem saída para AVALIADOR e
+SOLICITANTE) · auto-hospedar a fonte Inter · filtros na Auditoria · `@media print`.
+
+### Checagem obrigatória em cada PR
+
+```bash
+export JAVA_HOME=/usr/lib/jvm/java-21-openjdk-amd64
+export PATH=$JAVA_HOME/bin:$PATH
+mvn -o test                 # 735 testes hoje, exigir 0 falhas
+```
+Mais o E2E antes de mesclar as fases que tocam texto de botão (D) ou estrutura
+de formulário (B). Falha conhecida e **pré-existente** do E2E local:
+`FluxoCompletoProcessoIT` passo 5, por falta de SMTP configurado na máquina —
+documentada no `CLAUDE.md`, não é regressão.
 
 ---
 
