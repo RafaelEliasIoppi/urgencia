@@ -49,6 +49,27 @@ public class AuditoriaService {
         return repo.findAllByOrderByDataHoraDesc(pageable);
     }
 
+    /**
+     * Listagem filtrada da trilha (usuario / acao / periodo). Qualquer
+     * parametro nulo ou vazio simplesmente nao filtra, entao esta chamada
+     * cobre tambem o caso "sem filtro nenhum".
+     */
+    public Page<LogAuditoria> buscar(String usuario, String acao,
+                                     java.time.LocalDate de, java.time.LocalDate ate,
+                                     Pageable pageable) {
+        // O periodo e informado em DATA, mas o campo gravado e data+hora: o dia
+        // final precisa ir ate 23:59:59, senao "ate = hoje" esconderia tudo o
+        // que aconteceu hoje depois da meia-noite (ou seja, o dia inteiro).
+        java.time.LocalDateTime inicio = de != null ? de.atStartOfDay() : null;
+        java.time.LocalDateTime fim = ate != null ? ate.atTime(java.time.LocalTime.MAX) : null;
+        return repo.buscar(usuario, acao, inicio, fim, pageable);
+    }
+
+    /** Acoes distintas ja registradas, para o select do filtro. */
+    public java.util.List<String> acoesDistintas() {
+        return repo.acoesDistintas();
+    }
+
     private String usuarioAtual() {
         var auth = SecurityContextHolder.getContext().getAuthentication();
         // getName() de um token com principal nulo retorna "" (nao null) - checar

@@ -27,9 +27,37 @@ public class AuditoriaController {
         this.auditoria = auditoria;
     }
 
+    /**
+     * Trilha de auditoria, com filtro por usuario, acao e periodo.
+     *
+     * <p>Ate 2026-08-04 esta tela nao tinha filtro nenhum, embora seja
+     * justamente a que se usa quando ja se sabe o que procurar ("o que o
+     * usuario X fez ontem", "quem excluiu este anexo"). A unica navegacao era
+     * paginar do mais recente para tras, 30 em 30.</p>
+     */
     @GetMapping
-    public String listar(@RequestParam(defaultValue = "0") int page, Model model) {
-        Page<LogAuditoria> logs = auditoria.listar(PageRequest.of(Math.max(page, 0), TAMANHO));
+    public String listar(@RequestParam(defaultValue = "0") int page,
+                         @RequestParam(required = false) String usuario,
+                         @RequestParam(required = false) String acao,
+                         @RequestParam(required = false)
+                         @org.springframework.format.annotation.DateTimeFormat(iso =
+                             org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate de,
+                         @RequestParam(required = false)
+                         @org.springframework.format.annotation.DateTimeFormat(iso =
+                             org.springframework.format.annotation.DateTimeFormat.ISO.DATE) LocalDate ate,
+                         Model model) {
+        Page<LogAuditoria> logs = auditoria.buscar(usuario, acao, de, ate,
+            PageRequest.of(Math.max(page, 0), TAMANHO));
+
+        model.addAttribute("usuario", usuario);
+        model.addAttribute("acao", acao);
+        model.addAttribute("de", de);
+        model.addAttribute("ate", ate);
+        model.addAttribute("acoesDisponiveis", auditoria.acoesDistintas());
+        model.addAttribute("totalRegistros", logs.getTotalElements());
+        model.addAttribute("temFiltro",
+            (usuario != null && !usuario.isBlank()) || (acao != null && !acao.isBlank())
+                || de != null || ate != null);
 
         // Agrupa os registros da pagina por dia, preservando a ordem (mais
         // recente primeiro) que ja vem do repositorio (dataHora desc).

@@ -1,7 +1,40 @@
 /* === SAUR - Tema Urgencia Renal === */
 /* Paleta SAUR: azul #1a4d8f (primaria), ouro #f5a623, verde #2d8546 */
-/* A fonte Inter e carregada via <link rel="preconnect"/"stylesheet"> no
-   layout.html (nao por @import, que e render-blocking). Fallback: system-ui. */
+
+/* === Fonte Inter, AUTO-HOSPEDADA (2026-08-04) ===
+   Antes vinha de fonts.googleapis.com/fonts.gstatic.com em TODA pagina. Tres
+   motivos para trazer para casa, nesta ordem:
+     1. LGPD: cada carregamento enviava o IP do usuario (servidor publico ou
+        equipe de hospital) a um terceiro fora do pais, sem finalidade
+        necessaria - transferencia internacional de dado pessoal;
+     2. disponibilidade: era folha de estilo render-blocking, entao rede de
+        hospital lenta ou bloqueio ao Google atrasava a primeira pintura;
+     3. custo zero: 3 arquivos woff2 (subset latin), ~148 KB no total,
+        servidos pelo mesmo nginx, com o cache por hash de conteudo que o
+        projeto ja tem (spring.web.resources.chain.strategy.content).
+   Subset latin basta para portugues. font-display:swap mantem o texto
+   visivel com a fonte de sistema enquanto a Inter carrega. */
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 400;
+    font-display: swap;
+    src: url('../fonts/inter-400.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 600;
+    font-display: swap;
+    src: url('../fonts/inter-600.woff2') format('woff2');
+}
+@font-face {
+    font-family: 'Inter';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('../fonts/inter-700.woff2') format('woff2');
+}
 
 :root {
     --rs-blue: #1a4d8f;
@@ -1006,4 +1039,54 @@ tr.linha-inativa > td:first-child {
         animation-iteration-count: 1;
     }
     * { transition-duration: .01ms !important; }
+}
+
+/* === Impressao ===
+   Fluxo de trabalho com oficio e protocolo: imprimir a tela de um processo e
+   comum. Ate 2026-08-04 nao havia nenhuma regra de impressao, entao saia tudo -
+   menu, wizard, conversa, botoes, rodape escuro -, gastando tinta e empurrando
+   o conteudo util para a 2a pagina.
+   Os documentos OFICIAIS continuam sendo os PDFs gerados pelo sistema (oficio,
+   relatorio final); isto e so para a impressao ocasional da tela. */
+@media print {
+    /* Cromo de navegacao e acoes nao fazem sentido no papel */
+    .navbar, .footer-sgpur, .wizard-wrapper, .toast-container-sgpur,
+    .modal, .btn, form, .pagination, .alert-dismissible .btn-close,
+    #chatBox, .chat-box {
+        display: none !important;
+    }
+
+    /* Fundo branco e texto preto: economiza tinta e melhora a leitura */
+    body {
+        background: #fff !important;
+        color: #000;
+        display: block;   /* desfaz o flex column da tela */
+    }
+
+    .card {
+        box-shadow: none !important;
+        border: 1px solid #999 !important;
+        break-inside: avoid;
+    }
+
+    .card-header {
+        background: none !important;
+        border-bottom: 1px solid #999;
+    }
+
+    /* Abas: no papel nao ha como clicar, entao mostra TODAS as etapas */
+    .tab-content > .tab-pane {
+        display: block !important;
+        opacity: 1 !important;
+        break-inside: avoid;
+    }
+
+    /* Badges e status precisam sobreviver a impressao em preto e branco */
+    .badge, .status-mark {
+        border: 1px solid #666 !important;
+        color: #000 !important;
+        background: none !important;
+    }
+
+    a[href]::after { content: ""; }   /* nao poluir com a URL de cada link */
 }

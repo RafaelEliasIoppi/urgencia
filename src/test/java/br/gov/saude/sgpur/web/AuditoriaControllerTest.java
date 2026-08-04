@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -60,7 +61,7 @@ class AuditoriaControllerTest {
     void listarRetornaViewCorreta() throws Exception {
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> vazio = new PageImpl<>(List.of(), pageable, 0);
-        when(auditoria.listar(any())).thenReturn(vazio);
+        when(auditoria.buscar(any(), any(), any(), any(), any())).thenReturn(vazio);
 
         mvc.perform(get("/auditoria"))
                 .andExpect(status().isOk())
@@ -72,14 +73,14 @@ class AuditoriaControllerTest {
     void listarSemParametroUsaPaginaZero() throws Exception {
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> vazio = new PageImpl<>(List.of(), pageable, 0);
-        when(auditoria.listar(pageable)).thenReturn(vazio);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(vazio);
 
         mvc.perform(get("/auditoria"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("paginaAtual", 0))
                 .andExpect(model().attribute("totalPaginas", 0));
 
-        verify(auditoria).listar(pageable);
+        verify(auditoria).buscar(any(), any(), any(), any(), eq(pageable));
     }
 
     @Test
@@ -87,13 +88,13 @@ class AuditoriaControllerTest {
     void listarRepassaParametroDePaginaAoServico() throws Exception {
         Pageable pageable = PageRequest.of(2, 30);
         Page<LogAuditoria> pagina = new PageImpl<>(List.of(), pageable, 100);
-        when(auditoria.listar(pageable)).thenReturn(pagina);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(pagina);
 
         mvc.perform(get("/auditoria").param("page", "2"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("paginaAtual", 2));
 
-        verify(auditoria).listar(pageable);
+        verify(auditoria).buscar(any(), any(), any(), any(), eq(pageable));
     }
 
     @Test
@@ -101,14 +102,14 @@ class AuditoriaControllerTest {
     void listarComPaginaNegativaEhTratadaComoZero() throws Exception {
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> vazio = new PageImpl<>(List.of(), pageable, 0);
-        when(auditoria.listar(pageable)).thenReturn(vazio);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(vazio);
 
         mvc.perform(get("/auditoria").param("page", "-5"))
                 .andExpect(status().isOk())
                 .andExpect(model().attribute("paginaAtual", 0));
 
         // Math.max(page, 0) - nunca deve pedir uma pagina negativa ao servico.
-        verify(auditoria).listar(pageable);
+        verify(auditoria).buscar(any(), any(), any(), any(), eq(pageable));
     }
 
     @Test
@@ -121,7 +122,7 @@ class AuditoriaControllerTest {
 
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> pagina = new PageImpl<>(List.of(log1, log2, log3), pageable, 3);
-        when(auditoria.listar(pageable)).thenReturn(pagina);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(pagina);
 
         mvc.perform(get("/auditoria"))
                 .andExpect(status().isOk())
@@ -135,7 +136,7 @@ class AuditoriaControllerTest {
     void listarComRepositorioVazioMostraMensagemDeNenhumRegistro() throws Exception {
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> vazio = new PageImpl<>(List.of(), pageable, 0);
-        when(auditoria.listar(pageable)).thenReturn(vazio);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(vazio);
 
         mvc.perform(get("/auditoria"))
                 .andExpect(status().isOk())
@@ -152,7 +153,7 @@ class AuditoriaControllerTest {
 
         Pageable pageable = PageRequest.of(0, 30);
         Page<LogAuditoria> pagina = new PageImpl<>(List.of(semIp, comIp), pageable, 2);
-        when(auditoria.listar(pageable)).thenReturn(pagina);
+        when(auditoria.buscar(any(), any(), any(), any(), eq(pageable))).thenReturn(pagina);
 
         mvc.perform(get("/auditoria"))
                 .andExpect(status().isOk())

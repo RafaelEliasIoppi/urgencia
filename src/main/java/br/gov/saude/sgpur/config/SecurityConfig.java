@@ -110,7 +110,11 @@ public class SecurityConfig {
                 // 2026-08-04. O .ico continua liberado por seguranca - alguns
                 // navegadores/leitores de feed ainda o pedem na raiz por conta
                 // propria, e um 401 nesse pedido polui o log de auditoria.
-                auth.requestMatchers("/css/**", "/js/**", "/webjars/**",
+                // /fonts/**: a fonte Inter passou a ser auto-hospedada em
+                // 2026-08-04. Sem liberar aqui, o @font-face do app.css pedia
+                // /fonts/inter-*.woff2, levava 302 para /login e a fonte nunca
+                // carregava - justamente na tela de login, que e anonima.
+                auth.requestMatchers("/css/**", "/js/**", "/webjars/**", "/fonts/**",
                     "/favicon.ico", "/favicon.svg").permitAll();
                 if (dev) {
                     auth.requestMatchers("/h2-console/**").permitAll();
