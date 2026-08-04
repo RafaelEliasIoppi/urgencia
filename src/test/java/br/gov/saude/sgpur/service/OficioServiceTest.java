@@ -230,4 +230,75 @@ class OficioServiceTest {
 
         assertThat(texto).contains("(numero nao atribuido)");
     }
+
+    // ----- rascunho editavel (.rtf) -----
+
+    private String rascunho(Processo p) {
+        return new String(service.gerarRascunhoRtf(p), java.nio.charset.StandardCharsets.ISO_8859_1);
+    }
+
+    /**
+     * Desde 2026-08-04 o oficio e sempre anexado pelo operador; o sistema so
+     * oferece este rascunho para editar no Word. Os dados do processo precisam
+     * chegar prontos, senao o rascunho nao poupa trabalho nenhum.
+     */
+    @Test
+    void rascunhoTrazNumeroDataPacienteMotivoEAssinatura() {
+        String rtf = rascunho(processoCompleto());
+
+        assertThat(rtf).startsWith("{\\rtf1");
+        assertThat(rtf).endsWith("}");
+        assertThat(rtf).contains("1398/2026");
+        assertThat(rtf).contains("07/2026");
+        assertThat(rtf).contains("Fulano de Tal");
+        assertThat(rtf).contains("Ausencia de indicacao clinica para urgencia renal.");
+        assertThat(rtf).contains("Porto Alegre, 15 de mar\\'e7o de 2026.");
+        assertThat(rtf).contains("Fulana Coordenadora");
+        assertThat(rtf).contains("Hospital de Clinicas");
+    }
+
+    /**
+     * Acentuacao vira \\'hh (o code page declarado no cabecalho do RTF); sem
+     * isso o Word mostra caractere trocado no nome do paciente e no motivo -
+     * texto que vai num documento oficial.
+     */
+    @Test
+    void rascunhoEscapaAcentuacaoNoFormatoQueOWordEntende() {
+        Processo p = processoCompleto();
+        p.setPacienteNome("João Conceição");
+
+        String rtf = rascunho(p);
+
+        assertThat(rtf).contains("Jo\\'e3o Concei\\'e7\\'e3o");
+        assertThat(rtf).doesNotContain("João");
+    }
+
+    /**
+     * Chave e barra invertida sao caracteres de CONTROLE do RTF: um motivo de
+     * indeferimento que contenha "{" corromperia o documento inteiro (o Word
+     * abre em branco ou com o texto truncado) se entrasse cru.
+     */
+    @Test
+    void rascunhoEscapaCaracteresDeControleDoRtf() {
+        Processo p = processoCompleto();
+        p.setMotivoIndeferimento("Criterio {A\\B} nao atendido");
+
+        String rtf = rascunho(p);
+
+        assertThat(rtf).contains("Criterio \\{A\\\\B\\} nao atendido");
+    }
+
+    @Test
+    void rascunhoUsaFallbacksQuandoOProcessoAindaNaoTemNumeroDeOficioNemMotivo() {
+        Processo p = processoCompleto();
+        p.setNumeroOficio(null);
+        p.setMotivoIndeferimento(null);
+        p.setDataEmissaoOficio(null);
+
+        String rtf = rascunho(p);
+
+        assertThat(rtf).contains(OficioService.NUMERO_NAO_ATRIBUIDO);
+        assertThat(rtf).contains("(motivo nao informado)");
+        assertThat(rtf).contains(String.valueOf(LocalDate.now().getYear()));
+    }
 }

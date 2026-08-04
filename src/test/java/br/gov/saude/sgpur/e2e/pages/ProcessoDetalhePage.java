@@ -56,8 +56,9 @@ public class ProcessoDetalhePage {
     // O sistema decide sozinho (ProcessoService.tentarDecisaoAutomatica,
     // chamado por AvaliadorController logo apos cada voto) assim que a
     // maioria simples se forma (2 favoraveis defere, 2 desfavoraveis
-    // indefere; ou o coordenador CET-RS vota favoravel sozinho) - inclusive
-    // gerando o oficio de indeferimento automaticamente. O formulario manual
+    // indefere; ou o coordenador CET-RS vota favoravel sozinho). O oficio de
+    // indeferimento NAO sai daqui: e sempre anexado pelo operador no passo 5
+    // (2026-08-04). O formulario manual
     // abaixo (`#decisaoSelect`) SO aparece quando o processo AINDA NAO esta
     // finalizado (th:unless="${processo.status.finalizado}" no template) -
     // usado para Cancelado (nunca automatico) ou para redecidir apos uma
@@ -80,6 +81,21 @@ public class ProcessoDetalhePage {
     }
 
     // ===== Passo 5: Finalizacao =====
+
+    /**
+     * Anexa o Oficio de Indeferimento (obrigatorio so quando INDEFERIDO).
+     * Desde 2026-08-04 o oficio NAO e mais gerado pelo sistema: o operador
+     * baixa um rascunho editavel, ajusta no Word e anexa o documento final -
+     * o anexo e o unico oficio valido do processo.
+     */
+    public ProcessoDetalhePage passo5_anexarOficioIndeferimento(FilePayload oficio) {
+        narrar("Passo 5/5 - Finalizacao: anexando o oficio de indeferimento assinado...");
+        clicarPasso("pane-finalizacao");
+        page.locator("#finalizacao form[action*='oficio-upload'] input[name=arquivo]").setInputFiles(oficio);
+        page.locator("#finalizacao form[action*='oficio-upload'] button").click();
+        page.waitForLoadState();
+        return this;
+    }
 
     /** Anexa/substitui o comprovante SNT (obrigatorio so quando DEFERIDO - nao e gerado pelo sistema). */
     public ProcessoDetalhePage passo5_anexarComprovanteSnt(FilePayload comprovanteSnt) {
