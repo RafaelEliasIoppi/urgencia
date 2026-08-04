@@ -422,6 +422,20 @@ public class ProcessoService {
         return parecerRepository.reivindicarConviteSeElegivel(parecerId, agora, limiteJanela) > 0;
     }
 
+    /**
+     * Grava a data/hora de agora como o ultimo lembrete manual enviado a este
+     * parecer, chamado por {@code ProcessoDecisaoController.lembreteAvaliador}/
+     * {@code lembretePendentes} SOMENTE apos a confirmacao de envio do e-mail
+     * (nunca antes - se o SMTP falhar, o timestamp nao deve avancar). Precisa
+     * de transacao propria pelo mesmo motivo de
+     * {@link #reivindicarConviteAvaliador}: delega a um {@code @Modifying} de
+     * linha unica, que exige uma transacao aberta.
+     */
+    @Transactional
+    public void registrarLembreteAvaliador(Long parecerId) {
+        parecerRepository.registrarUltimoLembrete(parecerId, LocalDateTime.now());
+    }
+
     /** True se o processo esta encerrado e, portanto, com a edicao travada. */
     public boolean edicaoBloqueada(Processo processo) {
         return validator.edicaoBloqueada(processo);
