@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Minhas solicitacoes')}"></head>
+<head th:replace="~{layout :: head('Minhas solicitações')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
@@ -8,37 +8,37 @@
 <main id="conteudo" class="container my-4 container-portal">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
-            <h1 class="h3 mb-0"><i class="bi bi-send-plus"></i> Minhas solicitacoes</h1>
+            <h1 class="h3 mb-0"><i class="bi bi-send-plus"></i> Minhas solicitações</h1>
             <p class="text-muted small mb-0" th:text="'Equipe: ' + ${equipe}">Equipe</p>
         </div>
         <a th:href="@{/solicitante/nova}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Nova solicitacao
+            <i class="bi bi-plus-lg"></i> Nova solicitação
         </a>
     </div>
 
     <p class="small text-muted">
-        Envie sua solicitacao pelo sistema — nossa equipe vai analisar e retornar por e-mail.
+        Envie sua solicitação pelo sistema — nossa equipe vai analisar e retornar por e-mail.
     </p>
 
-    <!-- Banner de destaque: "acao necessaria" hoje so aparecia como um badge
-         pequeno numa coluna da tabela, facil de nao notar. Isso repete a
-         mesma informacao de forma impossivel de passar despercebido. -->
+    <!-- Banner de destaque: "ação necessária" hoje só aparecia como um badge
+         pequeno numa coluna da tabela, fácil de não notar. Isso repete a
+         mesma informação de forma impossível de passar despercebido. -->
     <div th:if="${totalAcaoNecessaria} > 0" class="alert alert-warning d-flex align-items-center gap-2">
         <i class="bi bi-exclamation-triangle-fill fs-4"></i>
         <span>
-            Voce tem <strong th:text="${totalAcaoNecessaria}">0</strong>
-            <span th:text="${totalAcaoNecessaria == 1} ? 'solicitacao aguardando sua resposta' : 'solicitacoes aguardando sua resposta'">solicitacoes aguardando sua resposta</span>
-            — a equipe de Urgencia Renal pediu informacao complementar. Veja o destaque
+            Você tem <strong th:text="${totalAcaoNecessaria}">0</strong>
+            <span th:text="${totalAcaoNecessaria == 1} ? 'solicitação aguardando sua resposta' : 'solicitações aguardando sua resposta'">solicitações aguardando sua resposta</span>
+            — a equipe de Urgência Renal pediu informação complementar. Veja o destaque
             <span class="badge rounded-pill bg-warning text-dark">
-                <i class="bi bi-exclamation-triangle-fill"></i> Acao necessaria</span> na lista abaixo.
+                <i class="bi bi-exclamation-triangle-fill"></i> Ação necessária</span> na lista abaixo.
         </span>
     </div>
 
-    <!-- Cards de resumo por status - agora tambem filtros: clicar num card
+    <!-- Cards de resumo por status - agora também filtros: clicar num card
          filtra a lista abaixo (JS client-side, static/js/solicitante-lista.js),
          sem round-trip ao servidor. data-filtro usa as mesmas categorias de
          SolicitacaoOnlineService.resumir, espelhadas por linha/card via
-         data-categoria (Fase 7 do relatorio de UI). -->
+         data-categoria (Fase 7 do relatório de UI). -->
     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3 mb-4" id="cardsFiltro">
         <div class="col">
             <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start active"
@@ -70,13 +70,13 @@
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-search"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Em analise</div>
+                <div class="stat-label" style="color:var(--stat-text);">Em análise</div>
             </button>
         </div>
         <div class="col">
             <!-- Card agrupa Deferidos E Indeferidos: classe neutra (total),
-                 nao verde (deferido), para nao insinuar que "Decididas" so
-                 significa resultado favoravel. -->
+                 não verde (deferido), para não insinuar que "Decididas" só
+                 significa resultado favorável. -->
             <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start"
                     data-filtro="decididas">
                 <div class="d-flex align-items-center justify-content-between">
@@ -88,7 +88,7 @@
             </button>
         </div>
         <div class="col">
-            <!-- Devolvida != Indeferida: ambar (andamento), nao vermelho. -->
+            <!-- Devolvida != Indeferida: âmbar (andamento), não vermelho. -->
             <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
                     data-filtro="devolvidas">
                 <div class="d-flex align-items-center justify-content-between">
@@ -112,7 +112,7 @@
     </div>
     <p id="listaVaziaFiltro" class="text-muted text-center py-4 d-none">
         <i class="bi bi-funnel fs-3 d-block mb-2"></i>
-        Nenhuma solicitacao encontrada com esse filtro/busca.
+        Nenhuma solicitação encontrada com esse filtro/busca.
     </p>
 
     <!-- Desktop/tablet: tabela (>=768px, breakpoint md do Bootstrap) -->
@@ -154,7 +154,7 @@
                             <a th:if="${s.status.name() == 'CONVERTIDA' and acaoNecessaria.get(s.id)}"
                                th:href="@{/solicitante/{id}(id=${s.id})}"
                                class="badge rounded-pill bg-warning text-dark text-decoration-none">
-                                <i class="bi bi-exclamation-triangle-fill"></i> Acao necessaria
+                                <i class="bi bi-exclamation-triangle-fill"></i> Ação necessária
                             </a>
                             <span th:unless="${s.status.name() == 'CONVERTIDA' and acaoNecessaria.get(s.id)}"
                                   class="badge rounded-pill" th:classappend="${s.status.bootstrapBadge}">
@@ -176,7 +176,7 @@
                     <tr th:if="${solicitacoes.isEmpty()}">
                         <td colspan="6" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                            Voce ainda nao enviou nenhuma solicitacao.
+                            Você ainda não enviou nenhuma solicitação.
                         </td>
                     </tr>
                 </tbody>
@@ -186,12 +186,12 @@
 
     <!-- Mobile (<768px): cards empilhados em vez de tabela espremida - mais
          nativo pra quem acessa do celular fora do hospital. Mesmos dados/
-         atributos do model que a tabela acima, so a apresentacao muda. -->
+         atributos do model que a tabela acima, só a apresentação muda. -->
     <div class="d-md-none">
         <div th:if="${solicitacoes.isEmpty()}" class="card">
             <div class="card-body text-center text-muted py-5">
                 <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                Voce ainda nao enviou nenhuma solicitacao.
+                Você ainda não enviou nenhuma solicitação.
             </div>
         </div>
         <a th:each="s : ${solicitacoes}" th:href="@{/solicitante/{id}(id=${s.id})}"
@@ -225,7 +225,7 @@
                 <div class="d-flex flex-wrap gap-1">
                     <span th:if="${s.status.name() == 'CONVERTIDA' and acaoNecessaria.get(s.id)}"
                           class="badge rounded-pill bg-warning text-dark">
-                        <i class="bi bi-exclamation-triangle-fill"></i> Acao necessaria
+                        <i class="bi bi-exclamation-triangle-fill"></i> Ação necessária
                     </span>
                     <span th:unless="${s.status.name() == 'CONVERTIDA' and acaoNecessaria.get(s.id)}"
                           class="badge rounded-pill" th:classappend="${s.status.bootstrapBadge}">

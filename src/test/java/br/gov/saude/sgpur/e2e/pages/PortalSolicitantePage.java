@@ -45,7 +45,7 @@ public class PortalSolicitantePage {
     /** Submete o pedido; o controller redireciona para a lista do solicitante (/solicitante). */
     public void enviar() {
         narrar("Enviando a solicitacao para a triagem da equipe de Urgencia Renal...");
-        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Enviar solicitacao")).click();
+        page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName("Enviar solicitação")).click();
         page.waitForURL("**/solicitante");
     }
 }

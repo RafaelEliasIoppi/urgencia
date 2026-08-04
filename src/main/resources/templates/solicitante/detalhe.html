@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Solicitacao')}"></head>
+<head th:replace="~{layout :: head('Solicitação')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
@@ -12,9 +12,9 @@
             <span th:if="${solicitacao.processoGerado != null}" class="text-muted fs-5 font-monospace"
                   th:text="'#' + ${solicitacao.processoGerado.numero}">#00/0000</span>
         </h1>
-        <!-- Vocabulario unificado com o oficio (Deferido/Indeferido), nao mais
+        <!-- Vocabulário unificado com o ofício (Deferido/Indeferido), não mais
              misturado com "Aprovada"/"Reprovada" - mesmo termo em badge,
-             timeline e texto do resultado (Fase 6 do relatorio de UI). -->
+             timeline e texto do resultado (Fase 6 do relatório de UI). -->
         <span th:switch="${solicitacao.status.name()}">
             <span th:case="'ENVIADA'" class="badge bg-warning text-dark fs-6">Aguardando triagem</span>
             <span th:case="'CONVERTIDA'">
@@ -31,7 +31,7 @@
             <span th:case="'REPROVADA'" class="badge bg-danger fs-6">Indeferido</span>
             <span th:case="'DEVOLVIDA'" class="badge bg-danger fs-6">Devolvida</span>
             <span th:case="'CANCELADA'" class="badge bg-secondary fs-6">Cancelada</span>
-            <span th:case="'PROCESSO_EXCLUIDO'" class="badge bg-danger fs-6">Processo excluido</span>
+            <span th:case="'PROCESSO_EXCLUIDO'" class="badge bg-danger fs-6">Processo excluído</span>
         </span>
     </div>
 
@@ -43,14 +43,14 @@
     </p>
 
     <!-- Linha do tempo do pedido: mesmo componente visual (.timeline) usado no
-         detalhe do processo, adaptado aos 3 momentos deste modulo de staging. -->
+         detalhe do processo, adaptado aos 3 momentos deste módulo de staging. -->
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6 text-muted mb-3">Andamento do pedido</h2>
             <div class="timeline">
                 <div class="timeline-item concluida">
                     <div class="timeline-dot"><i class="bi bi-check"></i></div>
-                    <div class="timeline-title">Solicitacao enviada</div>
+                    <div class="timeline-title">Solicitação enviada</div>
                     <div class="timeline-desc">
                         Recebemos seu pedido em
                         <span th:text="${#temporals.format(solicitacao.dataEnvio, 'dd/MM/yyyy HH:mm')}">-</span>.
@@ -61,7 +61,7 @@
                     <div class="timeline-dot">
                         <i class="bi" th:classappend="${solicitacao.status.name() == 'ENVIADA'} ? 'bi-hourglass-split' : 'bi-check'"></i>
                     </div>
-                    <div class="timeline-title">Em analise pela equipe de Urgencia Renal</div>
+                    <div class="timeline-title">Em análise pela equipe de Urgência Renal</div>
                     <div class="timeline-desc">
                         A equipe confere os dados e os documentos anexados antes de prosseguir.
                     </div>
@@ -90,65 +90,65 @@
                     <div class="timeline-title">
                         <th:block th:if="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                                   th:switch="${solicitacao.processoGerado.status.name()}">
-                            <span th:case="'DEFERIDO'"><strong>Deferido</strong> — Urgencia renal reconhecida</span>
-                            <span th:case="'INDEFERIDO'"><strong>Indeferido</strong> — Urgencia renal nao reconhecida</span>
+                            <span th:case="'DEFERIDO'"><strong>Deferido</strong> — Urgência renal reconhecida</span>
+                            <span th:case="'INDEFERIDO'"><strong>Indeferido</strong> — Urgência renal não reconhecida</span>
                             <span th:case="'CANCELADO'">Processo cancelado</span>
                         </th:block>
                         <th:block th:unless="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                                   th:switch="${solicitacao.status.name()}">
-                            <span th:case="'CONVERTIDA'">Aguardando decisao</span>
-                            <span th:case="'APROVADA'"><strong>Deferido</strong> — Urgencia renal reconhecida</span>
-                            <span th:case="'REPROVADA'"><strong>Indeferido</strong> — Urgencia renal nao reconhecida</span>
-                            <span th:case="'DEVOLVIDA'">Devolvida para correcao</span>
-                            <span th:case="'CANCELADA'">Cancelada por voce</span>
-                            <span th:case="'PROCESSO_EXCLUIDO'">Processo excluido</span>
-                            <span th:case="*">Aguardando decisao</span>
+                            <span th:case="'CONVERTIDA'">Aguardando decisão</span>
+                            <span th:case="'APROVADA'"><strong>Deferido</strong> — Urgência renal reconhecida</span>
+                            <span th:case="'REPROVADA'"><strong>Indeferido</strong> — Urgência renal não reconhecida</span>
+                            <span th:case="'DEVOLVIDA'">Devolvida para correção</span>
+                            <span th:case="'CANCELADA'">Cancelada por você</span>
+                            <span th:case="'PROCESSO_EXCLUIDO'">Processo excluído</span>
+                            <span th:case="*">Aguardando decisão</span>
                         </th:block>
                     </div>
                     <div class="timeline-desc">
                         <th:block th:if="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                                   th:switch="${solicitacao.processoGerado.status.name()}">
                             <span th:case="'DEFERIDO'">
-                                A equipe de Urgencia Renal aprovou o pedido. O comprovante de insercao no SNT
-                                segue disponivel para download e foi enviado por e-mail a sua equipe.
+                                A equipe de Urgência Renal aprovou o pedido. O comprovante de inserção no SNT
+                                segue disponível para download e foi enviado por e-mail à sua equipe.
                             </span>
                             <span th:case="'INDEFERIDO'">
-                                A equipe de Urgencia Renal nao reconheceu a urgencia para este caso.
-                                O oficio com os detalhes foi enviado por e-mail a sua equipe.
+                                A equipe de Urgência Renal não reconheceu a urgência para este caso.
+                                O ofício com os detalhes foi enviado por e-mail à sua equipe.
                             </span>
                             <span th:case="'CANCELADO'">
-                                O processo foi cancelado pela equipe de Urgencia Renal.
+                                O processo foi cancelado pela equipe de Urgência Renal.
                             </span>
                         </th:block>
                         <th:block th:unless="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
                                   th:switch="${solicitacao.status.name()}">
                             <span th:case="'CONVERTIDA'">
-                                Seu pedido virou um processo oficial e esta em analise pelos medicos avaliadores.
+                                Seu pedido virou um processo oficial e está em análise pelos médicos avaliadores.
                                 <span th:if="${previsaoPrazo != null}" class="d-block small text-muted mt-1">
                                     <i class="bi bi-hourglass-split"></i>
-                                    Previsao baseada no historico: normalmente decidido em torno de
+                                    Previsão baseada no histórico: normalmente decidido em torno de
                                     <strong th:text="${previsaoPrazo}">7 dias</strong>
-                                    apos o envio para analise (nao e um prazo formal, so uma referencia).
+                                    após o envio para análise (não é um prazo formal, só uma referência).
                                 </span>
                             </span>
                             <span th:case="'APROVADA'">
-                                A equipe de Urgencia Renal aprovou o pedido. O comprovante de insercao no SNT
-                                segue disponivel para download e foi enviado por e-mail a sua equipe.
+                                A equipe de Urgência Renal aprovou o pedido. O comprovante de inserção no SNT
+                                segue disponível para download e foi enviado por e-mail à sua equipe.
                             </span>
                             <span th:case="'REPROVADA'">
-                                A equipe de Urgencia Renal nao reconheceu a urgencia para este caso.
-                                O oficio com os detalhes foi enviado por e-mail a sua equipe.
+                                A equipe de Urgência Renal não reconheceu a urgência para este caso.
+                                O ofício com os detalhes foi enviado por e-mail à sua equipe.
                             </span>
                             <span th:case="'DEVOLVIDA'">
                                 Precisa de um ajuste antes de seguir — veja o motivo abaixo.
                             </span>
-                            <span th:case="'CANCELADA'">Voce cancelou este pedido antes da triagem.</span>
+                            <span th:case="'CANCELADA'">Você cancelou este pedido antes da triagem.</span>
                             <span th:case="'PROCESSO_EXCLUIDO'">
-                                O processo gerado a partir deste pedido foi excluido pela equipe de Urgencia Renal.
+                                O processo gerado a partir deste pedido foi excluído pela equipe de Urgência Renal.
                             </span>
                             <span th:case="*">
-                                Assim que a triagem terminar, o pedido vira um processo ou e devolvido
-                                para correcao.
+                                Assim que a triagem terminar, o pedido vira um processo ou é devolvido
+                                para correção.
                             </span>
                         </th:block>
                     </div>
@@ -163,7 +163,7 @@
         Seu pedido foi aceito e virou o processo
         <strong th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</strong>
         na Central de Transplantes do Estado do Rio Grande do Sul.
-        Voce recebera o resultado da avaliacao por e-mail assim que a decisao for concluida.
+        Você receberá o resultado da avaliação por e-mail assim que a decisão for concluída.
     </div>
     <div th:if="${solicitacao.status.name() == 'APROVADA' or (solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'DEFERIDO')}"
          class="alert alert-success">
@@ -176,12 +176,12 @@
         <span th:if="${solicitacao.status.name() == 'APROVADA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
             analisado e <strong>DEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
-            resultando no reconhecimento da urgencia renal. A resposta oficial foi enviada por e-mail a sua equipe
-            (<span th:text="${solicitacao.solicitanteEmail}">email</span>), contendo o comprovante de insercao no
+            resultando no reconhecimento da urgência renal. A resposta oficial foi enviada por e-mail à sua equipe
+            (<span th:text="${solicitacao.solicitanteEmail}">email</span>), contendo o comprovante de inserção no
             Sistema Nacional de Transplantes (SNT) em anexo.
         </span>
         <div th:if="${mensagemResposta != null}" class="mt-2 p-2 bg-white rounded border">
-            <small class="text-muted fw-semibold">Mensagem enviada a sua equipe:</small>
+            <small class="text-muted fw-semibold">Mensagem enviada à sua equipe:</small>
             <pre class="mb-0 small mt-1" style="white-space: pre-wrap; font-family: inherit;"
                  th:text="${mensagemResposta}"></pre>
         </div>
@@ -189,7 +189,7 @@
             <a th:if="${comprovanteSntAnexo != null}"
                th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${comprovanteSntAnexo.id})}"
                class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-check"></i> Baixar comprovante de insercao no SNT
+                <i class="bi bi-file-earmark-check"></i> Baixar comprovante de inserção no SNT
             </a>
             <span th:unless="${comprovanteSntAnexo != null}" class="small text-muted">
                 Comprovante SNT ainda sendo providenciado pela equipe.
@@ -207,14 +207,14 @@
         <span th:if="${solicitacao.status.name() == 'REPROVADA'}">
             Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
             analisado e <strong>INDEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
-            resultando no indeferimento da urgencia renal. O oficio com os detalhes foi enviado por e-mail a sua equipe
+            resultando no indeferimento da urgência renal. O ofício com os detalhes foi enviado por e-mail à sua equipe
             (<span th:text="${solicitacao.solicitanteEmail}">email</span>).
         </span>
         <div th:if="${solicitacao.processoGerado != null and solicitacao.processoGerado.motivoIndeferimento != null}" class="mt-1">
             <strong>Motivo informado:</strong> <span th:text="${solicitacao.processoGerado.motivoIndeferimento}"></span>
         </div>
         <div th:if="${mensagemResposta != null}" class="mt-2 p-2 bg-white rounded border">
-            <small class="text-muted fw-semibold">Mensagem enviada a sua equipe:</small>
+            <small class="text-muted fw-semibold">Mensagem enviada à sua equipe:</small>
             <pre class="mb-0 small mt-1" style="white-space: pre-wrap; font-family: inherit;"
                  th:text="${mensagemResposta}"></pre>
         </div>
@@ -222,10 +222,10 @@
             <a th:if="${oficioIndeferimentoAnexo != null}"
                th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${oficioIndeferimentoAnexo.id})}"
                class="btn btn-outline-danger">
-                <i class="bi bi-file-earmark-text"></i> Baixar oficio de indeferimento
+                <i class="bi bi-file-earmark-text"></i> Baixar ofício de indeferimento
             </a>
             <span th:unless="${oficioIndeferimentoAnexo != null}" class="small text-muted">
-                Oficio ainda sendo providenciado pela equipe.
+                Ofício ainda sendo providenciado pela equipe.
             </span>
         </div>
     </div>
@@ -240,44 +240,44 @@
         <i class="bi bi-exclamation-triangle-fill"></i>
         Seu pedido virou o processo
         <strong th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</strong>,
-        mas um(a) avaliador(a) da Urgencia Renal pediu mais informacoes sobre este pedido.
-        Envie os documentos/dados solicitados abaixo para que a analise possa continuar.
+        mas um(a) avaliador(a) da Urgência Renal pediu mais informações sobre este pedido.
+        Envie os documentos/dados solicitados abaixo para que a análise possa continuar.
         <form th:action="@{/solicitante/{id}/informacao-complementar(id=${solicitacao.id})}"
               method="post" enctype="multipart/form-data" class="mt-3">
             <div class="mb-2">
-                <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informacoes pedidas</label>
+                <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informações pedidas</label>
                 <input type="file" class="form-control" id="arquivosInfoComplementar" name="arquivos" multiple>
             </div>
             <button type="submit" class="btn btn-warning">
-                <i class="bi bi-upload"></i> Enviar informacoes complementares
+                <i class="bi bi-upload"></i> Enviar informações complementares
             </button>
         </form>
     </div>
     <div th:if="${solicitacao.status.name() == 'CONVERTIDA' and precisaInformacaoComplementar and jaEnviouInfoComplementar}"
          class="alert alert-info">
         <i class="bi bi-check-circle-fill"></i>
-        Informacoes complementares recebidas. Aguardando a analise da equipe de Urgencia Renal.
+        Informações complementares recebidas. Aguardando a análise da equipe de Urgência Renal.
     </div>
     <div th:if="${solicitacao.status.name() == 'DEVOLVIDA'}" class="alert alert-danger">
         <i class="bi bi-arrow-return-left"></i>
-        Sua solicitacao foi devolvida para correcao.
+        Sua solicitação foi devolvida para correção.
         <div th:if="${solicitacao.observacoesTriagem}" class="mt-2">
             <strong>Motivo:</strong> <span th:text="${solicitacao.observacoesTriagem}"></span>
         </div>
         <hr>
         <strong>O que fazer agora:</strong> envie uma <a th:href="@{/solicitante/nova}" class="alert-link">nova
-        solicitacao</a> com os ajustes indicados acima. Esta aqui nao sera reanalisada.
+        solicitação</a> com os ajustes indicados acima. Esta aqui não será reanalisada.
     </div>
     <div th:if="${solicitacao.status.name() == 'PROCESSO_EXCLUIDO'}" class="alert alert-danger">
         <i class="bi bi-exclamation-triangle-fill"></i>
-        Sua solicitacao foi removida pela equipe de Urgencia Renal (o processo gerado foi excluido).
-        Se ainda for necessario, envie uma <a th:href="@{/solicitante/nova}" class="alert-link">nova
-        solicitacao</a>.
+        Sua solicitação foi removida pela equipe de Urgência Renal (o processo gerado foi excluído).
+        Se ainda for necessário, envie uma <a th:href="@{/solicitante/nova}" class="alert-link">nova
+        solicitação</a>.
     </div>
     <div th:if="${solicitacao.status.name() == 'ENVIADA'}" class="alert alert-info">
         <i class="bi bi-info-circle"></i>
-        Nao e necessario fazer nada agora. Assim que a equipe de Urgencia Renal analisar o pedido,
-        voce sera avisado por e-mail (<span th:text="${solicitacao.solicitanteEmail}"></span>).
+        Não é necessário fazer nada agora. Assim que a equipe de Urgência Renal analisar o pedido,
+        você será avisado por e-mail (<span th:text="${solicitacao.solicitanteEmail}"></span>).
     </div>
 
     <div class="card mb-3">
@@ -285,13 +285,13 @@
             <dl class="row mb-0">
                 <dt class="col-sm-4">RGCT / SNT</dt>
                 <dd class="col-sm-8" th:text="${solicitacao.pacienteRgct}"></dd>
-                <dt class="col-sm-4">Data de solicitacao da urgencia renal</dt>
+                <dt class="col-sm-4">Data de solicitação da urgência renal</dt>
                 <dd class="col-sm-8"
                     th:text="${#temporals.format(solicitacao.dataSituacaoEspecial, 'dd/MM/yyyy')}"></dd>
                 <dt class="col-sm-4">Enviada em</dt>
                 <dd class="col-sm-8"
                     th:text="${#temporals.format(solicitacao.dataEnvio, 'dd/MM/yyyy HH:mm')}"></dd>
-                <dt class="col-sm-4">Justificativa clinica</dt>
+                <dt class="col-sm-4">Justificativa clínica</dt>
                 <dd class="col-sm-8" th:text="${solicitacao.justificativaClinica}" style="white-space: pre-wrap;"></dd>
             </dl>
         </div>
@@ -322,7 +322,7 @@
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1" role="button"
              data-bs-toggle="collapse" data-bs-target="#chatBody" aria-expanded="true">
-            <span><i class="bi bi-chat-dots"></i> Conversa com a equipe de Urgencia Renal</span>
+            <span><i class="bi bi-chat-dots"></i> Conversa com a equipe de Urgência Renal</span>
             <span class="d-flex align-items-center gap-1">
                 <span id="chatBadgeNaoLida" th:if="${msgNaoLidas > 0}" class="badge bg-warning text-dark"
                       th:text="${msgNaoLidas} + ' nova(s)'">0</span>
@@ -333,7 +333,7 @@
         </div>
         <div class="card-body collapse show" id="chatBody">
             <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'" class="text-muted small text-center py-3">
-                Nenhuma mensagem ainda. Use o campo abaixo para enviar uma mensagem a equipe.
+                Nenhuma mensagem ainda. Use o campo abaixo para enviar uma mensagem à equipe.
             </div>
             <!-- Renderizado por chat-solicitacao.js (poll AJAX); o conteudo inicial
                  e so pra nao ter flash de vazio antes do 1o poll rodar. -->
@@ -361,9 +361,9 @@
              processo): confirmacao simples generica (data-confirm-msg). -->
         <form th:if="${podeCancelar and solicitacao.status.name() == 'ENVIADA'}"
               th:action="@{/solicitante/{id}/cancelar(id=${solicitacao.id})}" method="post"
-              data-confirm-msg="Cancelar esta solicitacao? Ela nao sera analisada.">
+              data-confirm-msg="Cancelar esta solicitação? Ela não será analisada.">
             <button type="submit" class="btn btn-outline-danger">
-                <i class="bi bi-x-circle"></i> Cancelar solicitacao
+                <i class="bi bi-x-circle"></i> Cancelar solicitação
             </button>
         </form>
         <!-- Ja virou processo em analise: mesma protecao do voto do avaliador
@@ -385,23 +385,23 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title h5"><i class="bi bi-shield-exclamation text-danger"></i> Cancelar processo em analise</h2>
+                <h2 class="modal-title h5"><i class="bi bi-shield-exclamation text-danger"></i> Cancelar processo em análise</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
                     <i class="bi bi-exclamation-octagon-fill fs-5"></i>
                     <div>
-                        <strong>Este pedido ja virou o processo
+                        <strong>Este pedido já virou o processo
                             <span th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</span>
-                            e esta em analise pelos medicos.</strong>
-                        Cancelar encerra a analise em curso agora mesmo e nao pode ser desfeito.
+                            e está em análise pelos médicos.</strong>
+                        Cancelar encerra a análise em curso agora mesmo e não pode ser desfeito.
                     </div>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="checkConfirmaCancelamentoProcesso">
                     <label class="form-check-label" for="checkConfirmaCancelamentoProcesso">
-                        Entendo que esta acao e definitiva e confirmo o cancelamento.
+                        Entendo que esta ação é definitiva e confirmo o cancelamento.
                     </label>
                 </div>
             </div>

@@ -30,12 +30,12 @@
             <!-- Material clinico para analise -->
             <div class="card">
                 <div class="card-header">
-                    <i class="bi bi-file-earmark-pdf text-danger"></i> Material para analise
+                    <i class="bi bi-file-earmark-pdf text-danger"></i> Material para análise
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
                         Processo anonimizado (nome do paciente suprimido). Visualize abaixo antes
-                        de registrar seu parecer — nao e necessario baixar o arquivo.
+                        de registrar seu parecer — não é necessário baixar o arquivo.
                     </p>
                     <!-- So em celular: abaixo de 992px o voto fica soterrado sob o PDF
                          (60vh); este atalho leva direto ao formulario. -->
@@ -44,8 +44,8 @@
                     </a>
                     <div th:if="${algumPdfIndisponivel}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle"></i>
-                        Um ou mais arquivos deste processo estao indisponiveis no momento. Se a
-                        visualizacao abaixo aparecer em branco, contate o operador da Secretaria
+                        Um ou mais arquivos deste processo estão indisponíveis no momento. Se a
+                        visualização abaixo aparecer em branco, contate o operador da Secretaria
                         antes de registrar seu parecer.
                     </div>
                     <div th:if="${!pdfsAvaliador.isEmpty()}">
@@ -69,7 +69,7 @@
                                     class="w-100 rounded border pdf-avaliador-frame" loading="lazy"
                                     th:title="${'Visualizacao do processo anonimizado: ' + pdf.nomeArquivo}">
                                 <p class="small text-muted">
-                                    Seu navegador nao suporta visualizacao embutida de PDF.
+                                    Seu navegador não suporta visualização embutida de PDF.
                                     <a th:href="@{/avaliador/{id}/pdf/{pdfId}(id=${processo.id},pdfId=${pdf.id})}" target="_blank">Abra o arquivo em nova aba</a>.
                                 </p>
                             </iframe>
@@ -77,7 +77,7 @@
                     </div>
                     <div th:if="${pdfsAvaliador.isEmpty()}" class="alert alert-warning py-2 mb-0">
                         <i class="bi bi-exclamation-triangle"></i>
-                        Nenhum PDF de avaliacao disponivel. Contate o operador da Secretaria.
+                        Nenhum PDF de avaliação disponível. Contate o operador da Secretaria.
                     </div>
                 </div>
             </div>
@@ -116,14 +116,14 @@
         <div class="card-body">
             <p class="small text-muted mb-3">
                 <i class="bi bi-lock-fill"></i>
-                Seu voto sera registrado com sua identidade, data/hora e IP de acesso e
-                nao pode ser desfeito depois de confirmado.
+                Seu voto será registrado com sua identidade, data/hora e IP de acesso e
+                não pode ser desfeito depois de confirmado.
             </p>
 
             <form id="formVotoAvaliador" th:action="@{/avaliador/{id}/votar(id=${processo.id})}" method="post"
                   enctype="multipart/form-data">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Qual e o seu parecer? *</label>
+                    <label class="form-label fw-semibold">Qual é o seu parecer? *</label>
                     <div class="d-flex flex-column gap-2">
                         <label th:each="r : ${resultados}" class="voto-opcao" th:for="${'resultado_' + r.name()}">
                             <input class="form-check-input voto-opcao-radio" type="radio" name="resultado"
@@ -133,12 +133,21 @@
                                 <span class="voto-opcao-titulo">
                                     <i class="bi"
                                        th:classappend="${r.name() == 'FAVORAVEL'} ? 'bi-check-circle text-success' : (${r.name() == 'NAO_FAVORAVEL'} ? 'bi-x-circle text-danger' : 'bi-question-circle text-warning')"></i>
-                                    <span th:text="${r.descricao}">Resultado</span>
+                                    <!-- Rotulo acentuado escrito aqui em vez de ${r.descricao}: o enum
+                                         ResultadoParecer.descricao alimenta relatorios/oficios/exportacoes
+                                         em PDF (RelatorioService e outros) e mudar o valor la teria um raio
+                                         de impacto bem maior que corrigir a acentuacao desta tela. -->
+                                    <span th:switch="${r.name()}">
+                                        <span th:case="'FAVORAVEL'">Favorável</span>
+                                        <span th:case="'NAO_FAVORAVEL'">Não favorável</span>
+                                        <span th:case="'SOLICITA_INFORMACAO'">Solicita informação</span>
+                                        <span th:case="*" th:text="${r.descricao}">Resultado</span>
+                                    </span>
                                 </span>
                                 <span class="voto-opcao-consequencia small text-muted" th:switch="${r.name()}">
-                                    <span th:case="'FAVORAVEL'">Concordo com o reconhecimento da urgencia.</span>
-                                    <span th:case="'NAO_FAVORAVEL'">Nao reconheco a urgencia para este caso.</span>
-                                    <span th:case="'SOLICITA_INFORMACAO'"><strong>Pausa o processo</strong> ate o solicitante enviar mais dados.</span>
+                                    <span th:case="'FAVORAVEL'">Concordo com o reconhecimento da urgência.</span>
+                                    <span th:case="'NAO_FAVORAVEL'">Não reconheço a urgência para este caso.</span>
+                                    <span th:case="'SOLICITA_INFORMACAO'"><strong>Pausa o processo</strong> até o solicitante enviar mais dados.</span>
                                 </span>
                             </span>
                         </label>
@@ -146,11 +155,11 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Justificativa / observacoes (opcional)</label>
+                    <label class="form-label">Justificativa / observações (opcional)</label>
                     <textarea name="justificativa" class="form-control" rows="4"
-                              placeholder="Descreva sua analise clinica, pontos relevantes ou fundamento do parecer..."></textarea>
+                              placeholder="Descreva sua análise clínica, pontos relevantes ou fundamento do parecer..."></textarea>
                     <div class="form-text">
-                        Opcional. Sera registrado internamente para subsidiar a decisao do processo.
+                        Opcional. Será registrado internamente para subsidiar a decisão do processo.
                     </div>
                 </div>
 
@@ -160,7 +169,7 @@
                            accept=".pdf,.png,.jpg,.jpeg,.eml,.msg">
                     <div class="form-text">
                         Opcional. Anexe algum documento de apoio ao seu parecer (ex.: exame,
-                        laudo). Seu voto autenticado ja e o comprovante - o anexo aqui e so
+                        laudo). Seu voto autenticado já é o comprovante - o anexo aqui é só
                         material extra.
                     </div>
                 </div>
@@ -194,22 +203,22 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <p class="mb-2 small text-muted">Voce esta prestes a registrar o seguinte parecer:</p>
+                <p class="mb-2 small text-muted">Você está prestes a registrar o seguinte parecer:</p>
                 <div class="border rounded p-3 mb-3 fs-5 fw-semibold" id="resumoResultadoConfirmacao">
                     Resultado
                 </div>
                 <div class="alert alert-danger d-flex align-items-start gap-2 mb-3">
                     <i class="bi bi-exclamation-octagon-fill fs-5"></i>
                     <div>
-                        <strong>Depois de confirmado, este voto nao pode ser alterado ou desfeito.</strong>
-                        Sera registrado com sua identidade, data/hora e IP de acesso. Revise a
+                        <strong>Depois de confirmado, este voto não pode ser alterado ou desfeito.</strong>
+                        Será registrado com sua identidade, data/hora e IP de acesso. Revise a
                         escolha acima antes de continuar.
                     </div>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" id="checkConfirmaVoto">
                     <label class="form-check-label" for="checkConfirmaVoto">
-                        Li o aviso acima e confirmo que este e o meu parecer definitivo para este processo.
+                        Li o aviso acima e confirmo que este é o meu parecer definitivo para este processo.
                     </label>
                 </div>
             </div>
