@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4 container-narrow">
+<main id="conteudo" class="container my-4 container-narrow">
     <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitacao</h1>
     <p class="small text-muted">* Campo obrigatorio</p>
 
@@ -98,7 +98,7 @@
             </button>
         </div>
     </form>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <script th:src="@{/js/solicitante-nova.js}"></script>

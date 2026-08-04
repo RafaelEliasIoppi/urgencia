@@ -49,6 +49,19 @@
     max-width: 760px;
 }
 
+/* Container das listas do Portal do Solicitante/Avaliador - substitui o
+   style="max-width: 980px;" antes repetido inline nesses templates. */
+.container-portal {
+    max-width: 980px;
+}
+
+/* Area de rolagem do chat (Portal do Solicitante/processo) - substitui o
+   style="max-height:250px;overflow-y:auto;" antes inline. */
+.chat-box {
+    max-height: 250px;
+    overflow-y: auto;
+}
+
 body {
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     background: linear-gradient(135deg, var(--rs-gray-50) 0%, var(--rs-gray-100) 100%);

@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container-fluid px-lg-4 my-4">
+<main id="conteudo" class="container-fluid px-lg-4 my-4">
 
     <div class="d-flex align-items-center mb-3 gap-2 flex-wrap">
         <a th:href="@{/avaliador}" class="btn btn-outline-secondary btn-sm">
@@ -172,7 +172,7 @@
     </div>
     </div>
     </div>
-</div>
+</main>
 
 <!-- Confirmacao explicita do voto: o parecer e definitivo (sem edicao posterior),
      entao em vez do confirm() nativo (facil de dispensar sem ler), este modal

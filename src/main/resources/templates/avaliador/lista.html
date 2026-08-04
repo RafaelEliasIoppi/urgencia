@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4" style="max-width: 980px;">
+<main id="conteudo" class="container my-4 container-portal">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h3 mb-0">
@@ -148,7 +148,7 @@
                             <span th:if="${pdf == null}" class="badge bg-secondary align-self-center">PDF indisponivel</span>
                         </th:block>
                         <a th:href="@{/avaliador/{id}(id=${par.processoId})}"
-                           class="btn btn-primary btn-sm flex-fill">
+                           class="btn btn-primary flex-fill">
                             <i class="bi bi-pencil-square"></i> Ver e votar
                         </a>
                     </div>
@@ -246,7 +246,7 @@
                             <span th:if="${pdf == null}" class="badge bg-secondary align-self-center">PDF indisponivel</span>
                         </th:block>
                         <a th:href="@{/avaliador/{id}(id=${par.processoId})}"
-                           class="btn btn-primary btn-sm flex-fill">
+                           class="btn btn-primary flex-fill">
                             <i class="bi bi-pencil-square"></i> Ver e votar
                         </a>
                     </div>
@@ -408,7 +408,7 @@
             </div>
         </div>
     </div>
-</div>
+</main>
 
 <script th:replace="~{layout :: scripts}"></script>
 <div th:replace="~{layout :: footer}"></div>

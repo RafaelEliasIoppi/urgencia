@@ -26,7 +26,13 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-<nav class="navbar navbar-expand-md navbar-dark navbar-sgpur" th:fragment="navbar">
+<th:block th:fragment="navbar">
+<!-- Skip-link: primeiro elemento focavel da pagina, invisivel ate receber
+     foco por teclado (.visually-hidden-focusable, utilitario do proprio
+     Bootstrap 5.3 - sem CSS customizado). Aponta para o <main id="conteudo">
+     de cada tela (hoje presente nos Portais do Solicitante e do Avaliador). -->
+<a href="#conteudo" class="visually-hidden-focusable">Pular para o conteudo</a>
+<nav class="navbar navbar-expand-md navbar-dark navbar-sgpur">
     <div class="container-fluid">
         <a class="navbar-brand fw-bold d-flex align-items-start gap-2" sec:authorize="hasRole('AVALIADOR')"
            th:href="@{/avaliador}">
@@ -211,6 +217,7 @@
     })();
 </script>
 </nav>
+</th:block>
 
 <div th:fragment="flash" class="container mt-3">
     <div th:if="${msg}" class="alert alert-success alert-dismissible fade show" role="alert">

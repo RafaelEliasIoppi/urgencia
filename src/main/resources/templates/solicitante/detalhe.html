@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4 container-narrow">
+<main id="conteudo" class="container my-4 container-narrow">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">
             <span th:text="${solicitacao.pacienteNome}">Paciente</span>
@@ -337,7 +337,7 @@
             </div>
             <!-- Renderizado por chat-solicitacao.js (poll AJAX); o conteudo inicial
                  e so pra nao ter flash de vazio antes do 1o poll rodar. -->
-            <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3" style="max-height:250px;overflow-y:auto;"></div>
+            <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3 chat-box"></div>
             <form id="chatForm" th:action="@{/solicitante/{id}/mensagem/ajax(id=${solicitacao.id})}" method="post"
                   th:unless="${solicitacao.status.name() == 'CANCELADA' or solicitacao.status.name() == 'PROCESSO_EXCLUIDO'}">
                 <div class="input-group">
@@ -378,7 +378,7 @@
             </button>
         </form>
     </div>
-</div>
+</main>
 
 <div class="modal fade" id="modalConfirmarCancelamentoProcesso" tabindex="-1" aria-hidden="true"
      th:if="${podeCancelar and solicitacao.status.name() != 'ENVIADA'}">

@@ -216,7 +216,7 @@
                         Nenhuma mensagem ainda.
                     </div>
                     <!-- Renderizado por chat-solicitacao.js (poll AJAX). -->
-                    <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3" style="max-height:250px;overflow-y:auto;"></div>
+                    <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3 chat-box"></div>
                     <form id="chatForm" th:action="@{/processos/{id}/mensagem/ajax(id=${processo.id})}" method="post">
                         <div class="input-group">
                             <input type="text" name="texto" class="form-control" placeholder="Responder ao solicitante..."
