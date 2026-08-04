@@ -1698,3 +1698,61 @@ salvar datas (escrita irreversível, seguindo a convenção do projeto) e para
 o scheduler de lembrete SNT (elegibilidade, não reenvio antes do prazo,
 exclusão de processos já com comprovante).
 
+## Plano de UI da área do operador — APROVADO, pendente de execução (2026-08-04)
+
+`docs/RELATORIO-UI-OPERADOR-SISTEMA-2026-08.md` audita as **19 telas do
+operador/administrador** e a camada transversal (design system,
+acessibilidade, responsividade, privacidade, estados de erro) — a metade do
+sistema que o `RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md` (dois Portais
+externos, Fases 1–10 já implementadas) não cobria.
+
+**Status: nada foi implementado ainda.** O usuário aprovou **integralmente**
+as 5 fases (A–E) e pediu para executá-las **em sessão futura** — o documento
+é diagnóstico + backlog, não descrição do código atual. A tabela de status
+por fase fica no **§0** do relatório (marcar conforme concluir). Ao retomar,
+seguir direto, sem reperguntar fase a fase.
+
+Principais achados (todos verificados por medição reproduzível — comandos no
+Anexo A do relatório; **reconferir antes de corrigir**, o código pode ter
+mudado desde a auditoria):
+- Skip-link "Pular para o conteúdo" **quebrado em 20 das 25 telas** (o
+  `id="conteudo"` só existe nos 5 templates dos Portais, feitos na Fase 9);
+  **18 telas não têm `<main>` nenhum**.
+- **7 dos 8 formulários de upload sem `data-lock-submit`** — o mecanismo
+  existe (`lock-submit.js`, escrito por causa do incidente de duplo clique de
+  03/08) e não foi aplicado justamente onde a espera é maior. Detalhe: o
+  formulário de voto do avaliador chama `form.submit()` direto, que **não
+  dispara o evento `submit`** — ali `data-lock-submit` não teria efeito, a
+  correção é o spinner no botão do modal.
+- Contraste **2.56:1** (mínimo 4.5:1) em `.timeline-item.pendente
+  .timeline-title` (`--rs-gray-400` sobre branco), no cartão "Progresso" de
+  todo processo. A mesma correção já foi aplicada ao rótulo de passo
+  bloqueado (`gray-600`, 7.58:1) — falta replicar.
+- **60 rótulos de formulário** sem `for=` e sem envolver o campo.
+- **5 `aria-labelledby="tab-*"` apontando para `id` inexistentes** em
+  `processos/detalhe.html`; passo "bloqueado" do wizard **abre normalmente**
+  ao clique (só tem `cursor: not-allowed`, sem `preventDefault`).
+- `.stat-card-portal` foi extraída no `app.css` para eliminar `style=`
+  repetido, aplicada ao Portal do Solicitante e **não** ao Painel, que segue
+  repetindo o mesmo trecho 8× (52 dos 128 `style=` inline do sistema).
+- `order-md-*` com grade `col-lg-*` inverte a ordem das colunas na faixa
+  768–991px (iPad retrato): a lateral vem antes da área de trabalho.
+- `@media (min-width:768px)` e `@media (max-width:768px)` se **sobrepõem em
+  exatamente 768px** (o arquivo já usa `991.98` corretamente noutro ponto).
+- Página de erro é **beco sem saída para AVALIADOR e SOLICITANTE**: o único
+  botão aponta para `/`, que exige ADMIN/OPERADOR.
+- Acentuação: a Fase 8 corrigiu só os Portais; sobram **67 ocorrências em
+  texto visível (18 arquivos) + 27 em atributos**, incluindo o menu e os
+  fragments de status de `layout.html`.
+- `/arquivo` carrega **todos** os encerrados sem paginação (a única tela que
+  só cresce), enquanto `/processos` — limitada pelo trabalho ativo — pagina
+  em 15.
+- Fonte Inter carregada de `fonts.googleapis.com` em toda página (LGPD +
+  render-blocking); auto-hospedar resolve.
+
+O relatório tem também um **§10 "o que NÃO recomendo fazer"** (não fragmentar
+`processos/detalhe.html` agora, não trocar o Bootstrap, **não acentuar
+`ResultadoParecer.descricao`** — alimenta PDF oficial, decisão deliberada, não
+esquecimento) e um **§11 com critérios objetivos de aceite**. Ler os dois
+antes de começar.
+

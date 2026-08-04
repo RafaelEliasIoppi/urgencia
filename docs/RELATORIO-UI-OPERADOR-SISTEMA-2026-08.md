@@ -14,6 +14,36 @@ implementadas.
 
 ---
 
+## 0. Status de execução
+
+**As correções deste relatório foram aprovadas pelo usuário em 2026-08-04 e
+serão implementadas em sessão futura.** Nada foi implementado ainda — este
+documento é, até segunda ordem, diagnóstico e backlog, não registro do que já
+existe no código.
+
+Marcar cada fase abaixo à medida que for concluída (detalhe de cada uma no §9):
+
+| Fase | Conteúdo | Esforço | Risco | Status |
+|:---:|---|:---:|:---:|:---:|
+| **A** | Higiene de alto retorno — travas de upload, contraste, breakpoint, ordem de colunas, favicon, autocomplete, microcopy | baixo | ~nulo | ⬜ pendente |
+| **B** | Acessibilidade estrutural — `<main>`, rótulos, validação, ARIA das abas | médio | baixo | ⬜ pendente |
+| **C** | Consistência do design system — cartões, paginação, estado vazio, script do login | baixo/médio | baixo (visual) | ⬜ pendente |
+| **D** | Acentuação e microcopy do operador (67 + 27 ocorrências) | médio | baixo ⚠ E2E | ⬜ pendente |
+| **E** | Robustez de médio prazo — paginar Arquivo, página de erro, fonte local, filtros de auditoria, impressão | médio | baixo | ⬜ pendente |
+
+**Ordem recomendada:** A → B → C → D → E. As fases são independentes; A é a de
+maior relação ganho/esforço e cabe num único PR pequeno.
+
+**Ao retomar, ler antes:** §10 ("o que **não** recomendo fazer") e §11
+(critérios objetivos de aceite, verificáveis pelos comandos do Anexo A).
+
+**Armadilha conhecida da Fase D:** o teste E2E localiza botões por texto exato.
+Qualquer rótulo de botão acentuado exige atualizar `PlaywrightTestBase` e
+`e2e/pages/*Page.java` no mesmo commit — foi o que aconteceu na Fase 8 do
+relatório anterior.
+
+---
+
 ## 1. Sumário executivo
 
 O SAUR tem um design system **maduro e bem construído** — mais maduro do que a
