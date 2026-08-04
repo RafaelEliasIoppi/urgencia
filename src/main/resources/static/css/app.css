@@ -843,6 +843,45 @@ tr.linha-inativa > td:first-child {
     }
 }
 
+/* Cartao selecionavel do voto do avaliador (votar.html): alvo de toque
+   ~16px (so o circulo do radio) virou o cartao inteiro, minimo 44px de
+   altura (WCAG 2.5.5), para a decisao IRREVERSIVEL mais importante do
+   sistema. O <input type="radio"> continua visivel e real dentro do
+   <label> (nao usar o padrao btn-check do Bootstrap, que esconde o input
+   via clip/position:absolute - o Playwright falha ao .check() um
+   elemento nao acionavel; ver e2e/pages/AvaliadorPage.java). */
+.voto-opcao {
+    display: flex;
+    align-items: flex-start;
+    gap: .75rem;
+    min-height: 44px;
+    padding: .75rem 1rem;
+    border: 2px solid var(--rs-gray-200);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: border-color .15s ease, background-color .15s ease;
+}
+.voto-opcao:hover {
+    border-color: var(--rs-gray-400, #adb5bd);
+}
+.voto-opcao:has(.voto-opcao-radio:checked) {
+    border-color: var(--rs-blue);
+    background: var(--rs-blue-light);
+}
+.voto-opcao-radio {
+    margin-top: .2rem;
+    flex-shrink: 0;
+    transform: scale(1.3);
+}
+.voto-opcao-conteudo {
+    display: flex;
+    flex-direction: column;
+    gap: .15rem;
+}
+.voto-opcao-titulo {
+    font-weight: 600;
+}
+
 /* === Responsivo: celulares pequenos (< 576px) === */
 @media (max-width: 576px) {
     /* Reduz tamanho dos stat-cards no dashboard */

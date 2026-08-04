@@ -31,6 +31,11 @@
                         Processo anonimizado (nome do paciente suprimido). Visualize abaixo antes
                         de registrar seu parecer — nao e necessario baixar o arquivo.
                     </p>
+                    <!-- So em celular: abaixo de 992px o voto fica soterrado sob o PDF
+                         (60vh); este atalho leva direto ao formulario. -->
+                    <a href="#formVotoAvaliador" class="btn btn-outline-primary btn-sm d-lg-none mb-3">
+                        <i class="bi bi-arrow-down-circle"></i> Ir para o voto
+                    </a>
                     <div th:if="${algumPdfIndisponivel}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle"></i>
                         Um ou mais arquivos deste processo estao indisponiveis no momento. Se a
@@ -103,27 +108,34 @@
             <i class="bi bi-check2-square"></i> Registrar meu voto
         </div>
         <div class="card-body">
-            <div class="alert alert-warning py-2 mb-3">
+            <p class="small text-muted mb-3">
                 <i class="bi bi-lock-fill"></i>
-                Seu voto sera registrado com sua identidade, data/hora e IP de acesso.
-                Esta acao nao pode ser desfeita.
-            </div>
+                Seu voto sera registrado com sua identidade, data/hora e IP de acesso e
+                nao pode ser desfeito depois de confirmado.
+            </p>
 
             <form id="formVotoAvaliador" th:action="@{/avaliador/{id}/votar(id=${processo.id})}" method="post"
                   enctype="multipart/form-data">
                 <div class="mb-3">
-                    <label class="form-label fw-semibold">Parecer *</label>
+                    <label class="form-label fw-semibold">Qual e o seu parecer? *</label>
                     <div class="d-flex flex-column gap-2">
-                        <div th:each="r : ${resultados}" class="form-check">
-                            <input class="form-check-input" type="radio" name="resultado"
+                        <label th:each="r : ${resultados}" class="voto-opcao" th:for="${'resultado_' + r.name()}">
+                            <input class="form-check-input voto-opcao-radio" type="radio" name="resultado"
                                    th:id="${'resultado_' + r.name()}"
                                    th:value="${r.name()}" required>
-                            <label class="form-check-label" th:for="${'resultado_' + r.name()}">
-                                <i class="bi"
-                                   th:classappend="${r.name() == 'FAVORAVEL'} ? 'bi-check-circle text-success' : (${r.name() == 'NAO_FAVORAVEL'} ? 'bi-x-circle text-danger' : 'bi-question-circle text-warning')"></i>
-                                <span th:text="${r.descricao}">Resultado</span>
-                            </label>
-                        </div>
+                            <span class="voto-opcao-conteudo">
+                                <span class="voto-opcao-titulo">
+                                    <i class="bi"
+                                       th:classappend="${r.name() == 'FAVORAVEL'} ? 'bi-check-circle text-success' : (${r.name() == 'NAO_FAVORAVEL'} ? 'bi-x-circle text-danger' : 'bi-question-circle text-warning')"></i>
+                                    <span th:text="${r.descricao}">Resultado</span>
+                                </span>
+                                <span class="voto-opcao-consequencia small text-muted" th:switch="${r.name()}">
+                                    <span th:case="'FAVORAVEL'">Concordo com o reconhecimento da urgencia.</span>
+                                    <span th:case="'NAO_FAVORAVEL'">Nao reconheco a urgencia para este caso.</span>
+                                    <span th:case="'SOLICITA_INFORMACAO'"><strong>Pausa o processo</strong> ate o solicitante enviar mais dados.</span>
+                                </span>
+                            </span>
+                        </label>
                     </div>
                 </div>
 
