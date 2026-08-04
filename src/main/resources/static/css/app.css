@@ -642,6 +642,10 @@ tr.linha-inativa > td:first-child {
     box-shadow: var(--rs-shadow-lg);
 }
 
+/* As cores saem das variaveis --stat-* definidas pela variante
+   (.stat-card-total/andamento/deferido/...). Ate 2026-08-04 essa ligacao era
+   feita com style="color:var(--stat-text)" repetido em CADA elemento de CADA
+   card do Painel - 52 dos 128 style= inline do sistema estavam ali. */
 .stat-card .stat-icon {
     width: 44px;
     height: 44px;
@@ -650,12 +654,15 @@ tr.linha-inativa > td:first-child {
     align-items: center;
     justify-content: center;
     font-size: 1.25rem;
+    background: var(--stat-icon-bg);
+    color: var(--stat-icon-color);
 }
 
 .stat-card .stat-number {
     font-size: 1.75rem;
     font-weight: 800;
     line-height: 1;
+    color: var(--stat-text);
 }
 
 .stat-card .stat-label {
@@ -664,6 +671,7 @@ tr.linha-inativa > td:first-child {
     text-transform: uppercase;
     letter-spacing: .04em;
     margin-top: .25rem;
+    color: var(--stat-text);
     line-height: 1.5;
     /* rem, nao em: em seria relativo ao proprio font-size (.75rem) deste
        elemento, dando 1.6875rem - menor que a altura real de 2 linhas
