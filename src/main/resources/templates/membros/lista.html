@@ -50,7 +50,7 @@
                      "0 / 0 / 0" sem dizer o que cada numero significa. -->
                 <th class="text-center">Processos</th>
                 <th class="text-center" title="Tempo médio de resposta em dias corridos">Tempo médio</th>
-                <th>Situação</th><th></th></tr>
+                <th>Situação</th><th class="text-end">Ações</th></tr>
             </thead>
             <tbody>
             <tr th:each="m : ${membros}" th:classappend="${!m.ativo} ? 'linha-inativa'">
@@ -60,7 +60,7 @@
                     <span th:if="${m.coordenador}" class="badge bg-warning text-dark ms-1">Coordenador</span>
                 </td>
                 <td class="small text-muted" th:text="${m.email} ?: '-'"></td>
-                <td class="small">
+                <td class="small text-center">
                     <div class="d-flex flex-wrap justify-content-center gap-2">
                         <span class="text-nowrap">
                             <span class="badge bg-secondary" th:text="${stats.get(m.id)[0]}">0</span>
