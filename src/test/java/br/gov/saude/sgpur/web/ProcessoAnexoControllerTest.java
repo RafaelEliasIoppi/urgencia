@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
+import br.gov.saude.sgpur.service.DecisaoFinalService;
 import br.gov.saude.sgpur.service.GeminiService;
 import br.gov.saude.sgpur.service.OficioService;
 import br.gov.saude.sgpur.service.ProcessoService;
@@ -32,6 +33,7 @@ import java.nio.file.Path;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
@@ -57,6 +59,7 @@ class ProcessoAnexoControllerTest {
     @MockitoBean private OficioService oficioService;
     @MockitoBean private RelatorioService relatorioService;
     @MockitoBean private GeminiService geminiService;
+    @MockitoBean private DecisaoFinalService decisaoFinalService;
     // GlobalModelAdvice (@ControllerAdvice global) precisa dessas duas pro
     // contexto do @WebMvcTest subir - ver ArquivoControllerTest.
     @MockitoBean private UsuarioRepository usuarioRepository;
@@ -106,7 +109,7 @@ class ProcessoAnexoControllerTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void finalizacaoAtualizaAsDatasDoOficio() throws Exception {
+    void finalizacaoAtualizaAsDatasDoOficioERegeraOAnexo() throws Exception {
         processo.setStatus(StatusProcesso.INDEFERIDO);
         mvc.perform(post("/processos/1/finalizacao")
                 .param("dataEmissaoOficio", "2026-07-01")
@@ -114,11 +117,65 @@ class ProcessoAnexoControllerTest {
                 .with(csrf()))
             .andExpect(status().is3xxRedirection())
             .andExpect(redirectedUrl("/processos/1#finalizacao"))
+            .andExpect(flash().attribute("msg",
+                "Dados de finalizacao atualizados e oficio regerado com as datas novas."));
+
+        verify(processoService).atualizarDatasFinalizacao(1L,
+            java.time.LocalDate.of(2026, 7, 1), java.time.LocalDate.of(2026, 7, 2), null);
+        // Sem isso, a tela mostraria a data nova e o PDF anexado (o que chega
+        // a equipe solicitante por e-mail) continuaria com a data antiga.
+        verify(decisaoFinalService).regerarOficio(1L);
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void finalizacaoAvisaSemQuebrarQuandoARegeracaoDoOficioFalha() throws Exception {
+        processo.setStatus(StatusProcesso.INDEFERIDO);
+        doThrow(new IllegalStateException("disco cheio"))
+            .when(decisaoFinalService).regerarOficio(1L);
+
+        mvc.perform(post("/processos/1/finalizacao")
+                .param("dataEmissaoOficio", "2026-07-01")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(flash().attributeExists("aviso"));
+
+        // As datas ficam salvas mesmo assim (a chamada ja aconteceu antes).
+        verify(processoService).atualizarDatasFinalizacao(1L,
+            java.time.LocalDate.of(2026, 7, 1), null, null);
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void finalizacaoGravaADataDeEnvioAoSntEmProcessoDeferido() throws Exception {
+        processo.setStatus(StatusProcesso.DEFERIDO);
+
+        mvc.perform(post("/processos/1/finalizacao")
+                .param("dataEnvioSnt", "2026-07-05")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
             .andExpect(flash().attribute("msg", "Dados de finalizacao atualizados."));
 
-        verify(processoService).salvar(argThat(p ->
-            p.getDataEmissaoOficio().equals(java.time.LocalDate.of(2026, 7, 1))
-            && p.getDataEnvioOficio().equals(java.time.LocalDate.of(2026, 7, 2))));
+        verify(processoService).atualizarDatasFinalizacao(1L, null, null,
+            java.time.LocalDate.of(2026, 7, 5));
+        // Deferido nao tem oficio nenhum a regerar.
+        verify(decisaoFinalService, never()).regerarOficio(anyLong());
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void finalizacaoRecusaProcessoAindaNaoDecidido() throws Exception {
+        processo.setStatus(StatusProcesso.ENVIADO);
+
+        mvc.perform(post("/processos/1/finalizacao")
+                .param("dataEmissaoOficio", "2026-07-01")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(flash().attribute("erro",
+                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos."));
+
+        verify(processoService, never()).atualizarDatasFinalizacao(any(), any(), any(), any());
+        verify(decisaoFinalService, never()).regerarOficio(anyLong());
     }
 
     // ----- oficio-upload -----
@@ -354,6 +411,7 @@ class ProcessoAnexoControllerTest {
     @Test
     @WithMockUser(roles = "OPERADOR")
     void oficioGeraOPdfDoProcesso() throws Exception {
+        processo.setStatus(StatusProcesso.INDEFERIDO);
         when(oficioService.gerar(processo)).thenReturn("oficio-fake".getBytes());
 
         mvc.perform(get("/processos/1/oficio"))
@@ -362,6 +420,31 @@ class ProcessoAnexoControllerTest {
             .andExpect(header().string("Content-Disposition",
                 org.hamcrest.Matchers.containsString("oficio-indeferimento-01-2026.pdf")))
             .andExpect(content().bytes("oficio-fake".getBytes()));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void oficioRecusaProcessoDeferidoCom400() throws Exception {
+        // Antes de 2026-08-04 esta URL gerava um "Oficio de Indeferimento"
+        // para QUALQUER processo, inclusive um Deferido - um documento que
+        // contradiz a propria decisao do processo.
+        processo.setStatus(StatusProcesso.DEFERIDO);
+
+        mvc.perform(get("/processos/1/oficio"))
+            .andExpect(status().isBadRequest());
+
+        verify(oficioService, never()).gerar(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void oficioRecusaProcessoAindaEmAndamentoCom400() throws Exception {
+        processo.setStatus(StatusProcesso.ENVIADO);
+
+        mvc.perform(get("/processos/1/oficio"))
+            .andExpect(status().isBadRequest());
+
+        verify(oficioService, never()).gerar(any());
     }
 
     // ----- download de anexo -----

@@ -20,10 +20,15 @@
                 <span class="badge align-middle fs-6 px-3 py-1 rounded-pill"
                       th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
-                <span th:if="${processo.status.finalizado}"
+                <span th:if="${processo.status.finalizado and (processo.emailEnviadoSolicitante or processo.status.name() == 'CANCELADO')}"
                       class="badge align-middle bg-dark text-white rounded-pill px-3 py-1 ms-1"
-                      title="Processo concluido e encerrado">
+                      title="Decisao registrada e resposta enviada ao solicitante: processo concluido.">
                     <i class="bi bi-lock-fill"></i> Encerrado
+                </span>
+                <span th:if="${processo.status.finalizado and !processo.emailEnviadoSolicitante and processo.status.name() != 'CANCELADO'}"
+                      class="badge align-middle bg-secondary text-white rounded-pill px-3 py-1 ms-1"
+                      title="Decisao registrada. Edicao das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusao (oficio/comprovante e resposta ao solicitante) na aba Finalizacao.">
+                    <i class="bi bi-lock-fill"></i> Decisao tomada
                 </span>
                 <span th:if="${statusSubrotulo != null}"
                       class="badge align-middle bg-warning text-dark rounded-pill px-3 py-1"
@@ -48,8 +53,21 @@
 
     <!-- Aviso de processo ENCERRADO: edicao travada (etapas 1 a 4, anexos gerais
          e lembretes bloqueados). So o ADMIN pode reabrir. As etapas 5-6 (oficio,
-         comprovante SNT, resposta ao solicitante) continuam liberadas. -->
-    <div th:if="${processo.status.finalizado}"
+         comprovante SNT, resposta ao solicitante) continuam liberadas - por isso
+         o aviso muda de acordo com essas etapas terem sido concluidas ou nao,
+         evitando o processo parecer "100% finalizado" quando ainda falta anexar
+         o oficio/comprovante e enviar a resposta ao solicitante. -->
+    <div th:if="${processo.status.finalizado and !processo.emailEnviadoSolicitante and processo.status.name() != 'CANCELADO'}"
+         class="alert alert-warning border d-flex align-items-center gap-2 mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill fs-5"></i>
+        <div>
+            <strong>Decisao registrada, mas o processo ainda nao esta concluido.</strong>
+            A edicao das etapas 1-4 (recebimento, envio, pareceres) foi bloqueada, porem
+            ainda faltam etapas de conclusao na <a href="#finalizacao">aba Finalizacao</a>
+            (anexar o oficio/comprovante e enviar a resposta ao solicitante).
+        </div>
+    </div>
+    <div th:if="${processo.status.finalizado and (processo.emailEnviadoSolicitante or processo.status.name() == 'CANCELADO')}"
          class="alert alert-secondary border d-flex align-items-center gap-2 mb-4" role="alert">
         <i class="bi bi-lock-fill fs-5"></i>
         <div>
@@ -105,10 +123,18 @@
                            class="btn btn-outline-danger btn-sm text-start">
                             <i class="bi bi-file-earmark-pdf me-2"></i> Relatorio Final (PDF)
                         </a>
-                        <a th:if="${processo.status.name() == 'INDEFERIDO'}"
-                           th:href="@{/processos/{id}/oficio(id=${processo.id})}" target="_blank"
+                        <!-- So aparece depois de anexado de fato (nao gera um PDF novo na
+                             hora: baixa o mesmo arquivo que esta anexado ao processo,
+                             inclusive se o operador tiver substituido por upload manual). -->
+                        <a th:if="${processo.status.name() == 'INDEFERIDO' and oficioAnexo != null}"
+                           th:href="@{/processos/anexos/{id}/download(id=${oficioAnexo.id})}" target="_blank"
                            class="btn btn-outline-warning btn-sm text-start">
                             <i class="bi bi-file-earmark-text me-2"></i> Oficio de Indeferimento
+                        </a>
+                        <a th:if="${processo.status.name() == 'DEFERIDO' and comprovanteSnT != null}"
+                           th:href="@{/processos/anexos/{id}/download(id=${comprovanteSnT.id})}" target="_blank"
+                           class="btn btn-outline-warning btn-sm text-start">
+                            <i class="bi bi-clipboard2-check me-2"></i> Comprovante SNT
                         </a>
                         <a th:href="@{/processos/{id}/exportar(id=${processo.id})}"
                            class="btn btn-outline-success btn-sm text-start">
@@ -840,6 +866,17 @@
                     <!-- Oficio de Indeferimento (apenas INDEFERIDO) -->
                     <div th:if="${processo.status.name() == 'INDEFERIDO'}" class="border rounded p-3 mb-3 bg-light">
                         <h6 class="mb-2"><i class="bi bi-file-earmark-text text-danger"></i> Oficio de Indeferimento</h6>
+                        <!-- Aviso permanente: o PDF anexado pelo sistema e um documento
+                             gerado a partir dos dados do processo, nao um oficio conferido
+                             por alguem. Ele vai ANEXO ao e-mail de resposta e fica
+                             disponivel ao solicitante no Portal. -->
+                        <div class="alert alert-info py-2 mb-2 small">
+                            <i class="bi bi-info-circle me-1"></i>
+                            O oficio e gerado automaticamente pelo sistema a partir dos dados do
+                            processo (numero, paciente, motivo, datas). <strong>Confira o conteudo
+                            antes de enviar a resposta ao solicitante</strong> - se precisar de um
+                            documento diferente, substitua pelo arquivo oficial no campo abaixo.
+                        </div>
                         <div th:if="${oficioAnexo != null}" class="alert alert-success py-2 mb-2">
                             <span th:replace="~{layout :: status(true)}"></span>
                             Oficio anexado:
@@ -847,6 +884,11 @@
                                th:text="${oficioAnexo.nomeArquivo}">arquivo</a>
                             <span class="text-muted small ms-2"
                                   th:text="${#temporals.format(oficioAnexo.dataUpload,'dd/MM/yyyy')}"></span>
+                        </div>
+                        <div th:if="${processo.numeroOficio != null}" class="small text-muted mb-2">
+                            Numero do oficio:
+                            <strong th:text="${processo.numeroOficio}">0001/2026</strong>
+                            <span class="ms-1">(sequencial anual, independente do numero do processo)</span>
                         </div>
                         <div th:unless="${oficioAnexo != null}" class="alert alert-warning py-2 mb-2">
                             <span th:replace="~{layout :: status(false)}"></span> Oficio ainda nao anexado.
@@ -871,6 +913,14 @@
                                 <button class="btn btn-outline-secondary btn-sm" form="formDatasOficio">
                                     <i class="bi bi-save"></i> Salvar datas
                                 </button>
+                            </div>
+                            <div class="col-12">
+                                <p class="form-text mb-0">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>
+                                    Salvar as datas <strong>regera o oficio anexado</strong> com os dados
+                                    atuais (sobrescrevendo qualquer arquivo enviado manualmente antes),
+                                    para a tela e o documento nunca mostrarem datas diferentes.
+                                </p>
                             </div>
                         </div>
                         <!-- Upload manual do oficio -->
@@ -910,6 +960,29 @@
                         </div>
                         <div th:unless="${comprovanteSnT != null}" class="alert alert-warning py-2 mb-2">
                             <span th:replace="~{layout :: status(false)}"></span> Comprovante SNT ainda nao anexado.
+                        </div>
+                        <!-- Data em que a urgencia foi inserida/enviada ao SNT (nao a data
+                             de upload do arquivo). Espelha as datas do oficio, do lado do
+                             deferimento, e serve de base para indicadores de prazo. -->
+                        <div th:unless="${processo.emailEnviadoSolicitante}" class="row g-2 align-items-end mb-2">
+                            <div class="col-md-4">
+                                <label class="form-label small">Data de envio ao SNT</label>
+                                <form th:action="@{/processos/{id}/finalizacao(id=${processo.id})}" method="post" id="formDataSnt">
+                                    <input type="date" name="dataEnvioSnt" class="form-control form-control-sm"
+                                           th:value="${processo.dataEnvioSnt}"
+                                           form="formDataSnt">
+                                </form>
+                            </div>
+                            <div class="col-md-4 d-flex align-items-end">
+                                <button class="btn btn-outline-secondary btn-sm" form="formDataSnt">
+                                    <i class="bi bi-save"></i> Salvar data
+                                </button>
+                            </div>
+                        </div>
+                        <div th:if="${processo.emailEnviadoSolicitante and processo.dataEnvioSnt != null}"
+                             class="small text-muted mb-2">
+                            Data de envio ao SNT:
+                            <span th:text="${#temporals.format(processo.dataEnvioSnt,'dd/MM/yyyy')}"></span>
                         </div>
                         <form th:unless="${processo.emailEnviadoSolicitante}"
                               th:action="@{/processos/{id}/comprovante-snt(id=${processo.id})}" method="post"

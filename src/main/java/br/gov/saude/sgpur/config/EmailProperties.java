@@ -16,6 +16,14 @@ public class EmailProperties {
     private String assinatura = "Equipe de Urgencia Renal - Secretaria de Saude";
     private String prefixoAssunto = "Urgencia Renal";
 
+    /**
+     * Cidade impressa na linha "Cidade, dd de mes de aaaa" do Oficio de
+     * Indeferimento ({@code OficioService}). Antes de 2026-08-04 o documento
+     * saia com a palavra literal "Local," - placeholder que chegava a equipe
+     * solicitante num documento oficial.
+     */
+    private String oficioCidade = "Porto Alegre";
+
     public String getAssinatura() {
         return assinatura;
     }
@@ -30,5 +38,13 @@ public class EmailProperties {
 
     public void setPrefixoAssunto(String prefixoAssunto) {
         this.prefixoAssunto = prefixoAssunto;
+    }
+
+    public String getOficioCidade() {
+        return oficioCidade;
+    }
+
+    public void setOficioCidade(String oficioCidade) {
+        this.oficioCidade = oficioCidade;
     }
 }

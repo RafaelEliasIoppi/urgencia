@@ -46,12 +46,15 @@ class DecisaoFinalServiceTest {
     private RelatorioService relatorioService;
     @Mock
     private AnexoStorageService anexoStorage;
+    @Mock
+    private br.gov.saude.sgpur.repository.ProcessoRepository processoRepository;
 
     private DecisaoFinalService service;
 
     @BeforeEach
     void setUp() {
-        service = new DecisaoFinalService(processoService, oficioService, relatorioService, anexoStorage);
+        service = new DecisaoFinalService(processoService, oficioService, relatorioService,
+            anexoStorage, processoRepository);
     }
 
     private Processo processo(StatusProcesso status) {
@@ -59,6 +62,10 @@ class DecisaoFinalServiceTest {
         p.setId(1L);
         p.setNumero("01/2026");
         p.setStatus(status);
+        // Numero de oficio ja atribuido por padrao: a atribuicao automatica
+        // (que grava o processo) tem testes proprios mais abaixo e nao deve
+        // interferir nas assercoes de "nao salva o processo" destes.
+        p.setNumeroOficio("0001/2026");
         return p;
     }
 
@@ -198,6 +205,85 @@ class DecisaoFinalServiceTest {
         }
     }
 
+    // ---------- numeracao propria do oficio (NNNN/AAAA) ----------
+
+    @Test
+    void primeiroOficioDoAnoRecebeNumero0001() throws IOException {
+        Processo p = processo(StatusProcesso.INDEFERIDO);
+        p.setNumeroOficio(null);
+        p.setDataEmissaoOficio(LocalDate.of(2026, 5, 4));
+        when(processoRepository.findNumerosOficioDoAno("2026")).thenReturn(java.util.List.of());
+        when(oficioService.gerar(p)).thenReturn(new byte[0]);
+        when(relatorioService.gerar(p)).thenReturn(new byte[0]);
+        when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
+            .thenReturn(anexoSalvo(1L));
+
+        service.gerarDocumentos(p);
+
+        assertThat(p.getNumeroOficio()).isEqualTo("0001/2026");
+        verify(processoService).salvar(p);
+    }
+
+    @Test
+    void doisIndeferimentosNoMesmoAnoRecebemNumerosSequenciaisDistintos() throws IOException {
+        when(oficioService.gerar(any())).thenReturn(new byte[0]);
+        when(relatorioService.gerar(any())).thenReturn(new byte[0]);
+        when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
+            .thenReturn(anexoSalvo(1L));
+
+        Processo primeiro = processo(StatusProcesso.INDEFERIDO);
+        primeiro.setNumeroOficio(null);
+        primeiro.setDataEmissaoOficio(LocalDate.of(2026, 2, 1));
+        when(processoRepository.findNumerosOficioDoAno("2026")).thenReturn(java.util.List.of());
+        service.gerarDocumentos(primeiro);
+
+        Processo segundo = processo(StatusProcesso.INDEFERIDO);
+        segundo.setNumeroOficio(null);
+        segundo.setDataEmissaoOficio(LocalDate.of(2026, 2, 2));
+        // O primeiro ja gravou o dele: o repositorio agora devolve esse numero.
+        when(processoRepository.findNumerosOficioDoAno("2026"))
+            .thenReturn(java.util.List.of(primeiro.getNumeroOficio()));
+        service.gerarDocumentos(segundo);
+
+        assertThat(primeiro.getNumeroOficio()).isEqualTo("0001/2026");
+        assertThat(segundo.getNumeroOficio()).isEqualTo("0002/2026");
+        assertThat(segundo.getNumeroOficio()).isNotEqualTo(primeiro.getNumeroOficio());
+    }
+
+    @Test
+    void proximoNumeroDeOficioComparaNumericamenteNaoComoTexto() {
+        // "999/2026" seria "maior" que "1000/2026" numa comparacao de string:
+        // a comparacao tem de ser numerica.
+        when(processoRepository.findNumerosOficioDoAno("2026"))
+            .thenReturn(java.util.List.of("0999/2026", "1000/2026", "0002/2026"));
+
+        assertThat(service.proximoNumeroOficio(2026)).isEqualTo("1001/2026");
+    }
+
+    @Test
+    void proximoNumeroDeOficioIgnoraValorForaDoPadrao() {
+        when(processoRepository.findNumerosOficioDoAno("2026"))
+            .thenReturn(java.util.List.of("SEM-NUMERO/2026", "0007/2026"));
+
+        assertThat(service.proximoNumeroOficio(2026)).isEqualTo("0008/2026");
+    }
+
+    @Test
+    void numeroDeOficioJaAtribuidoNaoMudaAoRegerar() throws IOException {
+        Processo p = processo(StatusProcesso.INDEFERIDO);
+        p.setNumeroOficio("1398/2026");
+        p.setDataEmissaoOficio(LocalDate.of(2026, 7, 10));
+        when(oficioService.gerar(p)).thenReturn(new byte[0]);
+        when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
+            .thenReturn(anexoSalvo(1L));
+
+        service.regerarOficio(p);
+
+        assertThat(p.getNumeroOficio()).isEqualTo("1398/2026");
+        verify(processoService, never()).salvar(any());
+        verifyNoInteractions(processoRepository);
+    }
+
     // ---------- IllegalStateException real: falha de IO ao salvar o PDF ----------
 
     /**
@@ -219,7 +305,7 @@ class DecisaoFinalServiceTest {
 
         assertThatThrownBy(() -> service.gerarDocumentos(p))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("falhou ao gerar o oficio")
+            .hasMessageContaining("gerar o oficio")
             .hasMessageContaining("disco cheio")
             .hasCauseInstanceOf(IOException.class);
 

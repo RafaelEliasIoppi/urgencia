@@ -54,3 +54,11 @@ app:
   decisao-automatica:
     varredura:
       habilitado: ${SGPUR_VARREDURA_DECISAO:true}
+  # Lembrete automatico do Comprovante SNT: LIGADO por padrao em producao
+  # (default oposto ao de application.yml/dev). E aqui que ele tem funcao —
+  # cobrar da equipe o comprovante de um processo Deferido real que ficou
+  # parado. Desliga com SGPUR_SNT_LEMBRETE_HABILITADO=false.
+  snt:
+    lembrete:
+      varredura:
+        habilitado: ${SGPUR_SNT_LEMBRETE_HABILITADO:true}
