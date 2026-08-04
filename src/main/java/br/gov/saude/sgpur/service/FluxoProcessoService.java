@@ -175,10 +175,22 @@ public class FluxoProcessoService {
         // 6. Resposta ao solicitante — exige o flag de e-mail enviado.
         //    O COMPROVANTE_ENVIO_SOLICITANTE (print manual) deixou de ser
         //    exigido: o proprio sistema envia o e-mail e registra a auditoria.
+        //
+        //    EXCECAO - CANCELADO (corrigido em 2026-08-04): processo cancelado
+        //    NAO gera resposta formal por e-mail. O botao de envio fica
+        //    permanentemente desabilitado na tela e
+        //    ProcessoService.finalizarResposta recusa explicitamente
+        //    ("Processo cancelado nao gera resposta ao solicitante"), entao a
+        //    etapa era impossivel de concluir e travava o progresso em <100%
+        //    para sempre. O cancelamento ja avisa os avaliadores pendentes por
+        //    e-mail e o solicitante ve o resultado no Portal.
+        boolean cancelado = p.getStatus() == StatusProcesso.CANCELADO;
         boolean emailMarcado = p.isEmailEnviadoSolicitante();
-        boolean respostaOk = emailMarcado;
+        boolean respostaOk = emailMarcado || cancelado;
         String detResposta;
-        if (respostaOk) {
+        if (cancelado) {
+            detResposta = "Cancelamento nao exige envio de resposta formal por e-mail.";
+        } else if (respostaOk) {
             detResposta = "Resposta enviada ao solicitante.";
         } else {
             detResposta = "Falta marcar o e-mail como enviado.";
