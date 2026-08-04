@@ -9,30 +9,15 @@
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">
             <span th:text="${solicitacao.pacienteNome}">Paciente</span>
-            <span th:if="${solicitacao.processoGerado != null}" class="text-muted fs-5 font-monospace"
-                  th:text="'#' + ${solicitacao.processoGerado.numero}">#00/0000</span>
+            <span th:if="${situacao.numeroProcesso != null}" class="text-muted fs-5 font-monospace"
+                  th:text="'#' + ${situacao.numeroProcesso}">#00/0000</span>
         </h1>
-        <!-- Vocabulário unificado com o ofício (Deferido/Indeferido), não mais
-             misturado com "Aprovada"/"Reprovada" - mesmo termo em badge,
-             timeline e texto do resultado (Fase 6 do relatório de UI). -->
-        <span th:switch="${solicitacao.status.name()}">
-            <span th:case="'ENVIADA'" class="badge bg-warning text-dark fs-6">Aguardando triagem</span>
-            <span th:case="'CONVERTIDA'">
-                <span th:if="${solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                      th:switch="${solicitacao.processoGerado.status.name()}">
-                    <span th:case="'DEFERIDO'" class="badge bg-success fs-6">Deferido</span>
-                    <span th:case="'INDEFERIDO'" class="badge bg-danger fs-6">Indeferido</span>
-                    <span th:case="'CANCELADO'" class="badge bg-secondary fs-6">Cancelado</span>
-                </span>
-                <span th:unless="${solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                      class="badge bg-success fs-6">Convertida em processo</span>
-            </span>
-            <span th:case="'APROVADA'" class="badge bg-success fs-6">Deferido</span>
-            <span th:case="'REPROVADA'" class="badge bg-danger fs-6">Indeferido</span>
-            <span th:case="'DEVOLVIDA'" class="badge bg-danger fs-6">Devolvida</span>
-            <span th:case="'CANCELADA'" class="badge bg-secondary fs-6">Cancelada</span>
-            <span th:case="'PROCESSO_EXCLUIDO'" class="badge bg-danger fs-6">Processo excluído</span>
-        </span>
+        <!-- Badge alimentado pelo cartao de situacao unico (situacao.rotulo/
+             classeCor) - fonte unica, nunca recalculado aqui (Fase 6 do
+             relatorio de UI). -->
+        <span th:with="corTexto=${situacao.classeCor == 'warning' or situacao.classeCor == 'info'} ? ' text-dark' : ''"
+              class="badge fs-6" th:classappend="'bg-' + ${situacao.classeCor} + ${corTexto}"
+              th:text="${situacao.rotulo}">Status</span>
     </div>
 
     <p class="text-muted small mb-4">
@@ -42,8 +27,67 @@
         <span th:text="${solicitacao.status.name() == 'ENVIADA'} ? 'de espera pela triagem.' : 'desde o envio.'">de espera.</span>
     </p>
 
+    <!-- Cartão de situação único (Fase 6 do relatório de UI, 2026-08):
+         substitui os 8 blocos <alert> que existiam aqui, cada um reescrevendo
+         a mesma decisão de status num vocabulário/formato diferente. Toda a
+         lógica vem pronta de SolicitanteController.montarSituacaoPedido -
+         este template só consome ${situacao}, nunca recalcula a regra. -->
+    <div class="card mb-3 border-start border-4"
+         th:classappend="'border-' + ${situacao.classeCor}">
+        <div class="card-body">
+            <div class="d-flex align-items-start gap-3">
+                <i class="bi fs-2 flex-shrink-0" th:classappend="'bi-' + ${situacao.icone} + ' text-' + ${situacao.classeCor}"></i>
+                <div class="flex-grow-1">
+                    <h2 class="h5 mb-1" th:text="${situacao.titulo}">Situação do pedido</h2>
+                    <p class="mb-2" th:text="${situacao.mensagem}">Mensagem explicando a situação.</p>
+                    <div th:if="${situacao.detalhe != null}" class="p-2 bg-light rounded border small mb-2"
+                         style="white-space: pre-wrap;" th:text="${situacao.detalhe}">Detalhe adicional.</div>
+
+                    <!-- Ação primária: baixar o documento final (comprovante SNT / ofício),
+                         promovida a botão de destaque em vez de link pequeno dentro de um
+                         alerta (item 6.6). -->
+                    <div class="mt-2" th:if="${situacao.numeroProcesso != null and (situacao.rotulo == 'Deferido' or situacao.rotulo == 'Indeferido')}">
+                        <a th:if="${situacao.anexoParaBaixar != null}"
+                           class="btn" th:classappend="'btn-' + ${situacao.classeCor}"
+                           th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${situacao.anexoParaBaixar.id})}">
+                            <i class="bi bi-download"></i> <span th:text="${situacao.anexoParaBaixar.rotulo}">Baixar</span>
+                        </a>
+                        <span th:unless="${situacao.anexoParaBaixar != null}" class="small text-muted">
+                            <span th:if="${situacao.rotulo == 'Deferido'}">Comprovante SNT ainda sendo providenciado pela equipe.</span>
+                            <span th:if="${situacao.rotulo == 'Indeferido'}">Ofício ainda sendo providenciado pela equipe.</span>
+                        </span>
+                    </div>
+
+                    <!-- Ação: enviar nova solicitação (devolvida / processo excluído). -->
+                    <div class="mt-2" th:if="${situacao.mostrarNovaSolicitacao}">
+                        <a th:href="@{/solicitante/nova}" class="btn btn-outline-danger">
+                            <i class="bi bi-plus-lg"></i> Enviar nova solicitação
+                        </a>
+                    </div>
+
+                    <!-- Ação mais urgente do fluxo (item 6.3): quando um avaliador pede
+                         informação complementar, o formulário de upload fica no TOPO da
+                         página, dentro deste cartão - não mais no meio da tela. -->
+                    <form th:if="${situacao.precisaAcao}"
+                          th:action="@{/solicitante/{id}/informacao-complementar(id=${solicitacao.id})}"
+                          method="post" enctype="multipart/form-data" class="mt-3">
+                        <div class="mb-2">
+                            <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informações pedidas</label>
+                            <input type="file" class="form-control" id="arquivosInfoComplementar" name="arquivos" multiple>
+                        </div>
+                        <button type="submit" class="btn btn-warning">
+                            <i class="bi bi-upload"></i> Enviar informações complementares
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Linha do tempo do pedido: mesmo componente visual (.timeline) usado no
-         detalhe do processo, adaptado aos 3 momentos deste módulo de staging. -->
+         detalhe do processo, adaptado aos 3 momentos deste módulo de staging.
+         Só um resumo de progresso (item 6.5) - o texto longo de resultado
+         vive exclusivamente no cartão de situação acima. -->
     <div class="card mb-3">
         <div class="card-body">
             <h2 class="h6 text-muted mb-3">Andamento do pedido</h2>
@@ -66,218 +110,32 @@
                         A equipe confere os dados e os documentos anexados antes de prosseguir.
                     </div>
                 </div>
-                <!-- A classe do passo "Decisao" e pre-calculada em th:with (nenhum ternario
-                     passa de 2 niveis): primeiro vale a decisao do processo gerado, se ele ja
-                     estiver finalizado; senao cai no status da propria solicitacao. -->
+                <!-- Passo "Decisão": agora só um resumo (item 6.5) - rótulo/ícone/cor vêm
+                     do MESMO cartão de situação usado acima (situacao.*), sem reescrever a
+                     regra de novo. Único caso à parte é "Aguardando decisão" pra quem ainda
+                     nem foi triado (ENVIADA), porque aí o rótulo de situacao.rotulo é sobre
+                     o passo anterior (triagem), não sobre este passo. -->
                 <div class="timeline-item"
-                     th:with="stSolicitacao=${solicitacao.status.name()},
-                              processoDecidido=${solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()},
-                              classePorProcesso=${processoDecidido} ? (${solicitacao.processoGerado.status.name() == 'DEFERIDO'} ? 'concluida' : 'negativa') : null,
-                              classePorSolicitacaoInicial=${stSolicitacao == 'ENVIADA'} ? 'pendente' : (${stSolicitacao == 'CONVERTIDA'} ? 'atual' : null),
-                              classePorSolicitacao=${classePorSolicitacaoInicial} ?: (${stSolicitacao == 'REPROVADA'} ? 'negativa' : 'concluida'),
-                              classeDecisao=${classePorProcesso} ?: ${classePorSolicitacao},
-                              iconeConvertida=${processoDecidido} ? (${solicitacao.processoGerado.status.name() == 'DEFERIDO'} ? 'bi-check' : 'bi-x-lg') : 'bi-hourglass-split'"
-                     th:classappend="${classeDecisao}">
-                    <div class="timeline-dot" th:switch="${solicitacao.status.name()}">
-                        <i th:case="'CONVERTIDA'" th:classappend="${iconeConvertida}" class="bi"></i>
-                        <i th:case="'APROVADA'" class="bi bi-check"></i>
-                        <i th:case="'REPROVADA'" class="bi bi-x-lg"></i>
-                        <i th:case="'DEVOLVIDA'" class="bi bi-arrow-return-left"></i>
-                        <i th:case="'CANCELADA'" class="bi bi-x-lg"></i>
-                        <i th:case="'PROCESSO_EXCLUIDO'" class="bi bi-exclamation-triangle-fill"></i>
-                        <i th:case="*"></i>
+                     th:with="stepClasse=${solicitacao.status.name() == 'ENVIADA'} ? 'pendente' : (${situacao.classeCor == 'danger' or situacao.classeCor == 'secondary'} ? 'negativa' : (${situacao.classeCor == 'warning' or situacao.classeCor == 'info' or situacao.classeCor == 'primary'} ? 'atual' : 'concluida'))"
+                     th:classappend="${stepClasse}">
+                    <div class="timeline-dot">
+                        <i class="bi" th:classappend="${solicitacao.status.name() == 'ENVIADA'} ? 'bi-hourglass-split' : ('bi-' + ${situacao.icone})"></i>
                     </div>
                     <div class="timeline-title">
-                        <th:block th:if="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                                  th:switch="${solicitacao.processoGerado.status.name()}">
-                            <span th:case="'DEFERIDO'"><strong>Deferido</strong> — Urgência renal reconhecida</span>
-                            <span th:case="'INDEFERIDO'"><strong>Indeferido</strong> — Urgência renal não reconhecida</span>
-                            <span th:case="'CANCELADO'">Processo cancelado</span>
-                        </th:block>
-                        <th:block th:unless="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                                  th:switch="${solicitacao.status.name()}">
-                            <span th:case="'CONVERTIDA'">Aguardando decisão</span>
-                            <span th:case="'APROVADA'"><strong>Deferido</strong> — Urgência renal reconhecida</span>
-                            <span th:case="'REPROVADA'"><strong>Indeferido</strong> — Urgência renal não reconhecida</span>
-                            <span th:case="'DEVOLVIDA'">Devolvida para correção</span>
-                            <span th:case="'CANCELADA'">Cancelada por você</span>
-                            <span th:case="'PROCESSO_EXCLUIDO'">Processo excluído</span>
-                            <span th:case="*">Aguardando decisão</span>
-                        </th:block>
+                        <span th:if="${solicitacao.status.name() == 'ENVIADA'}">Aguardando decisão</span>
+                        <span th:unless="${solicitacao.status.name() == 'ENVIADA'}" th:text="${situacao.rotulo}">Situação</span>
                     </div>
                     <div class="timeline-desc">
-                        <th:block th:if="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                                  th:switch="${solicitacao.processoGerado.status.name()}">
-                            <span th:case="'DEFERIDO'">
-                                A equipe de Urgência Renal aprovou o pedido. O comprovante de inserção no SNT
-                                segue disponível para download e foi enviado por e-mail à sua equipe.
-                            </span>
-                            <span th:case="'INDEFERIDO'">
-                                A equipe de Urgência Renal não reconheceu a urgência para este caso.
-                                O ofício com os detalhes foi enviado por e-mail à sua equipe.
-                            </span>
-                            <span th:case="'CANCELADO'">
-                                O processo foi cancelado pela equipe de Urgência Renal.
-                            </span>
-                        </th:block>
-                        <th:block th:unless="${solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.isFinalizado()}"
-                                  th:switch="${solicitacao.status.name()}">
-                            <span th:case="'CONVERTIDA'">
-                                Seu pedido virou um processo oficial e está em análise pelos médicos avaliadores.
-                                <span th:if="${previsaoPrazo != null}" class="d-block small text-muted mt-1">
-                                    <i class="bi bi-hourglass-split"></i>
-                                    Previsão baseada no histórico: normalmente decidido em torno de
-                                    <strong th:text="${previsaoPrazo}">7 dias</strong>
-                                    após o envio para análise (não é um prazo formal, só uma referência).
-                                </span>
-                            </span>
-                            <span th:case="'APROVADA'">
-                                A equipe de Urgência Renal aprovou o pedido. O comprovante de inserção no SNT
-                                segue disponível para download e foi enviado por e-mail à sua equipe.
-                            </span>
-                            <span th:case="'REPROVADA'">
-                                A equipe de Urgência Renal não reconheceu a urgência para este caso.
-                                O ofício com os detalhes foi enviado por e-mail à sua equipe.
-                            </span>
-                            <span th:case="'DEVOLVIDA'">
-                                Precisa de um ajuste antes de seguir — veja o motivo abaixo.
-                            </span>
-                            <span th:case="'CANCELADA'">Você cancelou este pedido antes da triagem.</span>
-                            <span th:case="'PROCESSO_EXCLUIDO'">
-                                O processo gerado a partir deste pedido foi excluído pela equipe de Urgência Renal.
-                            </span>
-                            <span th:case="*">
-                                Assim que a triagem terminar, o pedido vira um processo ou é devolvido
-                                para correção.
-                            </span>
-                        </th:block>
+                        <span th:if="${solicitacao.status.name() == 'ENVIADA'}">
+                            Assim que a triagem terminar, o pedido vira um processo ou é devolvido para correção.
+                        </span>
+                        <span th:unless="${solicitacao.status.name() == 'ENVIADA'}">
+                            Veja os detalhes no cartão de situação acima.
+                        </span>
                     </div>
                 </div>
             </div>
         </div>
-    </div>
-
-    <div th:if="${solicitacao.status.name() == 'CONVERTIDA' and !precisaInformacaoComplementar and solicitacao.processoGerado != null and !solicitacao.processoGerado.status.isFinalizado()}"
-         class="alert alert-success">
-        <i class="bi bi-check-circle-fill"></i>
-        Seu pedido foi aceito e virou o processo
-        <strong th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</strong>
-        na Central de Transplantes do Estado do Rio Grande do Sul.
-        Você receberá o resultado da avaliação por e-mail assim que a decisão for concluída.
-    </div>
-    <div th:if="${solicitacao.status.name() == 'APROVADA' or (solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'DEFERIDO')}"
-         class="alert alert-success">
-        <i class="bi bi-check-circle-fill"></i>
-        <strong>Deferido!</strong>
-        <span th:if="${solicitacao.status.name() == 'CONVERTIDA'}">
-            Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            <strong>DEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul.
-        </span>
-        <span th:if="${solicitacao.status.name() == 'APROVADA'}">
-            Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            analisado e <strong>DEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
-            resultando no reconhecimento da urgência renal. A resposta oficial foi enviada por e-mail à sua equipe
-            (<span th:text="${solicitacao.solicitanteEmail}">email</span>), contendo o comprovante de inserção no
-            Sistema Nacional de Transplantes (SNT) em anexo.
-        </span>
-        <div th:if="${mensagemResposta != null}" class="mt-2 p-2 bg-white rounded border">
-            <small class="text-muted fw-semibold">Mensagem enviada à sua equipe:</small>
-            <pre class="mb-0 small mt-1" style="white-space: pre-wrap; font-family: inherit;"
-                 th:text="${mensagemResposta}"></pre>
-        </div>
-        <div class="mt-2">
-            <a th:if="${comprovanteSntAnexo != null}"
-               th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${comprovanteSntAnexo.id})}"
-               class="btn btn-outline-success">
-                <i class="bi bi-file-earmark-check"></i> Baixar comprovante de inserção no SNT
-            </a>
-            <span th:unless="${comprovanteSntAnexo != null}" class="small text-muted">
-                Comprovante SNT ainda sendo providenciado pela equipe.
-            </span>
-        </div>
-    </div>
-    <div th:if="${solicitacao.status.name() == 'REPROVADA' or (solicitacao.status.name() == 'CONVERTIDA' and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'INDEFERIDO')}"
-         class="alert alert-danger">
-        <i class="bi bi-x-circle-fill"></i>
-        <strong>Indeferido.</strong>
-        <span th:if="${solicitacao.status.name() == 'CONVERTIDA'}">
-            Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            <strong>INDEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul.
-        </span>
-        <span th:if="${solicitacao.status.name() == 'REPROVADA'}">
-            Seu pedido (processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong>) foi
-            analisado e <strong>INDEFERIDO</strong> pela Central de Transplantes do Estado do Rio Grande do Sul,
-            resultando no indeferimento da urgência renal. O ofício com os detalhes foi enviado por e-mail à sua equipe
-            (<span th:text="${solicitacao.solicitanteEmail}">email</span>).
-        </span>
-        <div th:if="${solicitacao.processoGerado != null and solicitacao.processoGerado.motivoIndeferimento != null}" class="mt-1">
-            <strong>Motivo informado:</strong> <span th:text="${solicitacao.processoGerado.motivoIndeferimento}"></span>
-        </div>
-        <div th:if="${mensagemResposta != null}" class="mt-2 p-2 bg-white rounded border">
-            <small class="text-muted fw-semibold">Mensagem enviada à sua equipe:</small>
-            <pre class="mb-0 small mt-1" style="white-space: pre-wrap; font-family: inherit;"
-                 th:text="${mensagemResposta}"></pre>
-        </div>
-        <div class="mt-2">
-            <a th:if="${oficioIndeferimentoAnexo != null}"
-               th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${oficioIndeferimentoAnexo.id})}"
-               class="btn btn-outline-danger">
-                <i class="bi bi-file-earmark-text"></i> Baixar ofício de indeferimento
-            </a>
-            <span th:unless="${oficioIndeferimentoAnexo != null}" class="small text-muted">
-                Ofício ainda sendo providenciado pela equipe.
-            </span>
-        </div>
-    </div>
-    <div th:if="${(solicitacao.status.name() == 'CONVERTIDA' or solicitacao.status.name() == 'REPROVADA' or solicitacao.status.name() == 'APROVADA') and solicitacao.processoGerado != null and solicitacao.processoGerado.status.name() == 'CANCELADO'}"
-         class="alert alert-secondary">
-        <i class="bi bi-slash-circle-fill"></i>
-        O processo <strong th:text="${solicitacao.processoGerado.numero}">00/0000</strong> gerado a partir
-        deste pedido foi cancelado.
-    </div>
-    <div th:if="${solicitacao.status.name() == 'CONVERTIDA' and precisaInformacaoComplementar and !jaEnviouInfoComplementar}"
-         class="alert alert-warning">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        Seu pedido virou o processo
-        <strong th:text="${solicitacao.processoGerado != null ? solicitacao.processoGerado.numero : '?'}">00/0000</strong>,
-        mas um(a) avaliador(a) da Urgência Renal pediu mais informações sobre este pedido.
-        Envie os documentos/dados solicitados abaixo para que a análise possa continuar.
-        <form th:action="@{/solicitante/{id}/informacao-complementar(id=${solicitacao.id})}"
-              method="post" enctype="multipart/form-data" class="mt-3">
-            <div class="mb-2">
-                <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informações pedidas</label>
-                <input type="file" class="form-control" id="arquivosInfoComplementar" name="arquivos" multiple>
-            </div>
-            <button type="submit" class="btn btn-warning">
-                <i class="bi bi-upload"></i> Enviar informações complementares
-            </button>
-        </form>
-    </div>
-    <div th:if="${solicitacao.status.name() == 'CONVERTIDA' and precisaInformacaoComplementar and jaEnviouInfoComplementar}"
-         class="alert alert-info">
-        <i class="bi bi-check-circle-fill"></i>
-        Informações complementares recebidas. Aguardando a análise da equipe de Urgência Renal.
-    </div>
-    <div th:if="${solicitacao.status.name() == 'DEVOLVIDA'}" class="alert alert-danger">
-        <i class="bi bi-arrow-return-left"></i>
-        Sua solicitação foi devolvida para correção.
-        <div th:if="${solicitacao.observacoesTriagem}" class="mt-2">
-            <strong>Motivo:</strong> <span th:text="${solicitacao.observacoesTriagem}"></span>
-        </div>
-        <hr>
-        <strong>O que fazer agora:</strong> envie uma <a th:href="@{/solicitante/nova}" class="alert-link">nova
-        solicitação</a> com os ajustes indicados acima. Esta aqui não será reanalisada.
-    </div>
-    <div th:if="${solicitacao.status.name() == 'PROCESSO_EXCLUIDO'}" class="alert alert-danger">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        Sua solicitação foi removida pela equipe de Urgência Renal (o processo gerado foi excluído).
-        Se ainda for necessário, envie uma <a th:href="@{/solicitante/nova}" class="alert-link">nova
-        solicitação</a>.
-    </div>
-    <div th:if="${solicitacao.status.name() == 'ENVIADA'}" class="alert alert-info">
-        <i class="bi bi-info-circle"></i>
-        Não é necessário fazer nada agora. Assim que a equipe de Urgência Renal analisar o pedido,
-        você será avisado por e-mail (<span th:text="${solicitacao.solicitanteEmail}"></span>).
     </div>
 
     <div class="card mb-3">
