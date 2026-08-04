@@ -10,6 +10,38 @@
     var form = document.getElementById('formVotoAvaliador');
     if (!form) return;
 
+    // === Justificativa obrigatoria para NAO_FAVORAVEL/SOLICITA_INFORMACAO ===
+    // So UX: alterna o atributo "required" do textarea e o texto de ajuda
+    // conforme o resultado marcado. A regra de verdade e imposta no servidor
+    // (AvaliadorController.registrarVoto) - este bloco nunca e a unica
+    // defesa contra um voto negativo sem justificativa.
+    var camposObrigam = ['NAO_FAVORAVEL', 'SOLICITA_INFORMACAO'];
+    var campoJustificativa = document.getElementById('campoJustificativa');
+    var labelJustificativa = document.getElementById('labelJustificativa');
+    var ajudaJustificativa = document.getElementById('ajudaJustificativa');
+    var radiosResultado = form.querySelectorAll('input[name="resultado"]');
+
+    function atualizarObrigatoriedadeJustificativa() {
+        if (!campoJustificativa || !labelJustificativa || !ajudaJustificativa) return;
+        var radioMarcado = form.querySelector('input[name="resultado"]:checked');
+        var obrigatoria = !!radioMarcado && camposObrigam.indexOf(radioMarcado.value) !== -1;
+        campoJustificativa.required = obrigatoria;
+        if (obrigatoria) {
+            labelJustificativa.textContent = 'Justificativa / observações *';
+            ajudaJustificativa.textContent = 'Obrigatório para voto desfavorável ou pedido de informação: '
+                + 'esse texto é o que o operador usa para redigir o ofício de indeferimento ou o '
+                + 'pedido de informação complementar ao solicitante.';
+        } else {
+            labelJustificativa.textContent = 'Justificativa / observações (opcional)';
+            ajudaJustificativa.textContent = 'Opcional. Será registrado internamente para subsidiar a decisão do processo.';
+        }
+    }
+
+    radiosResultado.forEach(function (radio) {
+        radio.addEventListener('change', atualizarObrigatoriedadeJustificativa);
+    });
+    atualizarObrigatoriedadeJustificativa();
+
     var modalEl = document.getElementById('modalConfirmarVoto');
     var resumoResultado = document.getElementById('resumoResultadoConfirmacao');
     var checkConfirma = document.getElementById('checkConfirmaVoto');

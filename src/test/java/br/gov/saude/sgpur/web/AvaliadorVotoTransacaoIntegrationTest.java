@@ -212,7 +212,8 @@ class AvaliadorVotoTransacaoIntegrationTest {
 
         mvc.perform(post("/avaliador/" + processoId + "/votar")
                         .with(csrf())
-                        .param("resultado", "NAO_FAVORAVEL"))
+                        .param("resultado", "NAO_FAVORAVEL")
+                        .param("justificativa", "Sem criterio de urgencia - controle."))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(redirectedUrl("/avaliador"))
                 .andExpect(flash().attributeExists("msg"));
