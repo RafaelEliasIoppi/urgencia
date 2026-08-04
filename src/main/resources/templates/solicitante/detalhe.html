@@ -299,10 +299,18 @@
 
     <h2 class="h6 text-muted">Documentos anexados</h2>
     <ul class="list-group mb-3">
-        <li class="list-group-item" th:each="a : ${solicitacao.anexos}">
-            <a th:href="@{/solicitante/{id}/anexos/{anexoId}(id=${solicitacao.id},anexoId=${a.id})}">
-                <span th:text="${a.nomeArquivo}">documento.pdf</span>
-                <i class="bi bi-download text-muted ms-1"></i>
+        <li class="list-group-item" th:each="a : ${solicitacao.anexos}"
+            th:with="ext=${#strings.toLowerCase(a.nomeArquivo)},
+                     icone=${ext.endsWith('.pdf')} ? 'bi-file-earmark-pdf text-danger'
+                         : (${ext.endsWith('.png') or ext.endsWith('.jpg') or ext.endsWith('.jpeg')} ? 'bi-file-earmark-image text-primary'
+                         : (${ext.endsWith('.eml') or ext.endsWith('.msg')} ? 'bi-file-earmark-text text-secondary' : 'bi-file-earmark text-muted'))">
+            <a class="d-flex align-items-center gap-2"
+               th:href="@{/solicitante/{id}/anexos/{anexoId}(id=${solicitacao.id},anexoId=${a.id})}">
+                <i class="bi" th:classappend="${icone}"></i>
+                <span class="text-truncate" th:text="${a.nomeArquivo}">documento.pdf</span>
+                <span class="text-muted small text-nowrap ms-auto"
+                      th:text="${#temporals.format(a.dataUpload, 'dd/MM/yyyy')}">-</span>
+                <i class="bi bi-download text-muted"></i>
             </a>
         </li>
         <li class="list-group-item text-muted" th:if="${solicitacao.anexos.isEmpty()}">

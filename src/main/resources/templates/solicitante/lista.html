@@ -34,81 +34,114 @@
         </span>
     </div>
 
-    <!-- Cards de resumo por status -->
-    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3 mb-4">
+    <!-- Cards de resumo por status - agora tambem filtros: clicar num card
+         filtra a lista abaixo (JS client-side, static/js/solicitante-lista.js),
+         sem round-trip ao servidor. data-filtro usa as mesmas categorias de
+         SolicitacaoOnlineService.resumir, espelhadas por linha/card via
+         data-categoria (Fase 7 do relatorio de UI). -->
+    <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3 mb-4" id="cardsFiltro">
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-total">
+            <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start active"
+                    data-filtro="total">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.total()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-collection"></i></span>
                 </div>
                 <div class="stat-label" style="color:var(--stat-text);">Total enviadas</div>
-            </div>
+            </button>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-andamento">
+            <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
+                    data-filtro="aguardando">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.aguardandoTriagem()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-hourglass-split"></i></span>
                 </div>
                 <div class="stat-label" style="color:var(--stat-text);">Aguardando triagem</div>
-            </div>
+            </button>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-andamento">
+            <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
+                    data-filtro="analise">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.emAnalise()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-search"></i></span>
                 </div>
                 <div class="stat-label" style="color:var(--stat-text);">Em analise</div>
-            </div>
+            </button>
         </div>
         <div class="col">
             <!-- Card agrupa Deferidos E Indeferidos: classe neutra (total),
                  nao verde (deferido), para nao insinuar que "Decididas" so
                  significa resultado favoravel. -->
-            <div class="stat-card stat-card-portal stat-card-total">
+            <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start"
+                    data-filtro="decididas">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.decididas()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-check-circle-fill"></i></span>
                 </div>
                 <div class="stat-label" style="color:var(--stat-text);">Decididas</div>
-            </div>
+            </button>
         </div>
         <div class="col">
             <!-- Devolvida != Indeferida: ambar (andamento), nao vermelho. -->
-            <div class="stat-card stat-card-portal stat-card-andamento">
+            <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
+                    data-filtro="devolvidas">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.devolvidas()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
                         <i class="bi bi-arrow-return-left"></i></span>
                 </div>
                 <div class="stat-label" style="color:var(--stat-text);">Devolvidas</div>
-            </div>
+            </button>
         </div>
     </div>
+
+    <!-- Busca por nome do paciente ou RGCT - filtra junto com o card ativo. -->
+    <div class="mb-3">
+        <label for="buscaSolicitacao" class="visually-hidden">Buscar por paciente ou RGCT</label>
+        <div class="input-group">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="search" id="buscaSolicitacao" class="form-control"
+                   placeholder="Buscar por nome do paciente ou RGCT...">
+        </div>
+    </div>
+    <p id="listaVaziaFiltro" class="text-muted text-center py-4 d-none">
+        <i class="bi bi-funnel fs-3 d-block mb-2"></i>
+        Nenhuma solicitacao encontrada com esse filtro/busca.
+    </p>
 
     <!-- Desktop/tablet: tabela (>=768px, breakpoint md do Bootstrap) -->
     <div class="card d-none d-md-block">
         <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
+            <table class="table table-hover align-middle mb-0" id="tabelaSolicitacoes">
                 <thead class="table-light">
                     <tr>
                         <th>Paciente</th>
                         <th>RGCT</th>
+                        <th>Processo</th>
                         <th>Enviada em</th>
                         <th>Status</th>
                         <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <tr th:each="s : ${solicitacoes}">
+                    <tr th:each="s : ${solicitacoes}"
+                        th:with="cAguardando=${s.status.name() == 'ENVIADA'},
+                                 cDevolvida=${s.status.name() == 'DEVOLVIDA'},
+                                 cAnalise=${s.status.name() == 'CONVERTIDA' and (s.processoGerado == null or !s.processoGerado.status.isFinalizado())},
+                                 categoria=${cAguardando} ? 'aguardando' : (${cDevolvida} ? 'devolvidas' : (${cAnalise} ? 'analise' : 'decididas'))"
+                        th:attr="data-categoria=${categoria},
+                                 data-nome=${#strings.toLowerCase(s.pacienteNome)},
+                                 data-rgct=${#strings.toLowerCase(s.pacienteRgct)}">
                         <td th:text="${s.pacienteNome}">Paciente</td>
                         <td th:text="${s.pacienteRgct}">RGCT</td>
+                        <td class="small font-monospace"
+                            th:text="${s.processoGerado != null} ? ('#' + ${s.processoGerado.numero}) : '-'">-</td>
                         <td class="small text-muted">
                             <span th:text="${#temporals.format(s.dataEnvio, 'dd/MM/yyyy HH:mm')}">-</span>
                             <span th:if="${s.status.name() == 'ENVIADA'}"
@@ -141,7 +174,7 @@
                         </td>
                     </tr>
                     <tr th:if="${solicitacoes.isEmpty()}">
-                        <td colspan="5" class="text-center text-muted py-5">
+                        <td colspan="6" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                             Voce ainda nao enviou nenhuma solicitacao.
                         </td>
@@ -162,17 +195,31 @@
             </div>
         </div>
         <a th:each="s : ${solicitacoes}" th:href="@{/solicitante/{id}(id=${s.id})}"
-           class="card mb-2 text-decoration-none text-body">
+           class="card mb-2 text-decoration-none text-body"
+           th:with="cAguardando=${s.status.name() == 'ENVIADA'},
+                    cDevolvida=${s.status.name() == 'DEVOLVIDA'},
+                    cAnalise=${s.status.name() == 'CONVERTIDA' and (s.processoGerado == null or !s.processoGerado.status.isFinalizado())},
+                    categoria=${cAguardando} ? 'aguardando' : (${cDevolvida} ? 'devolvidas' : (${cAnalise} ? 'analise' : 'decididas'))"
+           th:attr="data-categoria=${categoria},
+                    data-nome=${#strings.toLowerCase(s.pacienteNome)},
+                    data-rgct=${#strings.toLowerCase(s.pacienteRgct)}">
             <div class="card-body py-3">
                 <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
                     <span class="fw-semibold" th:text="${s.pacienteNome}">Paciente</span>
-                    <span th:if="${mensagensNaoLidas.get(s.id)}"
-                          class="badge bg-warning text-dark flex-shrink-0" title="Nova resposta da equipe">
-                        <i class="bi bi-chat-dots-fill"></i>
+                    <span class="d-flex align-items-center gap-1 flex-shrink-0">
+                        <span th:if="${mensagensNaoLidas.get(s.id)}"
+                              class="badge bg-warning text-dark" title="Nova resposta da equipe">
+                            <i class="bi bi-chat-dots-fill"></i>
+                        </span>
+                        <i class="bi bi-chevron-right text-muted"></i>
                     </span>
                 </div>
                 <div class="small text-muted mb-2">
-                    RGCT <span th:text="${s.pacienteRgct}">RGCT</span> &bull;
+                    RGCT <span th:text="${s.pacienteRgct}">RGCT</span>
+                    <span th:if="${s.processoGerado != null}">
+                        &bull; <span class="font-monospace" th:text="'#' + ${s.processoGerado.numero}">#00/0000</span>
+                    </span>
+                    &bull;
                     <span th:text="${#temporals.format(s.dataEnvio, 'dd/MM/yyyy')}">-</span>
                 </div>
                 <div class="d-flex flex-wrap gap-1">
@@ -195,6 +242,7 @@
 </div>
 
 <script th:replace="~{layout :: scripts}"></script>
+<script th:src="@{/js/solicitante-lista.js}"></script>
 <div th:replace="~{layout :: footer}"></div>
 </body>
 </html>

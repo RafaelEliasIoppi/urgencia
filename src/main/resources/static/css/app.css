@@ -719,6 +719,21 @@ tr.linha-inativa > td:first-child {
     box-shadow: var(--rs-shadow);
 }
 
+/* Cards de resumo tambem clicaveis (filtro da lista do solicitante,
+   static/js/solicitante-lista.js): sinaliza qual filtro esta ativo, ja que
+   sao <button> agora (nao mais <div> puramente decorativo). */
+.stat-card-filtro {
+    cursor: pointer;
+    transition: var(--rs-transition);
+}
+.stat-card-filtro:hover {
+    box-shadow: var(--rs-shadow-md);
+}
+.stat-card-filtro.active {
+    outline: 2px solid var(--stat-border);
+    outline-offset: 1px;
+}
+
 /* Tabela do dashboard: scroll vertical so em desktop (evita cortar conteudo em mobile) */
 @media (min-width: 768px) {
     .dashboard-tabela-scroll { max-height: 70vh; overflow-y: auto; }
