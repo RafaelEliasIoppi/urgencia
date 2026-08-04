@@ -201,4 +201,29 @@ public interface ProcessoRepository extends JpaRepository<Processo, Long> {
           p.ano desc, p.sequencial desc
         """)
     Page<Processo> buscar(@Param("q") String q, @Param("status") StatusProcesso status, Pageable pageable);
+
+    /**
+     * Busca paginada dos processos ENCERRADOS (/arquivo).
+     *
+     * <p>Ate 2026-08-04 o ArquivoController carregava TODOS os encerrados em
+     * memoria e filtrava a busca em Java. Funcionava com o volume atual, mas o
+     * Arquivo e a unica tela do sistema que so cresce - nada nunca sai dela -,
+     * enquanto /processos, limitada pelo trabalho ativo, ja era paginada em 15.
+     * O esforco de paginacao estava na tela que nao precisava.</p>
+     *
+     * <p>Mesmo criterio de busca de {@link #buscar} (paciente, numero, equipe
+     * solicitante), agora resolvido no banco.</p>
+     */
+    @Query("""
+        select p from Processo p
+        where p.status in :status
+          and (:q is null or :q = ''
+               or lower(p.pacienteNome) like lower(concat('%', :q, '%'))
+               or p.numero like concat('%', :q, '%')
+               or lower(p.solicitanteEquipe) like lower(concat('%', :q, '%')))
+        order by p.ano desc, p.sequencial desc
+        """)
+    Page<Processo> buscarEncerrados(@Param("q") String q,
+                                    @Param("status") java.util.Collection<StatusProcesso> status,
+                                    Pageable pageable);
 }

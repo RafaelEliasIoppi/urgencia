@@ -13,10 +13,12 @@
            operador mantem abas fixadas. */-->
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="apple-touch-icon" th:href="@{/favicon.svg}">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+    <!--/* A fonte Inter e auto-hospedada desde 2026-08-04 (@font-face no
+           app.css, arquivos em /fonts). Nao ha mais nenhuma chamada a
+           fonts.googleapis.com/fonts.gstatic.com: cada carregamento de pagina
+           enviava o IP do usuario a um terceiro fora do pais, o que num sistema
+           de secretaria estadual de saude e materia de LGPD - alem de ser uma
+           folha render-blocking dependente de rede externa. */-->
     <link rel="stylesheet" th:href="@{/webjars/bootstrap/5.3.8/css/bootstrap.min.css}">
     <link rel="stylesheet" th:href="@{/webjars/bootstrap-icons/1.11.3/font/bootstrap-icons.css}">
     <!--/* Sem cache-buster manual: spring.web.resources.chain.strategy.content

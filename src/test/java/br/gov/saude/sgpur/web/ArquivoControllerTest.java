@@ -7,22 +7,39 @@ import br.gov.saude.sgpur.repository.ProcessoRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 /**
- * Testes do ArquivoController: listagem read-only dos processos ENCERRADOS
- * (Deferido/Indeferido/Cancelado) e a busca em Java sobre esse conjunto.
+ * Testes do ArquivoController: listagem read-only e PAGINADA dos processos
+ * ENCERRADOS (Deferido/Indeferido/Cancelado).
+ *
+ * <p><b>Mudanca de 2026-08-04 (Fase E da auditoria de UI).</b> A busca deixou de
+ * ser feita em Java sobre a lista inteira e passou a ser resolvida no banco, com
+ * paginacao. Por isso os testes daqui mudaram de natureza: com o repositorio
+ * mockado nao ha mais como verificar o FILTRO em si (o mock devolve o que se
+ * mandar devolver) - o que se verifica aqui e o CONTRATO, ou seja, que o
+ * controller repassa termo, status e pagina corretos e publica os atributos de
+ * paginacao. O filtro de verdade e coberto por
+ * {@code ArquivoBuscaPaginadaIntegrationTest}, com H2 real.</p>
  */
 @WebMvcTest(ArquivoController.class)
 class ArquivoControllerTest {
@@ -31,7 +48,7 @@ class ArquivoControllerTest {
     private MockMvc mvc;
 
     @MockitoBean private ProcessoRepository processoRepository;
-    // GlobalModelAdvice (@ControllerAdvice global) precisa dessas duas para o
+    // GlobalModelAdvice (@ControllerAdvice global) precisa dessas para o
     // contexto do @WebMvcTest subir, mesmo sem serem chamadas (usuario OPERADOR
     // nao tem ROLE_AVALIADOR, entao pendentesAvaliador() curto-circuita em 0).
     @MockitoBean private UsuarioRepository usuarioRepository;
@@ -49,13 +66,16 @@ class ArquivoControllerTest {
         return p;
     }
 
+    private void devolve(Processo... ps) {
+        Page<Processo> pagina = new PageImpl<>(List.of(ps), PageRequest.of(0, 15), ps.length);
+        when(processoRepository.buscarEncerrados(any(), any(), any())).thenReturn(pagina);
+    }
+
     @Test
     @WithMockUser(roles = "OPERADOR")
     void listaOsEncerradosDoRepositorio() throws Exception {
         Processo deferido = processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO);
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(
-            List.of(StatusProcesso.DEFERIDO, StatusProcesso.INDEFERIDO, StatusProcesso.CANCELADO)))
-            .thenReturn(List.of(deferido));
+        devolve(deferido);
 
         mvc.perform(get("/arquivo"))
             .andExpect(status().isOk())
@@ -64,80 +84,76 @@ class ArquivoControllerTest {
             .andExpect(model().attribute("q", (Object) null));
     }
 
+    /** So os 3 status finais entram no Arquivo - nunca um processo em andamento. */
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void semTermoDeBuscaRetornaTodosOsEncerrados() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO),
-                processo(2L, "02/2026", "Joao Souza", "Equipe B", StatusProcesso.INDEFERIDO)));
+    void consultaApenasOsTresStatusEncerrados() throws Exception {
+        devolve();
 
-        mvc.perform(get("/arquivo"))
-            .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.hasSize(2)));
+        mvc.perform(get("/arquivo")).andExpect(status().isOk());
+
+        @SuppressWarnings("unchecked")
+        ArgumentCaptor<java.util.Collection<StatusProcesso>> status =
+            ArgumentCaptor.forClass(java.util.Collection.class);
+        verify(processoRepository).buscarEncerrados(any(), status.capture(), any());
+        assertThat(status.getValue()).containsExactlyInAnyOrder(
+            StatusProcesso.DEFERIDO, StatusProcesso.INDEFERIDO, StatusProcesso.CANCELADO);
     }
 
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void buscaPorNomeDoPacienteFiltraOsResultados() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO),
-                processo(2L, "02/2026", "Joao Souza", "Equipe B", StatusProcesso.INDEFERIDO)));
+    void repassaOTermoDeBuscaAoRepositorio() throws Exception {
+        devolve(processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO));
 
         mvc.perform(get("/arquivo").param("q", "maria"))
             .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.hasSize(1)))
             .andExpect(model().attribute("q", "maria"));
+
+        verify(processoRepository).buscarEncerrados(eq("maria"), any(), any());
+    }
+
+    /**
+     * Paginacao: a pagina pedida chega ao repositorio e o tamanho e o mesmo de
+     * /processos, para as duas telas se comportarem igual.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void repassaAPaginaPedidaComOTamanhoPadrao() throws Exception {
+        devolve();
+
+        mvc.perform(get("/arquivo").param("page", "2")).andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(processoRepository).buscarEncerrados(any(), any(), pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isEqualTo(2);
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(ArquivoController.TAMANHO_PAGINA);
+    }
+
+    /** Pagina negativa na URL nao pode estourar - vira a primeira pagina. */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void paginaNegativaCaiParaAPrimeira() throws Exception {
+        devolve();
+
+        mvc.perform(get("/arquivo").param("page", "-5")).andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(processoRepository).buscarEncerrados(any(), any(), pageable.capture());
+        assertThat(pageable.getValue().getPageNumber()).isZero();
     }
 
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void buscaPorNumeroDoProcessoFiltraOsResultados() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO),
-                processo(2L, "02/2026", "Joao Souza", "Equipe B", StatusProcesso.INDEFERIDO)));
+    void publicaOsAtributosDePaginacaoParaAView() throws Exception {
+        Page<Processo> pagina = new PageImpl<>(
+            List.of(processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO)),
+            PageRequest.of(1, 15), 40);
+        when(processoRepository.buscarEncerrados(any(), any(), any())).thenReturn(pagina);
 
-        mvc.perform(get("/arquivo").param("q", "02/2026"))
+        mvc.perform(get("/arquivo").param("page", "1"))
             .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.hasSize(1)));
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void buscaPorEquipeSolicitanteFiltraOsResultados() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO),
-                processo(2L, "02/2026", "Joao Souza", "Equipe B", StatusProcesso.INDEFERIDO)));
-
-        mvc.perform(get("/arquivo").param("q", "equipe b"))
-            .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.hasSize(1)));
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void termoQueNaoBateComNadaRetornaListaVazia() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO)));
-
-        mvc.perform(get("/arquivo").param("q", "nao existe ninguem assim"))
-            .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.empty()));
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void termoEmBrancoEhTratadoComoAusente() throws Exception {
-        when(processoRepository.findByStatusInOrderByAnoDescSequencialDesc(any()))
-            .thenReturn(List.of(
-                processo(1L, "01/2026", "Maria Silva", "Equipe A", StatusProcesso.DEFERIDO)));
-
-        mvc.perform(get("/arquivo").param("q", "   "))
-            .andExpect(status().isOk())
-            .andExpect(model().attribute("processos", org.hamcrest.Matchers.hasSize(1)));
+            .andExpect(model().attribute("paginaAtual", 1))
+            .andExpect(model().attribute("totalPaginas", 3))
+            .andExpect(model().attribute("totalEncerrados", 40L));
     }
 }

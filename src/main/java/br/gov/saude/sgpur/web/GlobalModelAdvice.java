@@ -125,6 +125,45 @@ public class GlobalModelAdvice {
         return mensagemService.contarNaoLidasOperador();
     }
 
+    /**
+     * Para onde o botao "voltar ao inicio" deve apontar para o usuario logado.
+     *
+     * <p><b>Motivacao (auditoria de UI, 2026-08-04).</b> A pagina de erro tinha
+     * um unico botao, fixo em {@code /} - que o {@code SecurityConfig} restringe
+     * a ADMIN/OPERADOR. Um AVALIADOR ou SOLICITANTE que caisse em qualquer erro
+     * recebia um botao que levava a um 403, renderizando a mesma pagina de erro,
+     * com o mesmo botao: <b>dois dos quatro perfis do sistema nao tinham saida
+     * da tela de erro</b>.</p>
+     */
+    @ModelAttribute("inicioDoPerfil")
+    public String inicioDoPerfil() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) {
+            return "/login";
+        }
+        if (temPapelAvaliador(auth)) {
+            return "/avaliador";
+        }
+        if (temPapelSolicitante(auth)) {
+            return "/solicitante";
+        }
+        if (temPapelOperadorOuAdmin(auth)) {
+            return "/";
+        }
+        // Autenticado sem nenhum dos papeis conhecidos: o login e o unico
+        // destino garantido (qualquer area do sistema devolveria 403).
+        return "/login";
+    }
+
+    private boolean temPapelSolicitante(Authentication auth) {
+        for (GrantedAuthority ga : auth.getAuthorities()) {
+            if ("ROLE_SOLICITANTE".equals(ga.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private boolean temPapelOperadorOuAdmin(Authentication auth) {
         for (GrantedAuthority ga : auth.getAuthorities()) {
             if ("ROLE_ADMIN".equals(ga.getAuthority()) || "ROLE_OPERADOR".equals(ga.getAuthority())) {

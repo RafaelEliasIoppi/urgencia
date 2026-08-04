@@ -10,7 +10,12 @@
     <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in">
         <div>
             <h1 class="h4 fw-bold mb-1"><i class="bi bi-archive me-2"></i>Arquivo</h1>
-            <p class="text-muted small mb-0">Processos encerrados (Deferido, Indeferido, Cancelado)</p>
+            <p class="text-muted small mb-0">
+                Processos encerrados (Deferido, Indeferido, Cancelado)
+                <span th:if="${totalEncerrados > 0}">
+                    &bull; <span th:text="${totalEncerrados}">0</span> no total
+                </span>
+            </p>
         </div>
     </div>
 
@@ -86,6 +91,28 @@
             </table>
         </div>
     </div>
+
+    <!-- Paginacao no mesmo padrao de /processos e /auditoria ("N / total").
+         Ate 2026-08-04 esta tela carregava TODOS os encerrados de uma vez. -->
+    <nav class="mt-3 animate-fade-in-d3" th:if="${totalPaginas > 1}">
+        <ul class="pagination pagination-sm justify-content-center">
+            <li class="page-item" th:classappend="${paginaAtual == 0} ? 'disabled'">
+                <a class="page-link" th:href="@{/arquivo(q=${q}, page=${paginaAtual - 1})}">
+                    <i class="bi bi-chevron-left"></i> Anterior
+                </a>
+            </li>
+            <li class="page-item disabled">
+                <span class="page-link fw-semibold">
+                    <span th:text="${paginaAtual + 1}">1</span> / <span th:text="${totalPaginas}">1</span>
+                </span>
+            </li>
+            <li class="page-item" th:classappend="${paginaAtual + 1 >= totalPaginas} ? 'disabled'">
+                <a class="page-link" th:href="@{/arquivo(q=${q}, page=${paginaAtual + 1})}">
+                    Próxima <i class="bi bi-chevron-right"></i>
+                </a>
+            </li>
+        </ul>
+    </nav>
 </main>
 
 <div th:replace="~{layout :: footer}"></div>

@@ -7,7 +7,52 @@
 
 <main id="conteudo" class="container my-4">
     <h1 class="h3 mb-3">Auditoria</h1>
-    <p class="text-muted small">Registro das ações realizadas no sistema (quem, o que e quando).</p>
+    <p class="text-muted small">
+        Registro das ações realizadas no sistema (quem, o que e quando).
+        <span th:if="${temFiltro}">
+            &bull; <strong th:text="${totalRegistros}">0</strong> registro(s) no filtro atual
+        </span>
+    </p>
+
+    <!-- Filtros: esta e a tela usada quando ja se sabe o que procurar ("o que
+         o usuario X fez ontem", "quem excluiu este anexo"). Ate 2026-08-04 nao
+         havia filtro nenhum - so paginar do mais recente para tras, 30 em 30. -->
+    <div class="card border-0 shadow-sm mb-3">
+        <div class="card-body p-3">
+            <form method="get" th:action="@{/auditoria}" class="row g-2 align-items-end">
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="fUsuario">Usuário</label>
+                    <input type="text" name="usuario" id="fUsuario" class="form-control form-control-sm"
+                           th:value="${usuario}" placeholder="parte do login...">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="fAcao">Ação</label>
+                    <select name="acao" id="fAcao" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        <option th:each="a : ${acoesDisponiveis}" th:value="${a}" th:text="${a}"
+                                th:selected="${acao != null and acao == a}"></option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="fDe">De</label>
+                    <input type="date" name="de" id="fDe" class="form-control form-control-sm" th:value="${de}">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted mb-1" for="fAte">Até</label>
+                    <input type="date" name="ate" id="fAte" class="form-control form-control-sm" th:value="${ate}">
+                </div>
+                <div class="col-md-2 d-flex gap-2">
+                    <button class="btn btn-primary btn-sm flex-grow-1">
+                        <i class="bi bi-search me-1"></i> Filtrar
+                    </button>
+                    <a th:href="@{/auditoria}" class="btn btn-outline-secondary btn-sm"
+                       title="Limpar filtro" aria-label="Limpar filtro">
+                        <i class="bi bi-x-lg"></i>
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
 
     <div class="card">
         <div class="table-responsive">
@@ -46,7 +91,7 @@
     <nav class="mt-3" th:if="${totalPaginas > 1}">
         <ul class="pagination pagination-sm justify-content-center">
             <li class="page-item" th:classappend="${paginaAtual == 0} ? 'disabled'">
-                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual - 1})}">Anterior</a>
+                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual - 1}, usuario=${usuario}, acao=${acao}, de=${de}, ate=${ate})}">Anterior</a>
             </li>
             <li class="page-item disabled">
                 <span class="page-link">
@@ -54,7 +99,7 @@
                 </span>
             </li>
             <li class="page-item" th:classappend="${paginaAtual + 1 >= totalPaginas} ? 'disabled'">
-                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual + 1})}">Próxima</a>
+                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual + 1}, usuario=${usuario}, acao=${acao}, de=${de}, ate=${ate})}">Próxima</a>
             </li>
         </ul>
     </nav>
