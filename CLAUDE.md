@@ -1566,3 +1566,135 @@ a fundo nesta sessão (fora de escopo da Fase 11.2) — fica registrado aqui
 para quem for rodar o E2E localmente de novo não perder tempo achando que é
 regressão.
 
+## Ofício de Indeferimento e cobrança do Comprovante SNT (2026-08-04)
+
+Motivado por um caso real relatado pelo usuário em produção
+(`/processos/8`: o processo aparecia com o badge preto "Encerrado" mesmo com
+a barra de progresso em 83%, dando a falsa impressão de que nada mais
+precisava ser feito). Investigação gerou um relatório completo
+(`docs/RELATORIO-OFICIO-COMPROVANTE-SNT-2026-08.md`) com achados e sugestões
+priorizadas; os itens 1-7 foram aprovados e implementados no mesmo dia,
+mesclados em `main` via PR #7 (commits `fb3a865`/`ebb13e7`, merge `0e5ed68`),
+com deploy automático confirmado em produção (`curl` no `/login` retornando
+200 logo após o merge). **O item 8 do relatório (gerar automaticamente o
+ofício ao SNT, nos moldes do documento real encontrado na raiz do
+repositório) foi deliberadamente adiado** — é uma feature nova, não uma
+correção, e o próprio relatório recomendou tratar à parte; ainda não há
+issue/branch aberta para isso, só o registro no relatório.
+
+1. **Badge "Encerrado" redesenhado.** Antes disparava só com
+   `processo.status.finalizado` (Deferido/Indeferido/Cancelado), sem
+   considerar se as etapas de conclusão (ofício/comprovante SNT + resposta ao
+   solicitante) já tinham sido feitas — daí a confusão do caso relatado.
+   Agora existe um estado intermediário **"Decisão tomada"** (cinza,
+   `bg-secondary`) para quando falta alguma dessas etapas, e "Encerrado"
+   (preto) só quando `processo.emailEnviadoSolicitante == true`. Processos
+   `CANCELADO` são tratados como sempre "Encerrado" (não têm etapa de
+   resposta formal aplicável — ver item 6 abaixo). O banner de aviso no topo
+   da tela segue a mesma lógica, com um link direto para a aba Finalização
+   quando ainda há pendência.
+2. **Atalhos da barra lateral corrigidos.** "Ofício de Indeferimento" e o
+   novo atalho "Comprovante SNT" só aparecem depois que o anexo
+   correspondente existe de fato, e baixam **o anexo real**
+   (`/processos/anexos/{id}/download`) em vez de regenerar um PDF novo na
+   hora — antes o atalho do ofício (`GET /processos/{id}/oficio`,
+   `OficioService.gerar`) sempre gerava um PDF a partir dos dados atuais do
+   processo, que podia divergir do arquivo realmente anexado se o operador
+   tivesse substituído por upload manual.
+3. **`OficioService` sem placeholders.** O texto gerado tinha "Local," (a
+   palavra "Local" nunca virava uma cidade de verdade) e uma assinatura fixa
+   genérica ("Responsavel - Equipe de Urgencia Renal / Secretaria de
+   Saude"), sem usar a assinatura já configurável em
+   `app.email.assinatura` (usada nos e-mails prontos). Corrigido: nova
+   propriedade `app.email.oficio-cidade` (env `SGPUR_OFICIO_CIDADE`, default
+   `Porto Alegre`) substitui "Local,", e a assinatura passa a reusar
+   `app.email.assinatura`. Corpo do ofício ganhou acentuação correta (é
+   documento oficial que sai da instituição — diferente da convenção
+   deliberada de não acentuar `ResultadoParecer.descricao`, que é uso
+   interno). `OficioService` deixou de ser stateless: agora tem construtor
+   com `EmailProperties` injetado.
+4. **Timbre institucional + numeração própria do ofício.** O PDF do ofício
+   passou a carregar `static/brasao.png` (mesmo tratamento tolerante a
+   ausência do arquivo já usado em `PdfRelatorioBuilder`/
+   `RelatorioAnualService`) e ganhou `Processo.numeroOficio` (`String`,
+   nullable, formato `NNNN/AAAA`, sequencial anual reiniciando a cada ano,
+   **independente** do número do processo CET-RS) — inspirado no documento
+   real de referência encontrado na raiz do repositório
+   (`Of nº 1398 Julho 2026 SNT.doc`, um ofício de verdade emitido pela
+   Central de Transplantes ao SNT). O próximo número é calculado em
+   `DecisaoFinalService` no momento da geração automática, lendo o maior
+   `numeroOficio` já usado no ano via `ProcessoRepository` e comparando
+   **numericamente** (não como string — "999/2026" não pode perder de
+   "1000/2026" numa comparação lexicográfica). Sem UNIQUE constraint na
+   coluna (deliberado: não impedir o registro de uma decisão já tomada por
+   causa de uma corrida rara na numeração; documentado como ressalva no
+   javadoc, não resolvido com lock distribuído).
+5. **Divergências entre tela e anexo fechadas.** `GET /processos/{id}/oficio`
+   passou a recusar (400) fora de `INDEFERIDO` (antes gerava o PDF para
+   qualquer status, inclusive Deferido). Salvar as datas do ofício
+   (`POST /processos/{id}/finalizacao`) agora **regenera o anexo**
+   automaticamente com as novas datas (mesmo padrão de substituição de
+   `DecisaoFinalService`: salva o novo antes de remover o antigo), com aviso
+   explícito na tela de que isso sobrescreve qualquer upload manual anterior.
+   **Esse endpoint deixou de ser `@Transactional` no controller** — a
+   escrita foi movida para `ProcessoService.atualizarDatasFinalizacao`,
+   porque com transação de controller o `try/catch` em volta da regeneração
+   marcaria a transação como rollback-only e o commit estouraria 500 (mesma
+   classe de bug já documentada em "Convenções de código" sobre rotas que
+   gravam algo irreversível). O mesmo endpoint passou a aceitar também
+   `dataEnvioSnt` (ver item 7).
+6. **Processo Cancelado não trava mais o progresso.** A etapa "Resposta ao
+   solicitante" (`FluxoProcessoService`) exigia
+   `processo.emailEnviadoSolicitante == true`, mas o botão de envio fica
+   **permanentemente desabilitado** para `CANCELADO` (cancelamento não passa
+   pelo fluxo de resposta formal por e-mail) — ou seja, essa etapa nunca
+   podia ser concluída para um processo cancelado, travando a barra de
+   progresso abaixo de 100% para sempre (bug estrutural pré-existente, só
+   corrigido agora). `respostaOk` passou a considerar
+   `processo.getStatus() == StatusProcesso.CANCELADO` como concluído também,
+   com uma mensagem de detalhe própria explicando que cancelamento não exige
+   essa etapa.
+7. **Cobrança ativa do Comprovante SNT.** Antes, um processo Deferido sem
+   comprovante anexado não aparecia em nenhum contador do Painel (que só
+   somava processos "em andamento") — pendência invisível. Agora:
+   - Card novo no Painel (`HomeController`/`dashboard.html`) contando
+     Deferidos sem `TipoAnexo.COMPROVANTE_SNT`, via query dedicada (sem N+1).
+   - Badge de aviso na lista de processos + filtro `?filtro=snt-pendente`
+     (`ProcessoListaController`/`lista.html`).
+   - Campo `Processo.dataEnvioSnt` (`LocalDate`, nullable) — a data em que a
+     urgência foi de fato inserida/enviada ao SNT, distinta da data de
+     upload do anexo no sistema. Editável no mesmo formulário/endpoint das
+     datas do ofício.
+   - **Lembrete automático diário por e-mail**, mecanismo novo (não existia
+     nada equivalente automático antes — o lembrete de avaliador pendente é
+     manual, clicado pelo operador): `ComprovanteSntLembreteScheduler`
+     (`@Scheduled`, mesmo padrão arquitetural de
+     `DecisaoAutomaticaScheduler`: isolamento de falha por item, sem
+     `@Transactional` na varredura) avisa usuários ativos ADMIN/OPERADOR com
+     e-mail cadastrado (reusa `UsuarioRepository.
+     findByPerfilInAndAtivoTrue`, já usado para notificar sobre novas
+     solicitações) quando um Deferido passa de `app.snt.lembrete.prazo-dias`
+     (default 7, env `SGPUR_SNT_PRAZO_DIAS`) sem comprovante, sem reenviar
+     todo dia (`Processo.ultimoLembreteSntEm`, mesmo padrão de
+     `Parecer.ultimoLembreteEm`). Gate próprio, **independente** do de
+     decisão automática: `app.snt.lembrete.varredura.habilitado`
+     (`SGPUR_SNT_LEMBRETE_HABILITADO`, default `false` em dev/teste,
+     `true` em produção) + `AgendamentoSntConfig` (`@Configuration` separada
+     de `AgendamentoConfig` de propósito — um `@ConditionalOnProperty` só
+     avalia UMA propriedade; sem a classe própria, desligar a varredura de
+     decisão automática desligaria junto, silenciosamente, o agendador do
+     lembrete SNT). Ter `@EnableScheduling` em duas `@Configuration` é seguro
+     (Spring registra um único `ScheduledAnnotationBeanPostProcessor`).
+
+Todos os campos novos em `Processo` (`numeroOficio`, `dataEnvioSnt`,
+`ultimoLembreteSntEm`) são **nullable desde a criação** — nenhum backfill
+manual necessário em produção (mesmo raciocínio já documentado para
+`Parecer.ultimoLembreteEm`).
+
+**Validação:** suíte completa rodada duas vezes de forma independente antes
+do merge — **735 testes, 0 falhas** (JDK 21). Novos testes de integração
+`@SpringBootTest` (sem mock do service) para a regeneração do ofício ao
+salvar datas (escrita irreversível, seguindo a convenção do projeto) e para
+o scheduler de lembrete SNT (elegibilidade, não reenvio antes do prazo,
+exclusão de processos já com comprovante).
+
