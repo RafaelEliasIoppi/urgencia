@@ -36,7 +36,10 @@
 <!-- Skip-link: primeiro elemento focavel da pagina, invisivel ate receber
      foco por teclado (.visually-hidden-focusable, utilitario do proprio
      Bootstrap 5.3 - sem CSS customizado). Aponta para o <main id="conteudo">
-     de cada tela (hoje presente nos Portais do Solicitante e do Avaliador). -->
+     de cada tela. Ate 2026-08-04 esse alvo so existia nos 5 templates dos
+     Portais: nas outras 20 telas o atalho apontava para um id inexistente e o
+     foco nao ia a lugar nenhum. Ao criar uma tela nova, o <main id="conteudo">
+     e obrigatorio - o teste LayoutAcessibilidadeTest cobre isso. -->
 <a href="#conteudo" class="visually-hidden-focusable">Pular para o conteúdo</a>
 <nav class="navbar navbar-expand-md navbar-dark navbar-sgpur">
     <div class="container-fluid">

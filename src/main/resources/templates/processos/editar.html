@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4">
+<main id="conteudo" class="container my-4">
     <h1 class="h3 mb-3">Editar processo <span th:text="${processo.numero}">00/0000</span></h1>
 
     <form th:action="@{/processos/{id}/editar(id=${processo.id})}" th:object="${processo}"
@@ -13,13 +13,13 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <label class="form-label">Numero</label>
+                    <label class="form-label" th:for="numero">Numero</label>
                     <input type="text" th:field="*{numero}" class="form-control" readonly>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Data de solicitacao da urgencia renal *</label>
-                    <input type="date" th:field="*{dataSituacaoEspecial}" class="form-control">
-                    <div class="text-danger small" th:errors="*{dataSituacaoEspecial}"></div>
+                    <label class="form-label" th:for="dataSituacaoEspecial">Data de solicitacao da urgencia renal *</label>
+                    <input type="date" th:field="*{dataSituacaoEspecial}" class="form-control" th:classappend="${#fields.hasErrors('dataSituacaoEspecial')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('dataSituacaoEspecial')} ? 'true' : null,aria-describedby=${#fields.hasErrors('dataSituacaoEspecial')} ? 'dataSituacaoEspecialErro' : null">
+                    <div class="invalid-feedback d-block" id="dataSituacaoEspecialErro" role="alert" th:errors="*{dataSituacaoEspecial}"></div>
                 </div>
             </div>
 
@@ -27,14 +27,14 @@
             <h2 class="h6 text-muted">Receptor (paciente)</h2>
             <div class="row g-3">
                 <div class="col-md-8">
-                    <label class="form-label">Nome do paciente *</label>
-                    <input type="text" th:field="*{pacienteNome}" class="form-control" required>
-                    <div class="text-danger small" th:errors="*{pacienteNome}"></div>
+                    <label class="form-label" th:for="pacienteNome">Nome do paciente *</label>
+                    <input type="text" th:field="*{pacienteNome}" class="form-control" required th:classappend="${#fields.hasErrors('pacienteNome')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('pacienteNome')} ? 'true' : null,aria-describedby=${#fields.hasErrors('pacienteNome')} ? 'pacienteNomeErro' : null">
+                    <div class="invalid-feedback d-block" id="pacienteNomeErro" role="alert" th:errors="*{pacienteNome}"></div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">RGCT / SNT *</label>
-                    <input type="text" th:field="*{pacienteRgct}" class="form-control" required>
-                    <div class="text-danger small" th:errors="*{pacienteRgct}"></div>
+                    <label class="form-label" th:for="pacienteRgct">RGCT / SNT *</label>
+                    <input type="text" th:field="*{pacienteRgct}" class="form-control" required th:classappend="${#fields.hasErrors('pacienteRgct')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('pacienteRgct')} ? 'true' : null,aria-describedby=${#fields.hasErrors('pacienteRgct')} ? 'pacienteRgctErro' : null">
+                    <div class="invalid-feedback d-block" id="pacienteRgctErro" role="alert" th:errors="*{pacienteRgct}"></div>
                 </div>
             </div>
 
@@ -42,20 +42,20 @@
             <h2 class="h6 text-muted">Equipe solicitante</h2>
             <div class="row g-3">
                 <div class="col-md-8">
-                    <label class="form-label">Equipe / hospital solicitante *</label>
-                    <input type="text" th:field="*{solicitanteEquipe}" class="form-control" required>
-                    <div class="text-danger small" th:errors="*{solicitanteEquipe}"></div>
+                    <label class="form-label" th:for="solicitanteEquipe">Equipe / hospital solicitante *</label>
+                    <input type="text" th:field="*{solicitanteEquipe}" class="form-control" required th:classappend="${#fields.hasErrors('solicitanteEquipe')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('solicitanteEquipe')} ? 'true' : null,aria-describedby=${#fields.hasErrors('solicitanteEquipe')} ? 'solicitanteEquipeErro' : null">
+                    <div class="invalid-feedback d-block" id="solicitanteEquipeErro" role="alert" th:errors="*{solicitanteEquipe}"></div>
                 </div>
                 <div class="col-md-4">
-                    <label class="form-label">E-mail do solicitante *</label>
-                    <input type="email" th:field="*{solicitanteEmail}" class="form-control" required>
-                    <div class="text-danger small" th:errors="*{solicitanteEmail}"></div>
+                    <label class="form-label" th:for="solicitanteEmail">E-mail do solicitante *</label>
+                    <input type="email" th:field="*{solicitanteEmail}" class="form-control" required th:classappend="${#fields.hasErrors('solicitanteEmail')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('solicitanteEmail')} ? 'true' : null,aria-describedby=${#fields.hasErrors('solicitanteEmail')} ? 'solicitanteEmailErro' : null">
+                    <div class="invalid-feedback d-block" id="solicitanteEmailErro" role="alert" th:errors="*{solicitanteEmail}"></div>
                 </div>
             </div>
 
             <hr>
             <div>
-                <label class="form-label">Observacoes</label>
+                <label class="form-label" th:for="observacoes">Observacoes</label>
                 <textarea th:field="*{observacoes}" class="form-control" rows="2"></textarea>
             </div>
         </div>
@@ -64,7 +64,7 @@
             <button type="submit" class="btn btn-primary">Salvar alteracoes</button>
         </div>
     </form>
-</div>
+</main>
 
 <div th:replace="~{layout :: footer}"></div>
 

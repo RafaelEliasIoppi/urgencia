@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<div class="container my-4 container-narrow">
+<main id="conteudo" class="container my-4 container-narrow">
     <h1 class="h3 mb-3" th:text="${solicitacao.pacienteNome}">Paciente</h1>
 
     <div class="card mb-3">
@@ -95,7 +95,7 @@
             Ver processo <span th:text="${solicitacao.processoGerado.numero}"></span>
         </a>
     </div>
-</div>
+</main>
 
 <div class="modal fade" id="modalDevolver" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -106,8 +106,8 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label">Motivo (visivel ao solicitante) *</label>
-                <textarea name="observacoes" class="form-control" rows="3" required></textarea>
+                <label class="form-label" for="observacoes">Motivo (visivel ao solicitante) *</label>
+                <textarea name="observacoes" class="form-control" rows="3" required id="observacoes"></textarea>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
