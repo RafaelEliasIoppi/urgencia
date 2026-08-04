@@ -7,46 +7,47 @@
 os dois Portais externos (Solicitante e Avaliador) e cujas Fases 1–10 já foram
 implementadas.
 
-> **Nenhum código foi alterado para produzir este relatório.** Todo achado
-> abaixo foi verificado por leitura do código real e, quando envolve número,
-> por medição reproduzível — os comandos estão no Anexo A. Onde uma suspeita
-> não se confirmou, ela foi descartada e não aparece aqui.
+> **Este documento nasceu como diagnóstico** (nenhum código foi alterado para
+> produzi-lo). Todo achado foi verificado por leitura do código real e, quando
+> envolve número, por medição reproduzível — comandos no Anexo A. **As 5 fases
+> foram executadas em 2026-08-04** (ver §0): as seções §5/§6 descrevem o estado
+> ANTERIOR à correção, e servem hoje como registro do que foi corrigido e por quê.
 
 ---
 
 ## 0. Status de execução
 
-**As correções deste relatório foram aprovadas pelo usuário em 2026-08-04 e
-serão implementadas em sessão futura.** Nada foi implementado ainda — este
-documento é, até segunda ordem, diagnóstico e backlog, não registro do que já
-existe no código.
+**CONCLUÍDO em 2026-08-04.** As 5 fases foram implementadas e mescladas em
+`main`, uma por PR (#8 a #12), cada uma com a suíte completa verde antes do
+merge. Este documento passa a ser o registro do que foi feito — e o diagnóstico
+das seções §5/§6 descreve o estado ANTERIOR, não o código atual.
 
-Marcar cada fase abaixo à medida que for concluída (detalhe de cada uma no §9):
+Detalhe de cada fase no §9; a ordem de serviço executada está no Anexo B.
 
 | Fase | Conteúdo | Esforço | Risco | Status |
 |:---:|---|:---:|:---:|:---:|
-| **A** | Higiene de alto retorno — travas de upload, contraste, breakpoint, ordem de colunas, favicon, autocomplete, microcopy | baixo | ~nulo | ⬜ pendente |
-| **B** | Acessibilidade estrutural — `<main>`, rótulos, validação, ARIA das abas | médio | baixo | ⬜ pendente |
-| **C** | Consistência do design system — cartões, paginação, estado vazio, script do login | baixo/médio | baixo (visual) | ⬜ pendente |
-| **D** | Acentuação e microcopy do operador (67 + 27 ocorrências) | médio | baixo ⚠ E2E | ⬜ pendente |
-| **E** | Robustez de médio prazo — paginar Arquivo, página de erro, fonte local, filtros de auditoria, impressão | médio | baixo | ⬜ pendente |
+| **A** | Higiene de alto retorno — travas de upload, contraste, breakpoint, ordem de colunas, favicon, autocomplete, microcopy | baixo | ~nulo | ✅ PR #8 |
+| **B** | Acessibilidade estrutural — `<main>`, rótulos, validação, ARIA das abas | médio | baixo | ✅ PR #9 |
+| **C** | Consistência do design system — cartões, paginação, estado vazio, script do login | baixo/médio | baixo (visual) | ✅ PR #10 |
+| **D** | Acentuação e microcopy do operador (67 + 27 ocorrências) | médio | baixo ⚠ E2E | ✅ PR #11 |
+| **E** | Robustez de médio prazo — paginar Arquivo, página de erro, fonte local, filtros de auditoria, impressão | médio | baixo | ✅ PR #12 |
 
-**Ordem:** A → B → C → D → E, **um PR por fase**, mesclado assim que suíte +
-E2E passarem (decisão do usuário, 2026-08-04). As fases são independentes; A é
-a de maior relação ganho/esforço.
+**Executado** na ordem A → B → C → D → E, um PR por fase, cada um mesclado
+após a suíte passar. A suíte saiu de 735 para **747 testes** (12 novos), sempre
+com 0 falhas.
 
-**Ao retomar, ler antes:** o **Anexo B** (ordem de serviço: lista de arquivos
-por tarefa e as decisões de produto já tomadas), §10 ("o que **não** recomendo
-fazer") e §11 (critérios objetivos de aceite).
+**Decisões de produto tomadas pelo usuário e aplicadas:** o passo bloqueado do
+wizard passou a **bloquear de verdade** (clique e teclado ignorados,
+`aria-disabled`, fora da ordem de Tab); entrega em **um PR por fase**.
 
-**Decisões de produto já tomadas — não reperguntar:** passo bloqueado do wizard
-deve **bloquear de verdade**; entrega em **um PR por fase, mesclado por mim**;
-**as 5 fases estão aprovadas integralmente**. Detalhe no Anexo B.
-
-**Armadilha conhecida da Fase D:** o teste E2E localiza botões por texto exato.
-Qualquer rótulo de botão acentuado exige atualizar `PlaywrightTestBase` e
-`e2e/pages/*Page.java` no mesmo commit — foi o que aconteceu na Fase 8 do
-relatório anterior.
+**Dois achados que só apareceram na execução**, ambos corrigidos:
+1. A armadilha prevista da Fase D se confirmou — três botões que o E2E localiza
+   por texto exato mudaram de nome ao ganhar acento, e `ProcessoDetalhePage`
+   mais dois testes tiveram de ser atualizados no mesmo commit.
+2. Na Fase E, `/fonts/**` não estava liberado no `SecurityConfig`: a fonte
+   auto-hospedada respondia **302 para /login** e nunca carregava justamente na
+   tela de login, que é anônima. **Nenhum teste pegaria** — só apareceu ao subir
+   a aplicação de verdade e pedir o arquivo.
 
 ---
 

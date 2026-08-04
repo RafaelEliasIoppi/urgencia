@@ -1698,7 +1698,7 @@ salvar datas (escrita irreversível, seguindo a convenção do projeto) e para
 o scheduler de lembrete SNT (elegibilidade, não reenvio antes do prazo,
 exclusão de processos já com comprovante).
 
-## Plano de UI da área do operador — APROVADO, pendente de execução (2026-08-04)
+## UI da área do operador — 5 fases EXECUTADAS (2026-08-04)
 
 `docs/RELATORIO-UI-OPERADOR-SISTEMA-2026-08.md` audita as **19 telas do
 operador/administrador** e a camada transversal (design system,
@@ -1706,24 +1706,14 @@ acessibilidade, responsividade, privacidade, estados de erro) — a metade do
 sistema que o `RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md` (dois Portais
 externos, Fases 1–10 já implementadas) não cobria.
 
-**Status: nada foi implementado ainda.** O usuário aprovou **integralmente**
-as 5 fases (A–E) e pediu para executá-las **em sessão futura** — o documento
-é diagnóstico + backlog, não descrição do código atual. A tabela de status
-por fase fica no **§0** do relatório (marcar conforme concluir). Ao retomar,
-seguir direto, sem reperguntar fase a fase.
+**Status: CONCLUÍDO.** As 5 fases (A–E) foram implementadas e mescladas em
+`main` no mesmo dia, uma por PR (#8 a #12), cada uma com a suíte completa
+verde antes do merge. A suíte saiu de **735 para 747 testes** (12 novos),
+sempre 0 falhas. O relatório passou a ser registro do que foi feito — as
+seções §5/§6 dele descrevem o estado ANTERIOR, não o código atual.
 
-**O `Anexo B` do relatório é a ordem de serviço**: lista arquivo por arquivo
-(e linha, nos uploads) de cada tarefa das 5 fases, escrita para uma sessão
-fria executar sem refazer o diagnóstico. **As duas decisões de produto que
-faltavam já foram tomadas pelo usuário (2026-08-04) e estão lá — não
-reperguntar:** (1) o passo bloqueado do wizard deve **bloquear de verdade**
-(`preventDefault` + `aria-disabled` + fora da ordem de Tab), não abrir em
-modo leitura; (2) entrega em **um PR por fase, mesclado por mim** assim que
-suíte + E2E passarem, para permitir reverter uma fase isolada.
-
-Principais achados (todos verificados por medição reproduzível — comandos no
-Anexo A do relatório; **reconferir antes de corrigir**, o código pode ter
-mudado desde a auditoria):
+O que cada fase entregou (o que segue é o estado ANTES da correção, para
+quem for entender o porquê de cada mudança):
 - Skip-link "Pular para o conteúdo" **quebrado em 20 das 25 telas** (o
   `id="conteudo"` só existe nos 5 templates dos Portais, feitos na Fase 9);
   **18 telas não têm `<main>` nenhum**.
@@ -1759,9 +1749,45 @@ mudado desde a auditoria):
 - Fonte Inter carregada de `fonts.googleapis.com` em toda página (LGPD +
   render-blocking); auto-hospedar resolve.
 
-O relatório tem também um **§10 "o que NÃO recomendo fazer"** (não fragmentar
-`processos/detalhe.html` agora, não trocar o Bootstrap, **não acentuar
-`ResultadoParecer.descricao`** — alimenta PDF oficial, decisão deliberada, não
-esquecimento) e um **§11 com critérios objetivos de aceite**. Ler os dois
-antes de começar.
+Todos corrigidos. O relatório mantém o **§10 "o que NÃO fazer"** (não
+fragmentar `processos/detalhe.html`, não trocar o Bootstrap, **não acentuar
+`ResultadoParecer.descricao`** — alimenta PDF oficial; decisão deliberada,
+não esquecimento) — essas restrições **continuam valendo** e foram
+respeitadas na execução.
+
+**Testes novos criados nestas fases** (impedem a regressão dos achados):
+- `AcessibilidadeEstruturaTest` — toda tela com navbar precisa de
+  `<main id="conteudo">` (o skip-link do layout aponta para ele), `<main>`
+  balanceado, e nenhuma referência `aria-labelledby`/`aria-controls` apontando
+  para `id` inexistente. Verificado que ele falha de verdade ao introduzir uma
+  referência quebrada.
+- `FormulariosRenderizamTest` — `membros/form` e `processos/editar` não tinham
+  NENHUM teste que os renderizasse (o `MembroControllerTest` é unitário puro),
+  e as expressões `#fields.hasErrors` novas só são avaliadas no render.
+- `ArquivoBuscaPaginadaIntegrationTest` — com a busca do Arquivo movida para
+  JPQL, um mock de repositório não valida mais o filtro; este roda contra H2
+  real (ordem entre páginas, contagem respeitando filtro, e a garantia de que
+  processo em andamento nunca aparece no Arquivo).
+
+**Dois achados que só apareceram DURANTE a execução, ambos corrigidos:**
+1. A armadilha prevista da Fase D se confirmou: três botões que o E2E localiza
+   por texto exato ("Registrar decisão", "Anexar documento clínico",
+   "Relatório Final (PDF)") mudaram ao ganhar acento. `ProcessoDetalhePage` e
+   dois testes de `ProcessoDetalheControllerTest` foram atualizados no mesmo
+   commit.
+2. **`/fonts/**` não estava liberado no `SecurityConfig`** depois de
+   auto-hospedar a fonte: `/fonts/inter-*.woff2` respondia **302 para /login**,
+   então a Inter nunca carregava justamente na tela de login, que é anônima.
+   **Nenhum teste pegaria isso** (a suíte verifica status e model attributes,
+   não o carregamento de recurso estático referenciado pelo CSS) — só apareceu
+   ao subir a aplicação de verdade e pedir o arquivo. Lição: ao auto-hospedar
+   qualquer recurso novo, conferir a lista de `permitAll` do `SecurityConfig`.
+
+**Validação além da suíte:** aplicação subida de verdade (H2, porta 3011) e
+conferida por `curl` — as 7 telas do operador em 200, os filtros novos de
+auditoria filtrando de fato (termo impossível → estado vazio), acentuação e
+`main#conteudo` presentes no HTML servido, e os 3 woff2 em
+`200 font/woff2`. O E2E percorre o fluxo inteiro; a única falha é a
+**pré-existente** de SMTP no passo 5 (linha 225), confirmada idêntica no
+`main` sem as mudanças.
 
