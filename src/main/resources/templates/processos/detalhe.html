@@ -577,17 +577,30 @@
 
             <!-- Secao: Respostas dos Avaliadores -->
             <div class="card mb-4" id="respostas" th:if="${envioFeito}">
-                <div class="card-header d-flex justify-content-between align-items-center">
+                <div class="card-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                     <span><i class="bi bi-chat-square-text"></i> Respostas dos Avaliadores</span>
-                    <span class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLembretePendentes"
-                                th:unless="${processo.status.finalizado}"
-                                th:attr="data-processo-id=${processo.id}"
-                                title="Enviar lembrete por e-mail a todos os avaliadores com parecer pendente">
-                            <i class="bi bi-envelope"></i> Lembrar pendentes
-                        </button>
-                        <span class="badge bg-success" th:text="${favoraveis} + ' favoravel(is)'">0</span>
-                    </span>
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="btnLembretePendentes"
+                            th:unless="${processo.status.finalizado}"
+                            th:disabled="${pendentesVoto == 0}"
+                            th:attr="data-processo-id=${processo.id}"
+                            th:title="${pendentesVoto == 0} ? 'Nenhum parecer pendente no momento' : 'Enviar lembrete por e-mail a todos os avaliadores com parecer pendente'">
+                        <i class="bi bi-envelope"></i>
+                        <span th:text="${pendentesVoto > 0} ? ('Lembrar ' + ${pendentesVoto} + ' pendente(s)') : 'Lembrar pendentes'">Lembrar pendentes</span>
+                    </button>
+                </div>
+                <!-- Placar de 3 posicoes: antes so o numero de favoraveis aparecia,
+                     obrigando o operador a ler a tabela linha a linha para saber se
+                     falta 1 voto para fechar maioria (Fase 4 do relatorio de UI). -->
+                <div class="card-body py-2 border-bottom bg-light-subtle">
+                    <div class="d-flex flex-wrap align-items-center gap-3">
+                        <span class="badge bg-success"><i class="bi bi-hand-thumbs-up"></i>
+                            <span th:text="${favoraveis}">0</span> favoravel(is)</span>
+                        <span class="badge bg-danger"><i class="bi bi-hand-thumbs-down"></i>
+                            <span th:text="${naoFavoraveis}">0</span> nao favoravel(is)</span>
+                        <span class="badge bg-secondary"><i class="bi bi-hourglass-split"></i>
+                            <span th:text="${pendentesVoto}">0</span> pendente(s)</span>
+                        <span class="fw-semibold text-muted small" th:text="${fraseMaioria}">Faltam N votos</span>
+                    </div>
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
@@ -610,7 +623,19 @@
                         <tbody>
                         <th:block th:each="par : ${processo.pareceres}">
                         <tr>
-                            <td th:text="${par.membro.rotulo}">Medico</td>
+                            <td>
+                                <span th:text="${par.membro.rotulo}">Medico</span>
+                                <!-- Aguardando ha N dias: mesmo criterio/prazo-meta do Portal do
+                                     Avaliador, para o operador decidir se vale lembrar (Fase 4). -->
+                                <span th:if="${par.resultado == null and diasAguardandoPorParecer.get(par.id) != null}"
+                                      class="d-block small"
+                                      th:classappend="${diasAguardandoPorParecer.get(par.id) > prazoDiasAvaliador} ? 'text-danger fw-semibold' : 'text-muted'">
+                                    <i class="bi bi-clock-history"></i>
+                                    Aguardando ha
+                                    <span th:text="${diasAguardandoPorParecer.get(par.id)}">0</span>
+                                    <span th:text="${diasAguardandoPorParecer.get(par.id) == 1} ? 'dia' : 'dias'">dias</span>
+                                </span>
+                            </td>
                             <td>
                                 <!-- Processo ja finalizado: pendentes viram "Dispensado pela maioria" -->
                                 <th:block th:if="${processo.status.finalizado and par.resultado == null}">
@@ -618,9 +643,16 @@
                                         <i class="bi bi-dash-circle"></i> Dispensado pela maioria
                                     </span>
                                 </th:block>
-                                <span th:unless="${processo.status.finalizado and par.resultado == null}"
-                                      th:text="${par.resultado != null} ? ${par.resultado.descricao} : '—'"
-                                      class="small">—</span>
+                                <span th:if="${!processo.status.finalizado or par.resultado != null}"
+                                      th:switch="${par.resultado != null} ? ${par.resultado.name()} : 'PENDENTE'">
+                                    <span th:case="'FAVORAVEL'" class="badge bg-success">
+                                        <i class="bi bi-hand-thumbs-up"></i> Favoravel</span>
+                                    <span th:case="'NAO_FAVORAVEL'" class="badge bg-danger">
+                                        <i class="bi bi-hand-thumbs-down"></i> Nao favoravel</span>
+                                    <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-primary">
+                                        <i class="bi bi-question-circle"></i> Solicita informacao</span>
+                                    <span th:case="*" class="small text-muted">—</span>
+                                </span>
                             </td>
                             <td class="small text-muted">
                                 <!-- dataHoraVoto se houver (voto pelo portal), senao dataResposta -->
@@ -630,12 +662,11 @@
                                       th:text="${par.dataResposta != null} ? ${#temporals.format(par.dataResposta, 'dd/MM/yyyy')} : '-'">-</span>
                             </td>
                             <td>
-                                <!-- Portal: voto imutavel, sem acao do operador -->
-                                <th:block th:if="${pareceresPortal.contains(par.id)}">
-                                    <span class="small text-muted fst-italic">
-                                        <i class="bi bi-shield-lock text-primary"></i> Voto no portal
-                                    </span>
-                                </th:block>
+                                <!-- "Voto no portal" removido (Fase 4): desde que
+                                     OrigemParecer so tem AVALIADOR_SISTEMA, todo
+                                     parecer ja votado veio do portal - a informacao
+                                     era sempre verdadeira, sem valor discriminante,
+                                     e o badge de resultado ja comunica o estado. -->
                                 <!-- Finalizado + pendente: dispensado -->
                                 <th:block th:if="${!pareceresPortal.contains(par.id) and processo.status.finalizado and par.resultado == null}">
                                     <span class="small text-muted">—</span>

@@ -12,6 +12,7 @@ import br.gov.saude.sgpur.service.Iniciais;
 import br.gov.saude.sgpur.service.MembroUrgenciaRenalService;
 import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.ProcessoValidator;
+import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
@@ -92,6 +93,7 @@ public class ProcessoDetalheController {
      */
     private final ProcessoRepository processoRepo;
     private final boolean solicitanteHabilitado;
+    private final TempoRespostaService tempoRespostaService;
 
     public ProcessoDetalheController(ProcessoService processoService,
                                      FluxoProcessoService fluxoService,
@@ -107,7 +109,8 @@ public class ProcessoDetalheController {
                                      UsuarioRepository usuarioRepo,
                                      AnexoRepository anexoRepo,
                                      ProcessoRepository processoRepo,
-                                     @Value("${app.solicitante.habilitado:true}") boolean solicitanteHabilitado) {
+                                     @Value("${app.solicitante.habilitado:true}") boolean solicitanteHabilitado,
+                                     TempoRespostaService tempoRespostaService) {
         this.processoService = processoService;
         this.fluxoService = fluxoService;
         this.emailTemplateService = emailTemplateService;
@@ -123,6 +126,7 @@ public class ProcessoDetalheController {
         this.anexoRepo = anexoRepo;
         this.processoRepo = processoRepo;
         this.solicitanteHabilitado = solicitanteHabilitado;
+        this.tempoRespostaService = tempoRespostaService;
     }
 
     /**
@@ -369,7 +373,38 @@ public class ProcessoDetalheController {
         model.addAttribute("progresso", etapas.isEmpty() ? 0 : Math.round(concluidas * 100.0 / etapas.size()));
         Optional<StatusProcesso> sugestao = processoService.sugerirDecisao(p);
         model.addAttribute("sugestao", sugestao.orElse(null));
-        model.addAttribute("favoraveis", processoService.contarFavoraveis(p));
+        long favoraveis = processoService.contarFavoraveis(p);
+        long naoFavoraveis = processoService.contarNaoFavoraveis(p);
+        long pendentesVoto = p.getPareceres().size() - processoService.contarRespondidos(p);
+        model.addAttribute("favoraveis", favoraveis);
+        model.addAttribute("naoFavoraveis", naoFavoraveis);
+        model.addAttribute("pendentesVoto", pendentesVoto);
+        // Placar de 3 posicoes no card de Respostas: so apresentacao do que a
+        // maioria simples ja calcula (ProcessoValidator), nunca reimplementa a
+        // regra aqui - se um dia a regra mudar, este texto some sozinho porque
+        // deriva dos mesmos numeros usados para decidir.
+        String fraseMaioria;
+        if (sugestao.isPresent()) {
+            fraseMaioria = "Maioria ja formada";
+        } else if (pendentesVoto == 0) {
+            fraseMaioria = "Todos os votos recebidos";
+        } else {
+            fraseMaioria = "Faltam " + pendentesVoto + (pendentesVoto == 1 ? " voto" : " votos");
+        }
+        model.addAttribute("fraseMaioria", fraseMaioria);
+        // Dias aguardando resposta de cada parecer AINDA pendente (para o
+        // operador decidir se vale a pena mandar lembrete), reusando o mesmo
+        // prazo-meta ja usado no Portal do Avaliador (app.avaliador.prazo-dias).
+        int prazoDiasAvaliador = tempoRespostaService.getPrazoDias();
+        model.addAttribute("prazoDiasAvaliador", prazoDiasAvaliador);
+        java.util.Map<Long, Long> diasAguardandoPorParecer = new java.util.HashMap<>();
+        for (Parecer par : p.getPareceres()) {
+            if (par.getResultado() == null && par.getDataEnvio() != null) {
+                diasAguardandoPorParecer.put(par.getId(),
+                    java.time.temporal.ChronoUnit.DAYS.between(par.getDataEnvio(), LocalDate.now()));
+            }
+        }
+        model.addAttribute("diasAguardandoPorParecer", diasAguardandoPorParecer);
         model.addAttribute("deferidoPeloCoordenador", processoService.deferidoPeloCoordenador(p));
         model.addAttribute("emails", emailTemplateService.gerar(p));
         // IDs dos pareceres votados diretamente pelo avaliador autenticado no portal.
