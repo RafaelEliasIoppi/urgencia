@@ -1252,17 +1252,35 @@ executado de forma **autônoma** (sem supervisão visual humana em tempo
 real) na branch `feat/ui-solicitante-avaliador`, um commit por fase, cada
 um com suíte completa (0 falhas) + `.\e2e.ps1 -Headless` antes do commit.
 
-**Fases 1–7, 9 e 10 implementadas** (com uma redução de escopo na Fase 6,
-ver abaixo). **Fase 8 (acentuação/microcopy) deliberadamente NÃO
-implementada** — reescrever a acentuação de todo texto visível em 6
-templates é mecânico mas tem volume alto e zero tolerância a erro sem
-revisão visual humana (qualquer acento errado passaria despercebido); além
-disso, dois botões (`"Enviar solicitacao"`, localizado pelo E2E via texto
-exato sem acento) exigiriam trocar o Page Object no mesmo commit. Fica
-pendente para uma sessão com revisão visual real. **Fase 11 (decisões de
-produto: justificativa obrigatória para voto negativo, registro de último
-lembrete, rascunho de solicitação) não deve ser implementada sem aval
-explícito do usuário** — está documentada no relatório, não no código.
+**Fases 1–10 implementadas** (com uma redução de escopo na Fase 6, ver
+abaixo). A Fase 8 (acentuação/microcopy) tinha sido inicialmente adiada
+nesta mesma sessão por volume/risco (reescrever a acentuação de todo texto
+visível em 6 templates, com dois botões localizados pelo E2E via texto
+exato) — **implementada depois, a pedido explícito do usuário**, ver
+detalhes logo abaixo. **Fase 11 (decisões de produto: justificativa
+obrigatória para voto negativo, registro de último lembrete, rascunho de
+solicitação) não deve ser implementada sem aval explícito do usuário** —
+está documentada no relatório, não no código.
+
+**Fase 8 (acentuação) — detalhes da execução:** corrigida a acentuação de
+todo texto visível nos 6 templates dos dois portais + o skip-link novo em
+`layout.html`. O botão "Enviar solicitacao" virou "Enviar solicitação" —
+`PortalSolicitantePage.java` (E2E) e o teste
+`SolicitanteControllerTest` (assert de `"Previsao baseada no historico"`)
+foram atualizados no mesmo commit. `StatusSolicitacaoOnline.descricao`
+também foi corrigido (sem consumidor em relatório/exportação, verificado
+antes). **`ResultadoParecer.descricao` ("Favoravel"/"Nao favoravel"/
+"Solicita informacao") foi DELIBERADAMENTE mantido sem acento** — alimenta
+`RelatorioService`, `RelatorioAnualService`, `RelatorioAvaliadorService`,
+`PdfRelatorioBuilder`, `ExportacaoProcessoService` e auditoria; mudar esse
+enum teria um raio de impacto real em documentos oficiais (PDFs), bem além
+do escopo de "acentuar templates". Os dois lugares onde esse valor
+aparecia de forma bem visível (badge de histórico em `avaliador/lista.html`
+e rótulo da opção de voto em `avaliador/votar.html`) foram corrigidos
+escrevendo o termo acentuado como literal num `th:switch` — mesmo padrão
+já usado desde a Fase 4 no card de Respostas dos Avaliadores — em vez de
+ler `${resultado.descricao}` diretamente. Se algum dia esse enum for
+revisado, os dois templates citados devem ser reconferidos.
 
 **Fase 6 (detalhe do solicitante) teve escopo reduzido**: a consolidação
 completa dos 8 blocos `alert` condicionais num único "cartão de situação"
