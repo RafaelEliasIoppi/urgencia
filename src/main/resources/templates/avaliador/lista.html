@@ -6,6 +6,21 @@
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4 container-portal">
+    <!-- Aparece so logo apos registrar um voto (flash attribute), quando ainda
+         sobra pendencia do mesmo avaliador - evita reabrir a lista e escanear
+         de novo a cada voto (Fase 10 do relatorio de UI). -->
+    <div th:if="${proximoPendenteId != null}"
+         class="alert alert-primary d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <span>
+            <i class="bi bi-arrow-right-circle-fill me-1"></i>
+            Ainda restam <strong th:text="${totalPendentesRestantes}">0</strong>
+            <span th:text="${totalPendentesRestantes == 1} ? 'parecer pendente' : 'pareceres pendentes'">pareceres pendentes</span>.
+        </span>
+        <a th:href="@{/avaliador/{id}(id=${proximoPendenteId})}" class="btn btn-primary btn-sm text-nowrap">
+            Ir para o proximo pendente <i class="bi bi-arrow-right"></i>
+        </a>
+    </div>
+
     <div class="d-flex justify-content-between align-items-center mb-3">
         <div>
             <h1 class="h3 mb-0">

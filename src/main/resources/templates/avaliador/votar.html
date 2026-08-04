@@ -15,6 +15,12 @@
         <span class="badge bg-light text-dark border font-monospace">
             <i class="bi bi-hash"></i><span th:text="${numero}">00/0000</span>
         </span>
+        <!-- Progresso entre OS PROPRIOS pendentes do avaliador (nunca dado do
+             processo em si) - quem tem varios atrasados sabe onde esta na fila. -->
+        <span th:if="${totalPendentesMembro} > 1" class="badge bg-secondary-subtle text-secondary-emphasis">
+            Processo <span th:text="${posicaoPendente}">1</span> de
+            <span th:text="${totalPendentesMembro}">1</span> pendentes
+        </span>
     </div>
 
     <div class="row g-4">
