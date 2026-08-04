@@ -20,7 +20,6 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -52,7 +51,7 @@ class DecisaoFinalServiceTest {
     @BeforeEach
     void setUp() {
         service = new DecisaoFinalService(processoService, relatorioService,
-            anexoStorage, processoRepository);
+                anexoStorage, processoRepository);
     }
 
     private Processo processo(StatusProcesso status) {
@@ -88,14 +87,14 @@ class DecisaoFinalServiceTest {
         byte[] relatorioBytes = "relatorio".getBytes();
         when(relatorioService.gerar(p)).thenReturn(relatorioBytes);
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
+                anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
 
         service.gerarDocumentos(p);
 
         verify(anexoStorage, never()).salvarBytes(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), anyString(), anyString(), any());
+                anyString(), anyString(), anyString(), any());
         verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), eq("relatorio-processo-01-2026.pdf"), eq("application/pdf"), eq(relatorioBytes));
+                anyString(), eq("relatorio-processo-01-2026.pdf"), eq("application/pdf"), eq(relatorioBytes));
         verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, 20L);
     }
 
@@ -110,7 +109,7 @@ class DecisaoFinalServiceTest {
         p.setDataEmissaoOficio(null);
         when(relatorioService.gerar(p)).thenReturn("relatorio".getBytes());
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(1L));
+                .thenReturn(anexoSalvo(1L));
 
         service.gerarDocumentos(p);
 
@@ -123,7 +122,7 @@ class DecisaoFinalServiceTest {
         p.setNumero("123/2026");
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(1L));
+                .thenReturn(anexoSalvo(1L));
 
         service.gerarDocumentos(p);
 
@@ -139,16 +138,16 @@ class DecisaoFinalServiceTest {
         Processo p = processo(StatusProcesso.DEFERIDO);
         when(relatorioService.gerar(p)).thenReturn("relatorio".getBytes());
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
+                anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
 
         service.gerarDocumentos(p);
 
         verify(anexoStorage, never()).salvarBytes(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), anyString(), anyString(), any());
+                anyString(), anyString(), anyString(), any());
         verify(anexoStorage, never()).removerAntigosDoTipo(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO), any());
 
         verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), eq("relatorio-processo-01-2026.pdf"), eq("application/pdf"), any());
+                anyString(), eq("relatorio-processo-01-2026.pdf"), eq("application/pdf"), any());
         verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, 20L);
         verify(processoService, never()).salvar(any());
     }
@@ -158,13 +157,13 @@ class DecisaoFinalServiceTest {
         Processo p = processo(StatusProcesso.CANCELADO);
         when(relatorioService.gerar(p)).thenReturn("relatorio".getBytes());
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
+                anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
 
         service.gerarDocumentos(p);
 
         verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, 20L);
         verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), anyString(), anyString(), any());
+                anyString(), anyString(), anyString(), any());
     }
 
     // ---------- status ainda em andamento: nao gera nada ----------
@@ -173,7 +172,7 @@ class DecisaoFinalServiceTest {
     void statusEmAndamentoNaoGeraDocumentoAlgum() {
         for (StatusProcesso status : new StatusProcesso[] {
                 StatusProcesso.SOLICITADO, StatusProcesso.ENVIADO,
-                StatusProcesso.SOLICITA_INFORMACAO}) {
+                StatusProcesso.SOLICITA_INFORMACAO }) {
             Processo p = processo(status);
 
             service.gerarDocumentos(p);
@@ -192,7 +191,7 @@ class DecisaoFinalServiceTest {
         when(processoRepository.findNumerosOficioDoAno("2026")).thenReturn(java.util.List.of());
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(1L));
+                .thenReturn(anexoSalvo(1L));
 
         service.gerarDocumentos(p);
 
@@ -204,7 +203,7 @@ class DecisaoFinalServiceTest {
     void doisIndeferimentosNoMesmoAnoRecebemNumerosSequenciaisDistintos() throws IOException {
         when(relatorioService.gerar(any())).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(1L));
+                .thenReturn(anexoSalvo(1L));
 
         Processo primeiro = processo(StatusProcesso.INDEFERIDO);
         primeiro.setNumeroOficio(null);
@@ -217,7 +216,7 @@ class DecisaoFinalServiceTest {
         segundo.setDataEmissaoOficio(LocalDate.of(2026, 2, 2));
         // O primeiro ja gravou o dele: o repositorio agora devolve esse numero.
         when(processoRepository.findNumerosOficioDoAno("2026"))
-            .thenReturn(java.util.List.of(primeiro.getNumeroOficio()));
+                .thenReturn(java.util.List.of(primeiro.getNumeroOficio()));
         service.gerarDocumentos(segundo);
 
         assertThat(primeiro.getNumeroOficio()).isEqualTo("0001/2026");
@@ -230,7 +229,7 @@ class DecisaoFinalServiceTest {
         // "999/2026" seria "maior" que "1000/2026" numa comparacao de string:
         // a comparacao tem de ser numerica.
         when(processoRepository.findNumerosOficioDoAno("2026"))
-            .thenReturn(java.util.List.of("0999/2026", "1000/2026", "0002/2026"));
+                .thenReturn(java.util.List.of("0999/2026", "1000/2026", "0002/2026"));
 
         assertThat(service.proximoNumeroOficio(2026)).isEqualTo("1001/2026");
     }
@@ -238,7 +237,7 @@ class DecisaoFinalServiceTest {
     @Test
     void proximoNumeroDeOficioIgnoraValorForaDoPadrao() {
         when(processoRepository.findNumerosOficioDoAno("2026"))
-            .thenReturn(java.util.List.of("SEM-NUMERO/2026", "0007/2026"));
+                .thenReturn(java.util.List.of("SEM-NUMERO/2026", "0007/2026"));
 
         assertThat(service.proximoNumeroOficio(2026)).isEqualTo("0008/2026");
     }
@@ -249,7 +248,7 @@ class DecisaoFinalServiceTest {
         p.setNumeroOficio("1398/2026");
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(1L));
+                .thenReturn(anexoSalvo(1L));
 
         service.gerarDocumentos(p);
         service.gerarDocumentos(p);
@@ -267,13 +266,13 @@ class DecisaoFinalServiceTest {
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
                 anyString(), anyString(), anyString(), any()))
-            .thenThrow(new IOException("permissao negada"));
+                .thenThrow(new IOException("permissao negada"));
 
         assertThatThrownBy(() -> service.gerarDocumentos(p))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("falhou ao gerar o relatorio final")
-            .hasMessageContaining("permissao negada")
-            .hasCauseInstanceOf(IOException.class);
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("falhou ao gerar o relatorio final")
+                .hasMessageContaining("permissao negada")
+                .hasCauseInstanceOf(IOException.class);
 
         verify(anexoStorage, never()).removerAntigosDoTipo(any(), any(), any());
     }
@@ -286,11 +285,11 @@ class DecisaoFinalServiceTest {
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
                 anyString(), anyString(), anyString(), any()))
-            .thenThrow(new IOException("falha de disco"));
+                .thenThrow(new IOException("falha de disco"));
 
         assertThatThrownBy(() -> service.gerarDocumentos(p))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("falhou ao gerar o relatorio final")
-            .hasMessageContaining("falha de disco");
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("falhou ao gerar o relatorio final")
+                .hasMessageContaining("falha de disco");
     }
 }

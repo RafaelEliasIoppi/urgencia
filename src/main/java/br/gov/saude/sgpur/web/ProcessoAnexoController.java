@@ -23,7 +23,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
-import java.net.MalformedURLException;
+
 import java.nio.file.Files;
 import java.nio.file.Path;
 
@@ -32,7 +32,8 @@ import java.nio.file.Path;
  * gerenciamento de anexos: upload/download/remocao e a geracao de PDFs
  * (oficio, relatorio).
  *
- * <p><b>Sem @Transactional de nivel de classe (removido em 2026-07-29).</b>
+ * <p>
+ * <b>Sem @Transactional de nivel de classe (removido em 2026-07-29).</b>
  * Uma transacao aberta pelo controller e compartilhada (REQUIRED) com todo
  * servico {@code @Transactional} chamado dentro dela; quando um deles lanca
  * dentro de um {@code try/catch} do metodo, a transacao inteira e marcada como
@@ -43,7 +44,8 @@ import java.nio.file.Path;
  * interno" em vez da mensagem de negocio. Os metodos que nao tem esse
  * {@code try/catch} mas precisam de sessao aberta ({@link #excluirAnexo})
  * declaram {@code @Transactional} no proprio metodo; os
- * GET de download/PDF ja tinham {@code @Transactional(readOnly = true)} proprio.
+ * GET de download/PDF ja tinham {@code @Transactional(readOnly = true)}
+ * proprio.
  */
 @Controller
 @RequestMapping("/processos")
@@ -58,12 +60,12 @@ public class ProcessoAnexoController {
     private final GeminiService geminiService;
 
     public ProcessoAnexoController(ProcessoService processoService,
-                                   ProcessoValidator validator,
-                                   AnexoStorageService anexoStorage,
-                                   AuditoriaService auditoria,
-                                   OficioService oficioService,
-                                   RelatorioService relatorioService,
-                                   GeminiService geminiService) {
+            ProcessoValidator validator,
+            AnexoStorageService anexoStorage,
+            AuditoriaService auditoria,
+            OficioService oficioService,
+            RelatorioService relatorioService,
+            GeminiService geminiService) {
         this.processoService = processoService;
         this.validator = validator;
         this.anexoStorage = anexoStorage;
@@ -119,11 +121,11 @@ public class ProcessoAnexoController {
      * Num processo administrativo isso e inadmissivel: a data precisa ser a do
      * ato real, nao a que alguem escolheu digitar. Hoje:
      *
-     *   - dataEmissaoOficio -> gravada ao anexar/gerar o oficio
-     *     (DecisaoFinalService na decisao, uploadOficio no upload manual);
-     *   - dataEnvioSnt      -> gravada ao anexar o comprovante SNT;
-     *   - dataEnvioOficio   -> gravada quando a resposta com o oficio sai de
-     *     fato para o solicitante (ProcessoService.finalizarResposta).
+     * - dataEmissaoOficio -> gravada ao anexar/gerar o oficio
+     * (DecisaoFinalService na decisao, uploadOficio no upload manual);
+     * - dataEnvioSnt -> gravada ao anexar o comprovante SNT;
+     * - dataEnvioOficio -> gravada quando a resposta com o oficio sai de
+     * fato para o solicitante (ProcessoService.finalizarResposta).
      *
      * Some junto a regeracao do oficio "com as datas novas" que este endpoint
      * disparava: sem edicao de data, nao ha divergencia possivel entre a tela
@@ -134,7 +136,8 @@ public class ProcessoAnexoController {
      * Upload do Oficio de Indeferimento na aba Finalizacao (so para processos
      * INDEFERIDOS).
      *
-     * <p>Sem {@code @Transactional} (vale para os 4 uploads deste controller):
+     * <p>
+     * Sem {@code @Transactional} (vale para os 4 uploads deste controller):
      * o {@code try/catch} envolve {@code anexoStorage.salvar/salvarBytes},
      * metodos {@code @Transactional} que lancam {@code IllegalArgumentException}
      * para arquivo vazio ou extensao fora da allowlist. Com transacao de
@@ -144,8 +147,8 @@ public class ProcessoAnexoController {
      */
     @PostMapping("/{id}/oficio-upload")
     public String uploadOficio(@PathVariable Long id,
-                               @RequestParam("arquivo") MultipartFile arquivo,
-                               RedirectAttributes ra) {
+            @RequestParam("arquivo") MultipartFile arquivo,
+            RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         if (p.getStatus() != StatusProcesso.INDEFERIDO) {
             ra.addFlashAttribute("erro", "Upload de oficio so e permitido para processos Indeferidos.");
@@ -159,9 +162,9 @@ public class ProcessoAnexoController {
             // ProcessoService.registrarDataEmissaoOficio.
             processoService.registrarDataEmissaoOficio(id);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - " + TipoAnexo.OFICIO_INDEFERIMENTO.getDescricao());
+                    "Processo " + p.getNumero() + " - " + TipoAnexo.OFICIO_INDEFERIMENTO.getDescricao());
             ra.addFlashAttribute("msg",
-                "Oficio de indeferimento anexado (data de emissao registrada com a data de hoje).");
+                    "Oficio de indeferimento anexado (data de emissao registrada com a data de hoje).");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar o oficio: " + e.getMessage());
         }
@@ -171,20 +174,20 @@ public class ProcessoAnexoController {
     /** Upload do comprovante de envio da resposta ao solicitante (passo 6). */
     @PostMapping("/{id}/comprovante-envio-solicitante")
     public String uploadComprovanteEnvioSolicitante(@PathVariable Long id,
-                                                    @RequestParam("arquivo") MultipartFile arquivo,
-                                                    RedirectAttributes ra) {
+            @RequestParam("arquivo") MultipartFile arquivo,
+            RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         if (!p.getStatus().isFinalizado()) {
             ra.addFlashAttribute("erro",
-                "Upload do comprovante de envio ao solicitante so e permitido apos a decisao "
-                + "(Deferido/Indeferido/Cancelado).");
+                    "Upload do comprovante de envio ao solicitante so e permitido apos a decisao "
+                            + "(Deferido/Indeferido/Cancelado).");
             return "redirect:/processos/" + id + "#finalizacao";
         }
         try {
             substituirAnexo(p, TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE,
-                "Comprovante de envio da resposta ao solicitante", arquivo);
+                    "Comprovante de envio da resposta ao solicitante", arquivo);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - " + TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE.getDescricao());
+                    "Processo " + p.getNumero() + " - " + TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE.getDescricao());
             ra.addFlashAttribute("msg", "Comprovante de envio ao solicitante anexado.");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar o comprovante: " + e.getMessage());
@@ -192,11 +195,13 @@ public class ProcessoAnexoController {
         return "redirect:/processos/" + id + "#finalizacao";
     }
 
-    /** Upload do Comprovante SNT na aba Finalizacao (so para processos DEFERIDOS). */
+    /**
+     * Upload do Comprovante SNT na aba Finalizacao (so para processos DEFERIDOS).
+     */
     @PostMapping("/{id}/comprovante-snt")
     public String uploadComprovanteSnt(@PathVariable Long id,
-                                       @RequestParam("arquivo") MultipartFile arquivo,
-                                       RedirectAttributes ra) {
+            @RequestParam("arquivo") MultipartFile arquivo,
+            RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         if (p.getStatus() != StatusProcesso.DEFERIDO) {
             ra.addFlashAttribute("erro", "Upload do comprovante SNT so e permitido para processos Deferidos.");
@@ -204,14 +209,14 @@ public class ProcessoAnexoController {
         }
         try {
             substituirAnexo(p, TipoAnexo.COMPROVANTE_SNT,
-                "Comprovante de insercao da urgencia renal no SNT", arquivo);
+                    "Comprovante de insercao da urgencia renal no SNT", arquivo);
             // Data de envio ao SNT = momento do anexo (nunca digitada) - ver
             // ProcessoService.registrarDataEmissaoOficio para a regra.
             processoService.registrarDataEnvioSnt(id);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - " + TipoAnexo.COMPROVANTE_SNT.getDescricao());
+                    "Processo " + p.getNumero() + " - " + TipoAnexo.COMPROVANTE_SNT.getDescricao());
             ra.addFlashAttribute("msg",
-                "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje).");
+                    "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje).");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar o comprovante SNT: " + e.getMessage());
         }
@@ -220,10 +225,10 @@ public class ProcessoAnexoController {
 
     @PostMapping("/{id}/anexos")
     public String anexar(@PathVariable Long id,
-                         @RequestParam TipoAnexo tipo,
-                         @RequestParam(required = false) String descricao,
-                         @RequestParam("arquivo") MultipartFile arquivo,
-                         RedirectAttributes ra) {
+            @RequestParam TipoAnexo tipo,
+            @RequestParam(required = false) String descricao,
+            @RequestParam("arquivo") MultipartFile arquivo,
+            RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
         if (validator.edicaoBloqueada(p)) {
             ra.addFlashAttribute("erro", ProcessoValidator.MSG_ENCERRADO);
@@ -232,7 +237,7 @@ public class ProcessoAnexoController {
         try {
             anexoStorage.salvar(p, tipo, descricao, arquivo);
             auditoria.registrar("ANEXO_ADICIONADO",
-                "Processo " + p.getNumero() + " - " + tipo.getDescricao());
+                    "Processo " + p.getNumero() + " - " + tipo.getDescricao());
             ra.addFlashAttribute("msg", "Anexo enviado.");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar: " + e.getMessage());
@@ -271,9 +276,9 @@ public class ProcessoAnexoController {
             byte[] pdf = relatorioService.gerar(p);
             String nome = "relatorio-processo-" + p.getNumero().replace("/", "-") + ".pdf";
             return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nome + "\"")
-                .body(pdf);
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nome + "\"")
+                    .body(pdf);
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
         }
@@ -282,12 +287,14 @@ public class ProcessoAnexoController {
     /**
      * Previa do Oficio de Indeferimento gerada sob demanda (nao e o anexo).
      *
-     * <p>So para processos INDEFERIDOS (mesma guarda de {@link #uploadOficio},
+     * <p>
+     * So para processos INDEFERIDOS (mesma guarda de {@link #uploadOficio},
      * desde 2026-08-04): antes esta URL gerava um "Oficio de Indeferimento"
      * para qualquer processo — inclusive um Deferido —, produzindo um
      * documento que contradiz a decisao do processo. Quem quer o oficio que
      * de fato foi enviado deve baixar o anexo
-     * ({@code /processos/anexos/{id}/download}), que e o que a tela oferece.</p>
+     * ({@code /processos/anexos/{id}/download}), que e o que a tela oferece.
+     * </p>
      */
     @GetMapping("/{id}/oficio")
     @Transactional(readOnly = true)
@@ -302,15 +309,15 @@ public class ProcessoAnexoController {
         // tambem e RuntimeException e seria reconvertida em 500 la dentro.
         if (p.getStatus() != StatusProcesso.INDEFERIDO) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Oficio de indeferimento so existe para processos Indeferidos.");
+                    "Oficio de indeferimento so existe para processos Indeferidos.");
         }
         try {
             byte[] pdf = oficioService.gerar(p);
             String nome = "oficio-indeferimento-" + p.getNumero().replace("/", "-") + ".pdf";
             return ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nome + "\"")
-                .body(pdf);
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + nome + "\"")
+                    .body(pdf);
         } catch (RuntimeException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, e.getMessage());
         }
@@ -319,14 +326,16 @@ public class ProcessoAnexoController {
     /**
      * RASCUNHO EDITAVEL do oficio de indeferimento (.rtf, abre no Word).
      *
-     * <p>Desde 2026-08-04 o sistema NAO gera mais o oficio como anexo: cada
+     * <p>
+     * Desde 2026-08-04 o sistema NAO gera mais o oficio como anexo: cada
      * caso tem particularidade de redacao, entao o oficio precisa ser editavel
      * e <b>o documento de registro e sempre o que o operador anexa</b>
      * ({@link #uploadOficio}). Este endpoint entrega so o ponto de partida,
      * ja preenchido com numero do oficio, cidade/data, paciente e motivo -
      * baixar o rascunho nao anexa nada ao processo nem muda data alguma.
      *
-     * <p>Mesma guarda de status do PDF acima: rascunho de indeferimento nao
+     * <p>
+     * Mesma guarda de status do PDF acima: rascunho de indeferimento nao
      * faz sentido em processo que nao foi indeferido.
      */
     @GetMapping("/{id}/oficio-rascunho")
@@ -340,14 +349,14 @@ public class ProcessoAnexoController {
         }
         if (p.getStatus() != StatusProcesso.INDEFERIDO) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                "Oficio de indeferimento so existe para processos Indeferidos.");
+                    "Oficio de indeferimento so existe para processos Indeferidos.");
         }
         byte[] rtf = oficioService.gerarRascunhoRtf(p);
         String nome = "oficio-rascunho-" + p.getNumero().replace("/", "-") + ".rtf";
         return ResponseEntity.ok()
-            .contentType(MediaType.parseMediaType("application/rtf"))
-            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
-            .body(rtf);
+                .contentType(MediaType.parseMediaType("application/rtf"))
+                .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
+                .body(rtf);
     }
 
     @GetMapping("/anexos/{anexoId}/download")
@@ -361,12 +370,13 @@ public class ProcessoAnexoController {
                 return ResponseEntity.notFound().build();
             }
             String contentType = anexo.getContentType() != null
-                ? anexo.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+                    ? anexo.getContentType()
+                    : MediaType.APPLICATION_OCTET_STREAM_VALUE;
             return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + anexo.getNomeArquivo() + "\"")
-                .body(resource);
+                    .contentType(MediaType.parseMediaType(contentType))
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=\"" + anexo.getNomeArquivo() + "\"")
+                    .body(resource);
         } catch (java.net.MalformedURLException e) {
             throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Erro ao processar o arquivo.");
         } catch (RuntimeException e) {
@@ -387,8 +397,11 @@ public class ProcessoAnexoController {
             return IaTextoResponse.erro("Assistencia por IA nao configurada.");
         }
         Anexo anexo;
-        try { anexo = anexoStorage.buscar(anexoId); }
-        catch (RuntimeException e) { return IaTextoResponse.erro("Anexo nao encontrado."); }
+        try {
+            anexo = anexoStorage.buscar(anexoId);
+        } catch (RuntimeException e) {
+            return IaTextoResponse.erro("Anexo nao encontrado.");
+        }
         if (anexo.getContentType() == null
                 || !anexo.getContentType().toLowerCase(java.util.Locale.ROOT).contains("application/pdf")) {
             return IaTextoResponse.erro("Resumo por IA disponivel apenas para anexos em PDF.");
@@ -422,12 +435,12 @@ public class ProcessoAnexoController {
         // Limita o tamanho enviado a API (documentos muito longos sao truncados).
         String textoLimitado = texto.length() > 20000 ? texto.substring(0, 20000) : texto;
         String prompt = "Voce e um assistente administrativo de um orgao publico de saude do Brasil. "
-            + "Resuma em ate 5 frases, em portugues do Brasil, o conteudo clinico/administrativo "
-            + "do documento abaixo, destacando os pontos relevantes para analise de um pedido de "
-            + "urgencia renal. Responda apenas com o resumo, sem introducao.\n\n"
-            + "Documento:\n" + textoLimitado;
+                + "Resuma em ate 5 frases, em portugues do Brasil, o conteudo clinico/administrativo "
+                + "do documento abaixo, destacando os pontos relevantes para analise de um pedido de "
+                + "urgencia renal. Responda apenas com o resumo, sem introducao.\n\n"
+                + "Documento:\n" + textoLimitado;
         return geminiService.perguntar(prompt)
-            .map(IaTextoResponse::sucesso)
-            .orElseGet(() -> IaTextoResponse.erro("Falha ao consultar a IA. Tente novamente."));
+                .map(IaTextoResponse::sucesso)
+                .orElseGet(() -> IaTextoResponse.erro("Falha ao consultar a IA. Tente novamente."));
     }
 }

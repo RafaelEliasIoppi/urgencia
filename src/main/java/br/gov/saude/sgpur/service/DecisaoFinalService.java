@@ -7,7 +7,6 @@ import br.gov.saude.sgpur.repository.ProcessoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -31,9 +30,9 @@ public class DecisaoFinalService {
     private final ProcessoRepository processoRepository;
 
     public DecisaoFinalService(ProcessoService processoService,
-                               RelatorioService relatorioService,
-                               AnexoStorageService anexoStorage,
-                               ProcessoRepository processoRepository) {
+            RelatorioService relatorioService,
+            AnexoStorageService anexoStorage,
+            ProcessoRepository processoRepository) {
         this.processoService = processoService;
         this.relatorioService = relatorioService;
         this.anexoStorage = anexoStorage;
@@ -44,7 +43,8 @@ public class DecisaoFinalService {
      * Gera e anexa os PDFs correspondentes a decisao ja gravada no processo:
      * o Relatorio Final, para qualquer status final.
      *
-     * <p><b>O Oficio de Indeferimento NAO e mais gerado/anexado aqui
+     * <p>
+     * <b>O Oficio de Indeferimento NAO e mais gerado/anexado aqui
      * (2026-08-04, decisao do usuario: "oficio sera sempre anexado").</b> O
      * oficio precisa ser editavel caso a caso, entao o sistema so oferece um
      * RASCUNHO para download ({@code OficioService.gerarRascunhoRtf}, aberto no
@@ -55,10 +55,11 @@ public class DecisaoFinalService {
      * (ver {@code ProcessoService.registrarDataEmissaoOficio}), e gravar aqui
      * dataria um documento que ainda nao existe.
      *
-     * <p>Erros de geracao de PDF sao logados e lancados para que o chamador
+     * <p>
+     * Erros de geracao de PDF sao logados e lancados para que o chamador
      * possa exibir avisos sem desfazer a decisao (ja persistida).
      *
-     * @param p   Processo ja com status final gravado no banco.
+     * @param p Processo ja com status final gravado no banco.
      * @throws IllegalStateException se a geracao de algum PDF falhar.
      */
     public void gerarDocumentos(Processo p) {
@@ -72,12 +73,12 @@ public class DecisaoFinalService {
                 byte[] pdf = relatorioService.gerar(p);
                 String nome = "relatorio-processo-" + p.getNumero().replace("/", "-") + ".pdf";
                 var novoAnexo = anexoStorage.salvarBytes(p, TipoAnexo.RELATORIO_FINAL,
-                    "Relatorio final gerado na decisao", nome, "application/pdf", pdf);
+                        "Relatorio final gerado na decisao", nome, "application/pdf", pdf);
                 anexoStorage.removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, novoAnexo.getId());
             } catch (IOException e) {
                 log.error("Falha ao gerar relatorio final para processo {}", p.getNumero(), e);
                 throw new IllegalStateException(
-                    "Decisao salva, mas falhou ao gerar o relatorio final: " + e.getMessage(), e);
+                        "Decisao salva, mas falhou ao gerar o relatorio final: " + e.getMessage(), e);
             }
         }
     }
@@ -87,25 +88,29 @@ public class DecisaoFinalService {
      * independente do numero do processo. Uma vez atribuido, nunca muda (o
      * documento continua sendo o mesmo oficio no protocolo do setor).
      *
-     * <p>Atribuido na decisao ({@link #gerarDocumentos}) para o numero ja
+     * <p>
+     * Atribuido na decisao ({@link #gerarDocumentos}) para o numero ja
      * aparecer na tela e no rascunho editavel que o operador baixa - o oficio
      * em si nao e mais gerado pelo sistema (ver {@link #gerarDocumentos}).
      *
-     * <p><b>Concorrencia:</b> o proximo numero e calculado lendo os numeros ja
+     * <p>
+     * <b>Concorrencia:</b> o proximo numero e calculado lendo os numeros ja
      * usados e somando 1, sem lock nem sequence — dois indeferimentos
      * simultaneos no mesmo instante poderiam receber o mesmo numero. E o mesmo
      * compromisso ja aceito em {@code ProcessoService.proximoNumero} e e
      * aceitavel aqui pelo volume real (poucos indeferimentos por dia, sempre
      * disparados por um operador humano ou pela varredura sequencial). Nao ha
      * constraint UNIQUE na coluna de proposito: uma colisao remota nao deve
-     * impedir o registro da decisao ja tomada.</p>
+     * impedir o registro da decisao ja tomada.
+     * </p>
      */
     private void atribuirNumeroOficioSeNecessario(Processo p) {
         if (p.getNumeroOficio() != null && !p.getNumeroOficio().isBlank()) {
             return;
         }
         int ano = p.getDataEmissaoOficio() != null
-            ? p.getDataEmissaoOficio().getYear() : LocalDate.now().getYear();
+                ? p.getDataEmissaoOficio().getYear()
+                : LocalDate.now().getYear();
         p.setNumeroOficio(proximoNumeroOficio(ano));
         processoService.salvar(p);
     }
@@ -113,15 +118,15 @@ public class DecisaoFinalService {
     /** Proximo sequencial de oficio do ano, no formato NNNN/AAAA (comeca em 1). */
     String proximoNumeroOficio(int ano) {
         int maior = processoRepository.findNumerosOficioDoAno(String.valueOf(ano)).stream()
-            .map(n -> n.split("/")[0])
-            .mapToInt(seq -> {
-                try {
-                    return Integer.parseInt(seq.trim());
-                } catch (NumberFormatException e) {
-                    return 0;   // numero fora do padrao (dado historico): ignora
-                }
-            })
-            .max().orElse(0);
+                .map(n -> n.split("/")[0])
+                .mapToInt(seq -> {
+                    try {
+                        return Integer.parseInt(seq.trim());
+                    } catch (NumberFormatException e) {
+                        return 0; // numero fora do padrao (dado historico): ignora
+                    }
+                })
+                .max().orElse(0);
         return String.format("%04d/%d", maior + 1, ano);
     }
 }

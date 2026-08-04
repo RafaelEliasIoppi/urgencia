@@ -1,15 +1,11 @@
 package br.gov.saude.sgpur.web;
 
-import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.domain.TipoAnexo;
 import br.gov.saude.sgpur.repository.AnexoRepository;
 import br.gov.saude.sgpur.repository.ProcessoRepository;
-import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.DecisaoFinalService;
-import com.lowagie.text.pdf.PdfReader;
-import com.lowagie.text.pdf.parser.PdfTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -23,9 +19,7 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.servlet.mvc.support.RedirectAttributesModelMap;
 
-import java.nio.file.Files;
 import java.time.LocalDate;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,7 +27,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Teste de INTEGRACAO (contexto Spring real + H2 real, sem mock de servico)
  * da regra de datas da aba Finalizacao, revista em 2026-08-04:
  *
- * <p><b>A data de um ato registrado por anexo e o MOMENTO DO ANEXO, gravada
+ * <p>
+ * <b>A data de um ato registrado por anexo e o MOMENTO DO ANEXO, gravada
  * pelo relogio do servidor - nunca digitada.</b> Ate esta mudanca havia
  * {@code <input type="date">} para "data de emissao do oficio", "data de envio
  * do oficio" e "data de envio ao SNT", e um endpoint
@@ -41,7 +36,8 @@ import static org.assertj.core.api.Assertions.assertThat;
  * aceitava data retroativa (ou futura), o que e inadmissivel num processo
  * administrativo. Os campos e o endpoint foram removidos.
  *
- * <p><b>Por que {@code @SpringBootTest} e nao {@code @WebMvcTest}:</b> a
+ * <p>
+ * <b>Por que {@code @SpringBootTest} e nao {@code @WebMvcTest}:</b> a
  * escrita e irreversivel (grava a data que sai no relatorio final e substitui
  * o anexo enviado a equipe solicitante) e envolve transacao real + gravacao em
  * disco. Com {@code @MockitoBean} do servico, nada disso aconteceria de fato -
@@ -62,8 +58,6 @@ class DatasFinalizacaoIntegrationTest {
     private ProcessoRepository processoRepo;
     @Autowired
     private AnexoRepository anexoRepo;
-    @Autowired
-    private AnexoStorageService anexoStorage;
     @Autowired
     private DecisaoFinalService decisaoFinalService;
     @Autowired
@@ -93,7 +87,7 @@ class DatasFinalizacaoIntegrationTest {
 
         // RedirectAttributes/flash e o controller usam o request corrente.
         RequestContextHolder.setRequestAttributes(
-            new ServletRequestAttributes(new MockHttpServletRequest()));
+                new ServletRequestAttributes(new MockHttpServletRequest()));
     }
 
     private Processo relido() {
@@ -114,12 +108,12 @@ class DatasFinalizacaoIntegrationTest {
     @Test
     void uploadManualDoOficioGravaADataDeEmissaoComOMomentoDoAnexo() {
         Processo p = relido();
-        p.setDataEmissaoOficio(LocalDate.of(2020, 1, 1));   // data antiga qualquer
+        p.setDataEmissaoOficio(LocalDate.of(2020, 1, 1)); // data antiga qualquer
         processoRepo.saveAndFlush(p);
 
         controller.uploadOficio(processoId, new MockMultipartFile(
-            "arquivo", "oficio.pdf", "application/pdf", "conteudo".getBytes()),
-            new RedirectAttributesModelMap());
+                "arquivo", "oficio.pdf", "application/pdf", "conteudo".getBytes()),
+                new RedirectAttributesModelMap());
 
         // O documento anexado agora e outro: a data de emissao acompanha o
         // arquivo novo, e nao a que estava gravada antes.
@@ -134,12 +128,12 @@ class DatasFinalizacaoIntegrationTest {
         assertThat(relido().getDataEnvioSnt()).isNull();
 
         controller.uploadComprovanteSnt(processoId, new MockMultipartFile(
-            "arquivo", "snt.pdf", "application/pdf", "conteudo".getBytes()),
-            new RedirectAttributesModelMap());
+                "arquivo", "snt.pdf", "application/pdf", "conteudo".getBytes()),
+                new RedirectAttributesModelMap());
 
         assertThat(relido().getDataEnvioSnt()).isEqualTo(LocalDate.now());
         assertThat(anexoRepo.findAll().stream()
-            .anyMatch(a -> a.getTipo() == TipoAnexo.COMPROVANTE_SNT)).isTrue();
+                .anyMatch(a -> a.getTipo() == TipoAnexo.COMPROVANTE_SNT)).isTrue();
     }
 
     /**
@@ -154,12 +148,12 @@ class DatasFinalizacaoIntegrationTest {
         processoRepo.saveAndFlush(p);
 
         controller.uploadComprovanteSnt(processoId, new MockMultipartFile(
-            "arquivo", "snt.exe", "application/octet-stream", "conteudo".getBytes()),
-            new RedirectAttributesModelMap());
+                "arquivo", "snt.exe", "application/octet-stream", "conteudo".getBytes()),
+                new RedirectAttributesModelMap());
 
         assertThat(relido().getDataEnvioSnt()).isNull();
         assertThat(anexoRepo.findAll().stream()
-            .anyMatch(a -> a.getTipo() == TipoAnexo.COMPROVANTE_SNT)).isFalse();
+                .anyMatch(a -> a.getTipo() == TipoAnexo.COMPROVANTE_SNT)).isFalse();
     }
 
     /**
@@ -173,10 +167,10 @@ class DatasFinalizacaoIntegrationTest {
         assertThat(relido().getNumeroOficio()).isEqualTo("0001/2026");
         assertThat(relido().getDataEmissaoOficio()).isNull();
         assertThat(anexoRepo.findAll().stream()
-            .anyMatch(a -> a.getTipo() == TipoAnexo.OFICIO_INDEFERIMENTO)).isFalse();
+                .anyMatch(a -> a.getTipo() == TipoAnexo.OFICIO_INDEFERIMENTO)).isFalse();
         // O relatorio final continua sendo gerado normalmente.
         assertThat(anexoRepo.findAll().stream()
-            .anyMatch(a -> a.getTipo() == TipoAnexo.RELATORIO_FINAL)).isTrue();
+                .anyMatch(a -> a.getTipo() == TipoAnexo.RELATORIO_FINAL)).isTrue();
     }
 
     /**
@@ -194,8 +188,8 @@ class DatasFinalizacaoIntegrationTest {
         assertThat(resposta.getStatusCode().value()).isEqualTo(200);
         String rtf = new String(resposta.getBody(), java.nio.charset.StandardCharsets.ISO_8859_1);
         assertThat(rtf).startsWith("{\\rtf1");
-        assertThat(rtf).contains("0001/2026");                       // numero do oficio
-        assertThat(rtf).contains("Ausencia de indicacao clinica.");  // motivo do indeferimento
+        assertThat(rtf).contains("0001/2026"); // numero do oficio
+        assertThat(rtf).contains("Ausencia de indicacao clinica."); // motivo do indeferimento
         assertThat(anexoRepo.findAll()).hasSize(anexosAntes);
         assertThat(relido().getDataEmissaoOficio()).isNull();
     }
