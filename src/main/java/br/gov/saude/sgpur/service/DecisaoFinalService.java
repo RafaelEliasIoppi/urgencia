@@ -85,14 +85,15 @@ public class DecisaoFinalService {
      * numeracao propria do oficio (NNNN/AAAA) se o processo ainda nao tiver
      * uma.
      *
-     * <p>Chamado na decisao ({@link #gerarDocumentos}) e tambem quando o
-     * operador altera as datas do oficio na aba Finalizacao — sem isso, a tela
-     * e o relatorio final mostravam uma data e o PDF anexado (que e o que
-     * chega a equipe solicitante por e-mail) continuava com a data antiga.</p>
+     * <p>Chamado na decisao ({@link #gerarDocumentos}). Ate 2026-08-04 era
+     * chamado tambem pela aba Finalizacao, quando o operador editava as datas
+     * do oficio; esses campos foram removidos (a data de um ato agora e sempre
+     * o momento do anexo, nunca digitada), entao nao existe mais divergencia
+     * possivel entre a data da tela e a do PDF anexado.</p>
      *
      * <p><b>Sobrescreve upload manual.</b> Se o operador tiver substituido o
      * oficio por um documento proprio, esta chamada troca de volta pelo PDF do
-     * sistema — a tela avisa isso no formulario de datas.</p>
+     * sistema.</p>
      *
      * @throws IllegalStateException se a gravacao do PDF falhar.
      */
@@ -112,16 +113,6 @@ public class DecisaoFinalService {
             throw new IllegalStateException(
                 "Falha ao gerar o oficio de indeferimento: " + e.getMessage(), e);
         }
-    }
-
-    /**
-     * Versao por id, com transacao propria, para quem chama de fora de uma
-     * transacao (o controller da aba Finalizacao). Recarrega o processo dentro
-     * da sessao porque a geracao do PDF navega colecoes LAZY.
-     */
-    @Transactional
-    public void regerarOficio(Long processoId) {
-        regerarOficio(processoService.buscar(processoId));
     }
 
     /**
