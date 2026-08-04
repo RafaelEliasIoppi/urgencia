@@ -155,10 +155,15 @@
                 </div>
 
                 <div class="mb-3">
-                    <label class="form-label">Justificativa / observações (opcional)</label>
-                    <textarea name="justificativa" class="form-control" rows="4"
+                    <label class="form-label" id="labelJustificativa">Justificativa / observações (opcional)</label>
+                    <textarea name="justificativa" id="campoJustificativa" class="form-control" rows="4"
                               placeholder="Descreva sua análise clínica, pontos relevantes ou fundamento do parecer..."></textarea>
-                    <div class="form-text">
+                    <!-- Obrigatoriedade condicional (voto NAO_FAVORAVEL/SOLICITA_INFORMACAO): alternada
+                         via JS (static/js/avaliador-votar.js) conforme o radio de resultado marcado. O
+                         texto/asterisco daqui e so UX - a regra de verdade e imposta no servidor
+                         (AvaliadorController.registrarVoto), que rejeita mesmo se o "required" nativo
+                         for burlado via DevTools/requisicao direta. -->
+                    <div class="form-text" id="ajudaJustificativa">
                         Opcional. Será registrado internamente para subsidiar a decisão do processo.
                     </div>
                 </div>

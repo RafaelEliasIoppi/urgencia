@@ -119,6 +119,30 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   autenticado (`AVALIADOR_SISTEMA`, que dispensa anexo), `decidir` exige
   apenas os ≥2 pareceres emitidos (maioria simples), sem checagem de anexo
   nenhuma.
+- **Justificativa obrigatória em voto Não favorável/Solicita informação
+  (desde 2026-08-03).** Decisão de produto explicitamente aprovada pelo
+  usuário (item 1 da "Fase 11" do
+  `docs/RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md`, antes marcada como
+  "não implementar sem aval"). Quando o avaliador vota
+  `ResultadoParecer.NAO_FAVORAVEL` ou `SOLICITA_INFORMACAO` em
+  `POST /avaliador/{processoId}/votar`, o campo `justificativa` passa a ser
+  **obrigatório** — sem ele, `AvaliadorController.registrarVoto` rejeita
+  ANTES de abrir a transação do voto (flash `erro` + redirect de volta ao
+  formulário, nunca grava nada). Voto `FAVORAVEL` continua com justificativa
+  opcional, sem mudança. Motivo: o operador depende desse texto pronto para
+  redigir o ofício de indeferimento (`OFICIO_INDEFERIMENTO`) ou o pedido de
+  informação complementar ao solicitante (`SOLICITA_INFORMACAO`), evitando
+  ter que reescrever do zero. O `<textarea>` de `avaliador/votar.html` ganha
+  `required` dinâmico via JS (`avaliador-votar.js`,
+  `atualizarObrigatoriedadeJustificativa`, disparado ao trocar o rádio de
+  resultado) — é só UX, a regra de verdade mora no controller (o `required`
+  do HTML sozinho é burlável via DevTools/requisição direta). Não altera
+  `OrigemParecer`, `ProcessoValidator` nem a lógica de maioria
+  simples/coordenador. Coberto por
+  `AvaliadorControllerTest.registrarVotoNaoFavoravelSemJustificativaERejeitado`
+  /`ComJustificativaEmBrancoERejeitado`/`ComJustificativaEAceito`,
+  `registrarVotoSolicitaInformacaoSemJustificativaERejeitado` e
+  `registrarVotoFavoravelSemJustificativaContinuaAceito`.
 - **Deferido exige anexar o comprovante de inserção da urgência renal no SNT**
   (`TipoAnexo.COMPROVANTE_SNT`) e enviá-lo junto na resposta ao solicitante; a
   etapa "Comprovante SNT" bloqueia a conclusão até o anexo existir (simétrico

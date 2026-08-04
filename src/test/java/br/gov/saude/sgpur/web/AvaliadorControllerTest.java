@@ -437,12 +437,104 @@ class AvaliadorControllerTest {
 
         mvc.perform(post("/avaliador/1/votar")
                 .with(csrf())
-                .param("resultado", "NAO_FAVORAVEL")
+                .param("resultado", "FAVORAVEL")
                 .param("justificativa", "   "))
             .andExpect(status().is3xxRedirection());
 
         // Justificativa em branco nao deve ser persistida (null)
         verify(parecerRepo).save(argThat(p -> p.getJustificativa() == null));
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void registrarVotoNaoFavoravelSemJustificativaERejeitado() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByProcessoIdAndMembroIdComProcesso(1L, 10L)).thenReturn(Optional.of(parecer));
+
+        mvc.perform(post("/avaliador/1/votar")
+                .with(csrf())
+                .param("resultado", "NAO_FAVORAVEL"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/avaliador/1"))
+            .andExpect(flash().attributeExists("erro"));
+
+        // Nada deve ter sido gravado - a validacao roda ANTES de abrir a TX do voto.
+        verify(parecerRepo, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void registrarVotoNaoFavoravelComJustificativaEmBrancoERejeitado() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByProcessoIdAndMembroIdComProcesso(1L, 10L)).thenReturn(Optional.of(parecer));
+
+        mvc.perform(post("/avaliador/1/votar")
+                .with(csrf())
+                .param("resultado", "NAO_FAVORAVEL")
+                .param("justificativa", "   "))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/avaliador/1"))
+            .andExpect(flash().attributeExists("erro"));
+
+        verify(parecerRepo, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void registrarVotoSolicitaInformacaoSemJustificativaERejeitado() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByProcessoIdAndMembroIdComProcesso(1L, 10L)).thenReturn(Optional.of(parecer));
+
+        mvc.perform(post("/avaliador/1/votar")
+                .with(csrf())
+                .param("resultado", "SOLICITA_INFORMACAO"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/avaliador/1"))
+            .andExpect(flash().attributeExists("erro"));
+
+        verify(parecerRepo, never()).save(any());
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void registrarVotoNaoFavoravelComJustificativaEAceito() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByProcessoIdAndMembroIdComProcesso(1L, 10L)).thenReturn(Optional.of(parecer));
+        when(parecerRepo.save(any(Parecer.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(processoService.atualizarStatusPorPareceres(1L)).thenReturn(processo);
+        when(processoService.tentarDecisaoAutomatica(1L)).thenReturn(processo);
+        doNothing().when(auditoria).registrar(any(), any(), any());
+
+        mvc.perform(post("/avaliador/1/votar")
+                .with(csrf())
+                .param("resultado", "NAO_FAVORAVEL")
+                .param("justificativa", "Sem criterio clinico de urgencia."))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/avaliador"));
+
+        verify(parecerRepo).save(argThat(p ->
+            p.getResultado() == ResultadoParecer.NAO_FAVORAVEL
+            && "Sem criterio clinico de urgencia.".equals(p.getJustificativa())));
+    }
+
+    @Test
+    @WithMockUser(username = "avaliador1", roles = "AVALIADOR")
+    void registrarVotoFavoravelSemJustificativaContinuaAceito() throws Exception {
+        when(usuarioRepo.findByUsername("avaliador1")).thenReturn(Optional.of(usuario));
+        when(parecerRepo.findByProcessoIdAndMembroIdComProcesso(1L, 10L)).thenReturn(Optional.of(parecer));
+        when(parecerRepo.save(any(Parecer.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(processoService.atualizarStatusPorPareceres(1L)).thenReturn(processo);
+        when(processoService.tentarDecisaoAutomatica(1L)).thenReturn(processo);
+        doNothing().when(auditoria).registrar(any(), any(), any());
+
+        mvc.perform(post("/avaliador/1/votar")
+                .with(csrf())
+                .param("resultado", "FAVORAVEL"))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/avaliador"));
+
+        verify(parecerRepo).save(argThat(p ->
+            p.getResultado() == ResultadoParecer.FAVORAVEL && p.getJustificativa() == null));
     }
 
     @Test
