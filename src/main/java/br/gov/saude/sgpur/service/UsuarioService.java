@@ -4,6 +4,8 @@ import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
 import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
+import br.gov.saude.sgpur.repository.RascunhoSolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,16 +25,22 @@ public class UsuarioService {
     private final MembroUrgenciaRenalRepository membroRepo;
     private final EmailSenderService emailSenderService;
     private final PasswordResetAttemptService passwordResetAttemptService;
+    private final SolicitacaoOnlineRepository solicitacaoRepo;
+    private final RascunhoSolicitacaoOnlineRepository rascunhoRepo;
 
     public UsuarioService(UsuarioRepository repo, PasswordEncoder encoder,
                           MembroUrgenciaRenalRepository membroRepo,
                           EmailSenderService emailSenderService,
-                          PasswordResetAttemptService passwordResetAttemptService) {
+                          PasswordResetAttemptService passwordResetAttemptService,
+                          SolicitacaoOnlineRepository solicitacaoRepo,
+                          RascunhoSolicitacaoOnlineRepository rascunhoRepo) {
         this.repo = repo;
         this.encoder = encoder;
         this.membroRepo = membroRepo;
         this.emailSenderService = emailSenderService;
         this.passwordResetAttemptService = passwordResetAttemptService;
+        this.solicitacaoRepo = solicitacaoRepo;
+        this.rascunhoRepo = rascunhoRepo;
     }
 
     public List<Usuario> listar() {
@@ -162,14 +170,51 @@ public class UsuarioService {
     /**
      * Exclui o usuario. Bloqueia a operacao (IllegalStateException) quando o alvo e
      * a propria conta logada ({@code usernameLogado}) ou o ultimo ADMIN ativo do
-     * sistema - evita auto-lockout do acesso a /usuarios e /auditoria.
+     * sistema - evita auto-lockout do acesso a /usuarios e /auditoria - e tambem
+     * quando o usuario ja enviou solicitacoes pelo Portal do Solicitante
+     * (ver {@link #validarSemHistoricoDeSolicitacoes}).
+     *
+     * <p>Um eventual RASCUNHO de solicitacao e apagado junto: e dado de
+     * staging descartavel ({@code RascunhoSolicitacaoOnline}, nunca visivel a
+     * triagem), diferente das solicitacoes de verdade, que sao historico. Sem
+     * isso a FK {@code rascunho_solicitacao_online.usuario_solicitante_id}
+     * bloquearia a exclusao de um solicitante que so tinha comecado a
+     * preencher um formulario.
      */
     @Transactional
     public void excluir(Long id, String usernameLogado) {
         Usuario u = buscar(id);
         validarNaoAutoGerenciamento(u, usernameLogado, "excluir");
         validarNaoUltimoAdminAtivo(u, "excluir");
+        validarSemHistoricoDeSolicitacoes(u);
+        rascunhoRepo.deleteByUsuarioSolicitanteId(u.getId());
         repo.delete(u);
+    }
+
+    /**
+     * Recusa a exclusao de um solicitante que ja enviou pedidos. A FK
+     * {@code solicitacao_online.usuario_solicitante_id} e NOT NULL e sem
+     * cascade: apagar mesmo assim exigiria apagar junto as solicitacoes (e,
+     * por tabela, mensagens, anexos e ate o processo gerado) - destruicao de
+     * historico que nunca deve acontecer por um clique em "Excluir". A
+     * alternativa correta e INATIVAR o usuario, que ja existe na mesma tela e
+     * bloqueia o acesso preservando tudo.
+     *
+     * <p>Sem esta checagem o DELETE chega ao banco e estoura
+     * {@code DataIntegrityViolationException}, exibida ao operador como
+     * "os dados informados violam uma regra do banco (...) revise os campos"
+     * - generica, e enganosa numa tela de exclusao, onde nao ha campo algum
+     * para revisar.
+     */
+    private void validarSemHistoricoDeSolicitacoes(Usuario u) {
+        long solicitacoes = solicitacaoRepo.countByUsuarioSolicitanteId(u.getId());
+        if (solicitacoes > 0) {
+            throw new IllegalStateException(
+                "Nao e possivel excluir o usuario \"" + u.getUsername() + "\": ele possui "
+                + solicitacoes + (solicitacoes == 1 ? " solicitacao registrada" : " solicitacoes registradas")
+                + " no Portal do Solicitante, e apaga-lo destruiria esse historico. "
+                + "Use 'Inativar' para bloquear o acesso dele ao sistema, preservando os pedidos ja enviados.");
+        }
     }
 
     private void validarNaoAutoGerenciamento(Usuario u, String usernameLogado, String acao) {
