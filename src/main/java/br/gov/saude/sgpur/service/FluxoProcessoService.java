@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Monta, em tempo real, a lista de etapas do processo, sinalizando o que ja
@@ -365,12 +366,29 @@ public class FluxoProcessoService {
 
     /** Mensagem curta de "o que falta" para o processo (etapa atual pendente). */
     public String resumoPendencia(Processo p) {
+        return pendenciaAberta(p).orElse("Processo concluido.");
+    }
+
+    /**
+     * Igual a {@link #resumoPendencia}, mas VAZIO quando nao ha etapa pendente
+     * nenhuma - para quem precisa distinguir "nada a fazer" de "falta algo" sem
+     * comparar a string "Processo concluido.".
+     *
+     * <p>Existe por causa do Painel: ele so calculava pendencia para processo
+     * {@code isEmAndamento()}, entao um Deferido/Indeferido que ainda devia
+     * oficio, comprovante SNT ou a resposta ao solicitante aparecia sem nenhum
+     * "o que falta" - e, ate a correcao do badge, ainda rotulado "Encerrado".
+     * Status final significa apenas que a DECISAO saiu e a edicao das etapas
+     * 1-4 travou; a papelada de conclusao continua pendente (bug relatado em
+     * producao no processo 04/2026).
+     */
+    public Optional<String> pendenciaAberta(Processo p) {
         for (EtapaFluxo e : montarEtapas(p)) {
             if (e.estado() == Estado.ATUAL) {
-                return e.titulo() + ": " + e.detalhe();
+                return Optional.of(e.titulo() + ": " + e.detalhe());
             }
         }
-        return "Processo concluido.";
+        return Optional.empty();
     }
 
     private EtapaFluxo montar(String titulo, String icone, boolean concluida,

@@ -643,6 +643,75 @@ class ProcessoDetalheControllerTest {
                 "/processos/1/documento-clinico/7/confirmar-anonimizacao")));
     }
 
+    // ----- aba Envio: o operador precisa saber o que o botao faz ANTES de clicar -----
+
+    /**
+     * "Registrar envio" dispara e-mail de verdade para medicos de verdade
+     * (convite ao Portal do Avaliador, {@code RegistroEnvioService
+     * .enviarConvitesAvaliadores}), alem de gerar o PDF e mudar o status - e
+     * a tela so dizia "confirma o envio e gera o PDF consolidado", sem citar
+     * o e-mail nem quem receberia. Este teste renderiza o template de verdade
+     * e trava a lista de destinatarios exibida antes do clique, usando o
+     * MESMO criterio do servidor: so quem ainda nao votou.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaEnvioListaOsMedicosQueVaoReceberOConviteAntesDeRegistrarOEnvio() throws Exception {
+        MembroUrgenciaRenal m1 = membro(1L, "HCPA", "Ana");
+        MembroUrgenciaRenal m2 = membro(2L, "HCC", "Bruno");
+        MembroUrgenciaRenal m3 = membro(3L, "HSL", "Carla");
+        // dataEnvio nula nos 3: envio ainda NAO registrado, o passo 2 aparece.
+        processo.addParecer(parecer(processo, m1, null, null, null));
+        processo.addParecer(parecer(processo, m2, null, null, null));
+        processo.addParecer(parecer(processo, m3, null, null, null));
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            // As 3 acoes do botao, incluindo a que nao estava escrita em lugar nenhum.
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "O convite será enviado para")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "Portal do Avaliador</strong> por e-mail")))
+            // Nome + e-mail de cada destinatario.
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("HCPA - Ana")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("ana@ex.com")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("HSL - Carla")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("carla@ex.com")));
+    }
+
+    /**
+     * Quem ja votou NAO recebe convite de novo ({@code
+     * ProcessoService.pareceresPendentesComEmail} filtra por resultado nulo),
+     * e um avaliador sem e-mail cadastrado simplesmente fica de fora - as
+     * duas coisas precisam estar visiveis antes do clique, senao o operador
+     * so descobre pelo flash de aviso depois que o envio ja foi gravado.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaEnvioAvisaSobreAvaliadorSemEmailEOmiteQuemJaVotou() throws Exception {
+        MembroUrgenciaRenal m1 = membro(1L, "HCPA", "Ana");
+        MembroUrgenciaRenal semEmail = new MembroUrgenciaRenal("HSL", "Carla", null);
+        semEmail.setId(3L);
+        processo.addParecer(parecer(processo, m1, ResultadoParecer.FAVORAVEL, null, null));
+        processo.addParecer(parecer(processo, semEmail, null, null, null));
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+
+        String html = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        String painel = html.substring(html.indexOf("O convite será enviado para"),
+            html.indexOf("Registrar envio e enviar convites"));
+        // So a Carla (pendente) aparece como destinataria; a Ana ja votou.
+        org.assertj.core.api.Assertions.assertThat(painel).contains("HSL - Carla");
+        org.assertj.core.api.Assertions.assertThat(painel).doesNotContain("HCPA - Ana");
+        org.assertj.core.api.Assertions.assertThat(painel).contains("sem e-mail cadastrado");
+        org.assertj.core.api.Assertions.assertThat(painel).contains("Quem já votou não recebe o convite de novo");
+    }
+
     // ----- aba Decisao: textos vs. comportamento real -----
 
     /**

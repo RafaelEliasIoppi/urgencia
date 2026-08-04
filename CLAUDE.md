@@ -1612,6 +1612,22 @@ issue/branch aberta para isso, só o registro no relatório.
    resposta formal aplicável — ver item 6 abaixo). O banner de aviso no topo
    da tela segue a mesma lógica, com um link direto para a aba Finalização
    quando ainda há pendência.
+   **Correção de 2026-08-04 (mesmo dia, depois):** essa distinção só tinha
+   sido aplicada em `processos/detalhe.html`. O **Painel** (`dashboard.html`)
+   e a **lista** (`processos/lista.html`) continuaram com
+   `status.isFinalizado()` puro, mostrando "Encerrado" em processo que ainda
+   devia comprovante SNT e resposta (bug relatado em produção no 04/2026 —
+   mesmo sintoma que motivou a correção original, em outra tela). A regra
+   virou **fragment único** `layout :: badgeEncerramento(p, classes)`, usado
+   pelas 3 telas — não duplicar essa condição em template novo. Junto,
+   `HomeController` passou a calcular "o que falta" **também** para processo
+   decidido (antes só `isEmAndamento()`, então quem mais precisava de ação
+   aparecia sem nenhuma pendência no Painel), via
+   `FluxoProcessoService.pendenciaAberta` (`Optional`, vazio = nada pendente;
+   `resumoPendencia` delega a ele). Coberto por testes que renderizam os
+   templates de verdade em `HomeControllerTest`/`ProcessoListaControllerTest`
+   — a correção original de detalhe não tinha nenhum teste, foi por isso que
+   as outras duas telas passaram despercebidas.
 2. **Atalhos da barra lateral corrigidos.** "Ofício de Indeferimento" e o
    novo atalho "Comprovante SNT" só aparecem depois que o anexo
    correspondente existe de fato, e baixam **o anexo real**

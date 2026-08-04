@@ -73,6 +73,38 @@ class ProcessoListaControllerTest {
             .andExpect(model().attribute("pendencias", org.hamcrest.Matchers.hasEntry(1L, "Falta o Envio")));
     }
 
+    /**
+     * Mesma distincao da tela de detalhe e do Painel (fragment
+     * {@code layout :: badgeEncerramento}): decidido mas ainda devendo
+     * oficio/comprovante SNT/resposta e "Decisao tomada", nao "Encerrado" -
+     * so vira "Encerrado" quando a resposta ao solicitante ja saiu. Renderiza
+     * o template de verdade.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void listaDistingueDecisaoTomadaDeProcessoRealmenteEncerrado() throws Exception {
+        Processo decididoIncompleto = new Processo();
+        decididoIncompleto.setId(2L);
+        decididoIncompleto.setNumero("04/2026");
+        decididoIncompleto.setStatus(StatusProcesso.DEFERIDO);
+        Processo encerrado = new Processo();
+        encerrado.setId(3L);
+        encerrado.setNumero("05/2026");
+        encerrado.setStatus(StatusProcesso.DEFERIDO);
+        encerrado.setEmailEnviadoSolicitante(true);
+        Page<Processo> pagina = new PageImpl<>(List.of(decididoIncompleto, encerrado),
+            PageRequest.of(0, 15), 2);
+        when(processoService.buscar(isNull(), isNull(), any())).thenReturn(pagina);
+        when(fluxoService.resumoPendencia(any())).thenReturn("Comprovante SNT: anexe o comprovante");
+
+        String html = mvc.perform(get("/processos"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains("Decisão tomada");
+        org.assertj.core.api.Assertions.assertThat(html).contains("Encerrado");
+    }
+
     @Test
     @WithMockUser(roles = "OPERADOR")
     void filtraPorTermoDeBuscaEStatus() throws Exception {
