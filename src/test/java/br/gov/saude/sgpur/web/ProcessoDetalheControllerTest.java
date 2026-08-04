@@ -676,12 +676,12 @@ class ProcessoDetalheControllerTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "maioria simples de 2 em 3 votos, tanto para deferir quanto para")))
             .andExpect(content().string(org.hamcrest.Matchers.not(
-                org.hamcrest.Matchers.containsString("2 de 3 favoraveis defere o processo"))))
+                org.hamcrest.Matchers.containsString("2 de 3 favoráveis defere o processo"))))
             // formulario manual: quando ainda e necessario
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "favoravel do coordenador da CET-RS defere sozinho")))
+                "favorável do coordenador da CET-RS defere sozinho")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "texto institucional padrao")))
+                "texto institucional padrão")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "<strong>Cancelado</strong> (que nunca e")));
     }
@@ -708,9 +708,9 @@ class ProcessoDetalheControllerTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "gerado automaticamente pelo sistema")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "Confira o conteudo")))
+                "Confira o conteúdo")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "regera o oficio anexado")))
+                "regerá o ofício anexado")))
             // numeracao propria do oficio, distinta do numero do processo
             .andExpect(content().string(org.hamcrest.Matchers.containsString("0007/2026")));
     }

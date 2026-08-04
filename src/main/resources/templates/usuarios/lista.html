@@ -1,15 +1,15 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Usuarios')}"></head>
+<head th:replace="~{layout :: head('Usuários')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Usuarios</h1>
+        <h1 class="h3 mb-0">Usuários</h1>
         <a th:href="@{/usuarios/novo}" class="btn btn-primary">
-            <i class="bi bi-plus-lg"></i> Novo usuario
+            <i class="bi bi-plus-lg"></i> Novo usuário
         </a>
     </div>
 
@@ -17,7 +17,7 @@
         <div class="table-responsive">
         <table class="table table-hover align-middle mb-0">
             <thead class="table-light">
-            <tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Situacao</th><th></th></tr>
+            <tr><th>Login</th><th>Nome</th><th>Perfil</th><th>Situação</th><th></th></tr>
             </thead>
             <tbody>
             <tr th:each="u : ${usuarios}" th:classappend="${!u.ativo} ? 'linha-inativa'">
@@ -35,12 +35,12 @@
                 <td class="text-end">
                     <a th:href="@{/usuarios/{id}/editar(id=${u.id})}" class="btn btn-sm btn-outline-secondary">Editar</a>
                     <form th:action="@{/usuarios/{id}/alternar-ativo(id=${u.id})}" method="post" class="d-inline"
-                          th:attr="data-confirm-msg=${u.ativo} ? ('Inativar o usuario &quot;' + ${u.username} + '&quot;? Ele perdera o acesso ao sistema.') : ('Reativar o usuario &quot;' + ${u.username} + '&quot;?')">
+                          th:attr="data-confirm-msg=${u.ativo} ? ('Inativar o usuário &quot;' + ${u.username} + '&quot;? Ele perdera o acesso ao sistema.') : ('Reativar o usuário &quot;' + ${u.username} + '&quot;?')">
                         <button class="btn btn-sm btn-outline-warning"
                                 th:text="${u.ativo} ? 'Inativar' : 'Ativar'">Inativar</button>
                     </form>
                     <form th:action="@{/usuarios/{id}/excluir(id=${u.id})}" method="post" class="d-inline"
-                          th:attr="data-confirm-msg='Excluir usuario &quot;' + ${u.username} + '&quot;? Esta acao nao pode ser desfeita.'">
+                          th:attr="data-confirm-msg='Excluir usuário &quot;' + ${u.username} + '&quot;? Esta ação não pode ser desfeita.'">
                         <button class="btn btn-sm btn-outline-danger">Excluir</button>
                     </form>
                 </td>

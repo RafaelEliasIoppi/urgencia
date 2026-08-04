@@ -6,7 +6,7 @@
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4" style="max-width: 640px;">
-    <h1 class="h3 mb-3" th:text="${edicao} ? 'Editar usuario' : 'Novo usuario'">Usuario</h1>
+    <h1 class="h3 mb-3" th:text="${edicao} ? 'Editar usuário' : 'Novo usuário'">Usuário</h1>
 
     <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
 
@@ -41,16 +41,16 @@
 
             <!-- Membro vinculado: visivel e obrigatorio apenas para perfil AVALIADOR -->
             <div class="mb-3" id="membroBox">
-                <label class="form-label" for="membroSelect">Membro da Urgencia Renal vinculado *</label>
+                <label class="form-label" for="membroSelect">Membro da Urgência Renal vinculado *</label>
                 <select name="membroId" class="form-select" id="membroSelect">
-                    <option value="">-- selecione o medico avaliador --</option>
+                    <option value="">-- selecione o médico avaliador --</option>
                     <option th:each="m : ${membros}"
                             th:value="${m.id}"
                             th:text="${m.rotulo}"
                             th:selected="${usuario.membro != null and usuario.membro.id == m.id}"></option>
                 </select>
                 <div class="form-text text-muted">
-                    Identifica qual medico este login representa no Portal do Avaliador (/avaliador).
+                    Identifica qual médico este login representa no Portal do Avaliador (/avaliador).
                 </div>
             </div>
 
@@ -60,7 +60,7 @@
                 <input type="text" name="equipeSolicitante" class="form-control" id="equipeSolicitanteInput"
                        th:value="${usuario.equipeSolicitante}" maxlength="200">
                 <div class="form-text text-muted">
-                    Pre-preenche o formulario de nova solicitacao online (/solicitante/nova) deste usuario.
+                    Pre-preenche o formulario de nova solicitação online (/solicitante/nova) deste usuário.
                 </div>
             </div>
 

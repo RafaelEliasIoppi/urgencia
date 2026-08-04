@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Relatorio anual')}"></head>
+<head th:replace="~{layout :: head('Relatório anual')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Relatorio anual</h1>
+        <h1 class="h3 mb-0">Relatório anual</h1>
         <a th:href="@{/relatorios/avaliador}" class="btn btn-outline-primary">
-            <i class="bi bi-person-lines-fill me-1"></i> Relatorio por avaliador
+            <i class="bi bi-person-lines-fill me-1"></i> Relatório por avaliador
         </a>
     </div>
 
     <div class="card">
         <div class="card-header">
-            <i class="bi bi-file-earmark-bar-graph"></i> Relatorio Geral de Urgencia Renal por ano
+            <i class="bi bi-file-earmark-bar-graph"></i> Relatório Geral de Urgência Renal por ano
         </div>
         <div class="card-body">
             <p class="text-muted">
@@ -29,8 +29,8 @@
                    operador. A tela orientava a fazer algo que nao existe mais. */-->
             <div th:if="${anos == null or anos.isEmpty()}" class="alert alert-info mb-0">
                 <i class="bi bi-info-circle"></i>
-                Ainda nao ha processos para relatar. Os processos surgem da triagem
-                das solicitacoes recebidas pelo Portal do Solicitante.
+                Ainda não ha processos para relatar. Os processos surgem da triagem
+                das solicitações recebidas pelo Portal do Solicitante.
             </div>
 
             <form th:if="${anos != null and !anos.isEmpty()}"

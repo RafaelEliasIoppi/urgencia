@@ -35,7 +35,7 @@ public class ProcessoDetalhePage {
         narrar("Passo 2/5 - Envio: anexando o documento clinico anonimizado...");
         clicarPasso("pane-envio");
         page.locator("#pane-envio form[action*='documento-clinico'] input[name=arquivo]").setInputFiles(documentoClinico);
-        page.locator("#pane-envio button:has-text('Anexar documento clinico')").click();
+        page.locator("#pane-envio button:has-text('Anexar documento clínico')").click();
         page.waitForLoadState();
         return this;
     }
@@ -74,7 +74,7 @@ public class ProcessoDetalhePage {
         if (motivoIndeferimento != null) {
             page.locator("#motivoIndeferimentoInput").fill(motivoIndeferimento);
         }
-        page.locator("#decisao button:has-text('Registrar decisao')").click();
+        page.locator("#decisao button:has-text('Registrar decisão')").click();
         page.waitForLoadState();
         return this;
     }
@@ -139,7 +139,7 @@ public class ProcessoDetalhePage {
     public Page abrirRelatorioFinal(boolean headed) {
         narrar("Abrindo o Relatorio Final (PDF) gerado pelo sistema...");
         Page abaRelatorio = page.context().waitForPage(() ->
-            page.locator("a.btn:has-text('Relatorio Final (PDF)')").click());
+            page.locator("a.btn:has-text('Relatório Final (PDF)')").click());
         if (headed) {
             abaRelatorio.waitForLoadState();
         }

@@ -14,7 +14,7 @@
                    th:value="${origemSolicitacaoOnlineId}">
             <div th:if="${origemSolicitacaoOnlineId != null}" class="alert alert-info py-2">
                 <i class="bi bi-send-plus"></i>
-                Dados pre-preenchidos a partir de uma solicitacao enviada pelo Portal do Solicitante.
+                Dados pre-preenchidos a partir de uma solicitação enviada pelo Portal do Solicitante.
                 Confira os dados e escolha os avaliadores normalmente.
             </div>
             <div th:if="${#fields.hasGlobalErrors()}" class="alert alert-danger">
@@ -22,16 +22,16 @@
             </div>
             <div class="row g-3">
                 <div class="col-md-3" th:unless="${numeracaoAutomatica}">
-                    <label class="form-label" th:for="numero">Numero (NN/AAAA) *</label>
+                    <label class="form-label" th:for="numero">Número (NN/AAAA) *</label>
                     <input type="text" th:field="*{numero}" class="form-control" placeholder="01/2026" th:classappend="${#fields.hasErrors('numero')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('numero')} ? 'true' : null,aria-describedby=${#fields.hasErrors('numero')} ? 'numeroErro' : null">
                     <div class="invalid-feedback d-block" id="numeroErro" role="alert" th:errors="*{numero}"></div>
                 </div>
                 <div class="col-md-3" th:if="${numeracaoAutomatica}">
-                    <label class="form-label" for="numeroAutomaticoInfo">Numero</label>
+                    <label class="form-label" for="numeroAutomaticoInfo">Número</label>
                     <input type="text" id="numeroAutomaticoInfo" class="form-control" value="Gerado automaticamente" disabled>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label" th:for="dataSituacaoEspecial">Data de solicitacao da urgencia renal *</label>
+                    <label class="form-label" th:for="dataSituacaoEspecial">Data de solicitação da urgência renal *</label>
                     <input type="date" th:field="*{dataSituacaoEspecial}" class="form-control" th:classappend="${#fields.hasErrors('dataSituacaoEspecial')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('dataSituacaoEspecial')} ? 'true' : null,aria-describedby=${#fields.hasErrors('dataSituacaoEspecial')} ? 'dataSituacaoEspecialErro' : null">
                     <div class="invalid-feedback d-block" id="dataSituacaoEspecialErro" role="alert" th:errors="*{dataSituacaoEspecial}"></div>
                 </div>
@@ -69,24 +69,24 @@
 
             <hr>
             <h2 class="h6 text-muted">
-                Medicos avaliadores
+                Médicos avaliadores
                 <span class="badge bg-secondary" id="contador">0</span> /
                 <span th:text="${totalAvaliadores}">3</span>
             </h2>
-            <p class="small text-muted">Selecione exatamente <span th:text="${totalAvaliadores}">3</span> medicos.</p>
+            <p class="small text-muted">Selecione exatamente <span th:text="${totalAvaliadores}">3</span> médicos.</p>
             <div class="row g-2" id="listaMedicos" th:attr="data-max-avaliadores=${totalAvaliadores}">
                 <div class="col-md-6" th:each="m : ${medicos}">
                     <div class="form-check border rounded p-2 ps-4">
                         <input class="form-check-input medico-check" type="checkbox" name="medicoIds"
                                th:value="${m.id}" th:id="'med' + ${m.id}">
-                        <label class="form-check-label" th:for="'med' + ${m.id}" th:text="${m.rotulo}">Medico</label>
+                        <label class="form-check-label" th:for="'med' + ${m.id}" th:text="${m.rotulo}">Médico</label>
                     </div>
                 </div>
             </div>
 
             <hr>
             <div>
-                <label class="form-label" th:for="observacoes">Observacoes</label>
+                <label class="form-label" th:for="observacoes">Observações</label>
                 <textarea th:field="*{observacoes}" class="form-control" rows="2"></textarea>
             </div>
         </div>

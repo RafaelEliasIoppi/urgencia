@@ -6,7 +6,7 @@
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4" style="max-width: 640px;">
-    <h1 class="h3 mb-3" th:text="${registro.id} ? 'Editar urgencia' : 'Nova urgencia'">Urgencia</h1>
+    <h1 class="h3 mb-3" th:text="${registro.id} ? 'Editar urgência' : 'Nova urgência'">Urgência</h1>
 
     <form th:action="@{/controle-urgencias}" th:object="${registro}" method="post" class="card">
         <div class="card-body">
@@ -51,7 +51,7 @@
                     </div>
                     <div class="form-text text-muted" th:if="${registro.id != null}">
                         Use para <strong>corrigir</strong> a data. Para prorrogar por mais
-                        30 dias, use o botao <strong>Renovar</strong> na lista.
+                        30 dias, use o botão <strong>Renovar</strong> na lista.
                     </div>
                 </div>
             </div>
@@ -62,7 +62,7 @@
             </div>
 
             <div class="mb-3">
-                <label class="form-label" th:for="observacoes">Observacoes</label>
+                <label class="form-label" th:for="observacoes">Observações</label>
                 <textarea th:field="*{observacoes}" class="form-control" rows="3"></textarea>
             </div>
         </div>

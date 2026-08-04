@@ -20,8 +20,8 @@
             <div th:if="${sucesso}" class="alert alert-success py-2" th:text="${msgRedefinicao}"></div>
             <div th:if="${erroRedefinicao}" class="alert alert-danger py-2" th:text="${erroRedefinicao}"></div>
             <p class="text-muted small mb-3" th:unless="${sucesso}">
-                Informe seu login para receber uma senha temporaria.
-                Apos o login, troque a senha na edicao do seu perfil.
+                Informe seu login para receber uma senha temporária.
+                Após o login, troque a senha na edição do seu perfil.
             </p>
             <form th:action="@{/usuarios/esqueci-senha}" method="post" th:unless="${sucesso}">
                 <div class="mb-3">
