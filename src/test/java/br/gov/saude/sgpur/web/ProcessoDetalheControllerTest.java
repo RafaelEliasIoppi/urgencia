@@ -778,20 +778,25 @@ class ProcessoDetalheControllerTest {
                 "gerado automaticamente pelo sistema")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "Confira o conteúdo")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "regerá o ofício anexado")))
+            // As datas do oficio nao sao mais editaveis: a tela mostra a data
+            // que o sistema gravou, sem <input type="date"> (2026-08-04).
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("name=\"dataEmissaoOficio\""))))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("name=\"dataEnvioOficio\""))))
             // numeracao propria do oficio, distinta do numero do processo
             .andExpect(content().string(org.hamcrest.Matchers.containsString("0007/2026")));
     }
 
     /**
-     * Mesma aba num processo DEFERIDO: o campo de data de envio ao SNT tem de
-     * existir (item 4 do relatorio) - antes a unica data disponivel era a de
-     * upload do arquivo no sistema.
+     * Mesma aba num processo DEFERIDO: a data de envio ao SNT e EXIBIDA, mas
+     * NAO e mais um campo editavel (2026-08-04) - ela e gravada no momento em
+     * que o comprovante e anexado. Um <input type="date"> aqui aceitaria data
+     * retroativa, o que e inadmissivel num processo administrativo.
      */
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void abaFinalizacaoOfereceADataDeEnvioAoSntEmProcessoDeferido() throws Exception {
+    void abaFinalizacaoMostraADataDeEnvioAoSntSemCampoEditavel() throws Exception {
         processo.setStatus(StatusProcesso.DEFERIDO);
         when(fluxoService.calcularGating(processo)).thenReturn(
             new FluxoProcessoService.GatingAbas(true, true, true, true, true));
@@ -799,7 +804,10 @@ class ProcessoDetalheControllerTest {
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
             .andExpect(content().string(org.hamcrest.Matchers.containsString("Data de envio ao SNT")))
-            .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"dataEnvioSnt\"")));
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "registrada automaticamente ao anexar o comprovante")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("name=\"dataEnvioSnt\""))));
     }
 
     /** Anexo em staging (veio do portal, ainda nao revisado) vinculado ao processo. */

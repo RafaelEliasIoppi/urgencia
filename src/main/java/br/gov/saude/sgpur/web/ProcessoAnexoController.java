@@ -3,7 +3,6 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.*;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
-import br.gov.saude.sgpur.service.DecisaoFinalService;
 import br.gov.saude.sgpur.service.GeminiService;
 import br.gov.saude.sgpur.service.OficioService;
 import br.gov.saude.sgpur.service.ProcessoService;
@@ -27,7 +26,6 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.LocalDate;
 
 /**
  * Passos 5 e 6 do fluxo (oficio/comprovante e resposta ao solicitante) e o
@@ -43,8 +41,8 @@ import java.time.LocalDate;
  * QUATRO uploads e a confirmacao da resposta ao solicitante: um arquivo com
  * extensao nao permitida (ou um comprovante SNT faltando) devolvia "Erro
  * interno" em vez da mensagem de negocio. Os metodos que nao tem esse
- * {@code try/catch} mas precisam de sessao aberta ({@link #finalizacao},
- * {@link #excluirAnexo}) declaram {@code @Transactional} no proprio metodo; os
+ * {@code try/catch} mas precisam de sessao aberta ({@link #excluirAnexo})
+ * declaram {@code @Transactional} no proprio metodo; os
  * GET de download/PDF ja tinham {@code @Transactional(readOnly = true)} proprio.
  */
 @Controller
@@ -58,7 +56,6 @@ public class ProcessoAnexoController {
     private final OficioService oficioService;
     private final RelatorioService relatorioService;
     private final GeminiService geminiService;
-    private final DecisaoFinalService decisaoFinalService;
 
     public ProcessoAnexoController(ProcessoService processoService,
                                    ProcessoValidator validator,
@@ -66,8 +63,7 @@ public class ProcessoAnexoController {
                                    AuditoriaService auditoria,
                                    OficioService oficioService,
                                    RelatorioService relatorioService,
-                                   GeminiService geminiService,
-                                   DecisaoFinalService decisaoFinalService) {
+                                   GeminiService geminiService) {
         this.processoService = processoService;
         this.validator = validator;
         this.anexoStorage = anexoStorage;
@@ -75,7 +71,6 @@ public class ProcessoAnexoController {
         this.oficioService = oficioService;
         this.relatorioService = relatorioService;
         this.geminiService = geminiService;
-        this.decisaoFinalService = decisaoFinalService;
     }
 
     /**
@@ -114,61 +109,26 @@ public class ProcessoAnexoController {
         anexoStorage.removerAntigosDoTipo(p, tipo, novo.getId());
     }
 
-    /**
-     * Atualiza as datas da aba Finalizacao: emissao/envio do oficio
-     * (INDEFERIDO) ou data de envio ao SNT (DEFERIDO).
+    /*
+     * O endpoint POST /{id}/finalizacao (campos "data de emissao/envio do
+     * oficio" e "data de envio ao SNT") FOI REMOVIDO em 2026-08-04.
      *
-     * <p><b>Sem {@code @Transactional} de metodo (mudou em 2026-08-04).</b> A
-     * escrita das datas passou a ser feita por
-     * {@code ProcessoService.atualizarDatasFinalizacao}, que carrega o processo
-     * dentro da PROPRIA transacao (dirty check na entidade gerenciada, mesma
-     * garantia de antes). Isso e o que permite regerar o oficio logo em
-     * seguida dentro de um {@code try/catch}: com transacao de controller, a
-     * falha capturada la dentro marcaria a transacao compartilhada como
-     * rollback-only e o commit final estouraria {@code UnexpectedRollbackException}
-     * (500 cru) — o mesmo bug ja documentado no javadoc desta classe.</p>
+     * Regra do sistema, decidida pelo usuario: a data de um ato registrado por
+     * anexo e o MOMENTO DO ANEXO, gravada pelo relogio do servidor - nunca um
+     * <input type="date"> na tela, que aceitava data retroativa (ou futura).
+     * Num processo administrativo isso e inadmissivel: a data precisa ser a do
+     * ato real, nao a que alguem escolheu digitar. Hoje:
      *
-     * <p><b>Regera o oficio</b> (INDEFERIDO): sem isso, a tela e o relatorio
-     * final passavam a mostrar a data nova enquanto o PDF anexado — que e o
-     * que chega a equipe solicitante por e-mail — continuava com a data
-     * antiga.</p>
+     *   - dataEmissaoOficio -> gravada ao anexar/gerar o oficio
+     *     (DecisaoFinalService na decisao, uploadOficio no upload manual);
+     *   - dataEnvioSnt      -> gravada ao anexar o comprovante SNT;
+     *   - dataEnvioOficio   -> gravada quando a resposta com o oficio sai de
+     *     fato para o solicitante (ProcessoService.finalizarResposta).
+     *
+     * Some junto a regeracao do oficio "com as datas novas" que este endpoint
+     * disparava: sem edicao de data, nao ha divergencia possivel entre a tela
+     * e o PDF anexado.
      */
-    @PostMapping("/{id}/finalizacao")
-    public String finalizacao(@PathVariable Long id,
-                              @RequestParam(required = false)
-                              @org.springframework.format.annotation.DateTimeFormat(iso =
-                                  org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
-                              LocalDate dataEmissaoOficio,
-                              @RequestParam(required = false)
-                              @org.springframework.format.annotation.DateTimeFormat(iso =
-                                  org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
-                              LocalDate dataEnvioOficio,
-                              @RequestParam(required = false)
-                              @org.springframework.format.annotation.DateTimeFormat(iso =
-                                  org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
-                              LocalDate dataEnvioSnt,
-                              RedirectAttributes ra) {
-        Processo p = processoService.buscar(id);
-        if (p.getStatus() != StatusProcesso.INDEFERIDO && p.getStatus() != StatusProcesso.DEFERIDO) {
-            ra.addFlashAttribute("erro",
-                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos.");
-            return "redirect:/processos/" + id + "#finalizacao";
-        }
-        processoService.atualizarDatasFinalizacao(id, dataEmissaoOficio, dataEnvioOficio, dataEnvioSnt);
-        if (p.getStatus() == StatusProcesso.INDEFERIDO) {
-            try {
-                decisaoFinalService.regerarOficio(id);
-                ra.addFlashAttribute("msg",
-                    "Dados de finalizacao atualizados e oficio regerado com as datas novas.");
-            } catch (RuntimeException e) {
-                ra.addFlashAttribute("aviso", "Datas salvas, mas nao foi possivel regerar o oficio: "
-                    + e.getMessage() + " O oficio anexado pode estar com a data anterior.");
-            }
-        } else {
-            ra.addFlashAttribute("msg", "Dados de finalizacao atualizados.");
-        }
-        return "redirect:/processos/" + id + "#finalizacao";
-    }
 
     /**
      * Upload do Oficio de Indeferimento na aba Finalizacao (so para processos
@@ -193,9 +153,15 @@ public class ProcessoAnexoController {
         }
         try {
             substituirAnexo(p, TipoAnexo.OFICIO_INDEFERIMENTO, arquivo);
+            // A data de emissao do oficio e o momento em que ESTE documento
+            // entrou no sistema - o upload manual substitui o oficio anterior,
+            // entao a data acompanha o arquivo novo. Nunca digitada: ver
+            // ProcessoService.registrarDataEmissaoOficio.
+            processoService.registrarDataEmissaoOficio(id);
             auditoria.registrar("ANEXO_ADICIONADO",
                 "Processo " + p.getNumero() + " - " + TipoAnexo.OFICIO_INDEFERIMENTO.getDescricao());
-            ra.addFlashAttribute("msg", "Oficio de indeferimento anexado.");
+            ra.addFlashAttribute("msg",
+                "Oficio de indeferimento anexado (data de emissao registrada com a data de hoje).");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar o oficio: " + e.getMessage());
         }
@@ -239,9 +205,13 @@ public class ProcessoAnexoController {
         try {
             substituirAnexo(p, TipoAnexo.COMPROVANTE_SNT,
                 "Comprovante de insercao da urgencia renal no SNT", arquivo);
+            // Data de envio ao SNT = momento do anexo (nunca digitada) - ver
+            // ProcessoService.registrarDataEmissaoOficio para a regra.
+            processoService.registrarDataEnvioSnt(id);
             auditoria.registrar("ANEXO_ADICIONADO",
                 "Processo " + p.getNumero() + " - " + TipoAnexo.COMPROVANTE_SNT.getDescricao());
-            ra.addFlashAttribute("msg", "Comprovante SNT anexado.");
+            ra.addFlashAttribute("msg",
+                "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje).");
         } catch (IllegalArgumentException | IOException e) {
             ra.addFlashAttribute("erro", "Falha ao anexar o comprovante SNT: " + e.getMessage());
         }

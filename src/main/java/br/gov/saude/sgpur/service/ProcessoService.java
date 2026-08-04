@@ -438,30 +438,44 @@ public class ProcessoService {
     }
 
     /**
-     * Grava as datas da aba Finalizacao (passo 5) de acordo com o status:
-     * emissao/envio do oficio para INDEFERIDO, data de envio ao SNT para
-     * DEFERIDO. As datas sao todas opcionais (o operador pode salvar so uma).
+     * Registra a data em que o documento correspondente entrou no sistema,
+     * SEMPRE com a data de hoje (relogio do servidor) e NUNCA com uma data
+     * digitada.
      *
-     * <p>Transacao propria e carregamento por id DENTRO dela: o metodo altera
-     * a entidade GERENCIADA (dirty check), sem depender de um merge de
-     * entidade desanexada com colecoes {@code cascade = ALL} nao
-     * inicializadas — mesmo motivo documentado em
-     * {@code ProcessoAnexoController}.</p>
+     * <p><b>Regra do sistema (2026-08-04, decisao do usuario):</b> a data de
+     * um ato registrado por anexo e o MOMENTO DO ANEXO. Antes, a aba
+     * Finalizacao tinha campos {@code <input type="date">} para "data de
+     * emissao do oficio", "data de envio do oficio" e "data de envio ao SNT" —
+     * qualquer um deles aceitava data retroativa (ou futura), o que e
+     * inadmissivel num processo administrativo: a data registrada precisa ser
+     * a data real do ato, nao a que alguem escolheu digitar. Os campos e o
+     * endpoint que os gravava foram removidos; quem chama este metodo sao os
+     * proprios pontos de anexo/envio.
+     *
+     * <p>NAO se aplica a datas que sao FATO DO MUNDO REAL informado por
+     * terceiro, e nao registro de um ato do sistema — {@code
+     * dataSituacaoEspecial} (quando a situacao de urgencia comecou, informada
+     * pela equipe solicitante) continua sendo um campo preenchido a mao, como
+     * deve ser.
+     *
+     * <p>Transacao propria e carregamento por id DENTRO dela: altera a
+     * entidade GERENCIADA (dirty check), sem depender de merge de entidade
+     * desanexada com colecoes {@code cascade = ALL} nao inicializadas — mesmo
+     * motivo documentado em {@code ProcessoAnexoController}.
      */
     @Transactional
-    public Processo atualizarDatasFinalizacao(Long id, LocalDate dataEmissaoOficio,
-                                              LocalDate dataEnvioOficio, LocalDate dataEnvioSnt) {
+    public void registrarDataEmissaoOficio(Long id) {
         Processo p = buscar(id);
-        if (p.getStatus() == StatusProcesso.INDEFERIDO) {
-            p.setDataEmissaoOficio(dataEmissaoOficio);
-            p.setDataEnvioOficio(dataEnvioOficio);
-        } else if (p.getStatus() == StatusProcesso.DEFERIDO) {
-            p.setDataEnvioSnt(dataEnvioSnt);
-        } else {
-            throw new IllegalStateException(
-                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos.");
-        }
-        return processoRepository.save(p);
+        p.setDataEmissaoOficio(LocalDate.now());
+        processoRepository.save(p);
+    }
+
+    /** Ver {@link #registrarDataEmissaoOficio}: data do anexo do comprovante SNT. */
+    @Transactional
+    public void registrarDataEnvioSnt(Long id) {
+        Processo p = buscar(id);
+        p.setDataEnvioSnt(LocalDate.now());
+        processoRepository.save(p);
     }
 
     /**
@@ -628,6 +642,14 @@ public class ProcessoService {
 
         p.setMensagemResposta(template.corpo());
         p.setEmailEnviadoSolicitante(true);
+        // "Data de envio do oficio" e o momento em que o oficio de fato saiu
+        // para a equipe solicitante - que e AQUI, no envio da resposta com o
+        // PDF anexado. Antes era um <input type="date"> na tela, aceitando
+        // qualquer data digitada (inclusive retroativa). Ver
+        // registrarDataEmissaoOficio para a regra geral.
+        if (p.getStatus() == StatusProcesso.INDEFERIDO) {
+            p.setDataEnvioOficio(LocalDate.now());
+        }
         return processoRepository.save(p);
     }
 

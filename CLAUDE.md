@@ -1696,10 +1696,8 @@ issue/branch aberta para isso, só o registro no relatório.
      Deferidos sem `TipoAnexo.COMPROVANTE_SNT`, via query dedicada (sem N+1).
    - Badge de aviso na lista de processos + filtro `?filtro=snt-pendente`
      (`ProcessoListaController`/`lista.html`).
-   - Campo `Processo.dataEnvioSnt` (`LocalDate`, nullable) — a data em que a
-     urgência foi de fato inserida/enviada ao SNT, distinta da data de
-     upload do anexo no sistema. Editável no mesmo formulário/endpoint das
-     datas do ofício.
+   - Campo `Processo.dataEnvioSnt` (`LocalDate`, nullable). **Deixou de ser
+     editável em 2026-08-04 (mesmo dia) — ver a regra de datas logo abaixo.**
    - **Lembrete automático diário por e-mail**, mecanismo novo (não existia
      nada equivalente automático antes — o lembrete de avaliador pendente é
      manual, clicado pelo operador): `ComprovanteSntLembreteScheduler`
@@ -1732,6 +1730,47 @@ do merge — **735 testes, 0 falhas** (JDK 21). Novos testes de integração
 salvar datas (escrita irreversível, seguindo a convenção do projeto) e para
 o scheduler de lembrete SNT (elegibilidade, não reenvio antes do prazo,
 exclusão de processos já com comprovante).
+
+## Regra de datas: data de ato = momento do anexo, nunca digitada (2026-08-04)
+
+**Decisão de produto do usuário, vale para todo o sistema.** A data de um ato
+registrado por anexo é o **momento em que o anexo entra no sistema**, gravada
+pelo relógio do servidor. Um `<input type="date">` para essas datas aceita
+**data retroativa** (ou futura) — inadmissível num processo administrativo,
+onde a data registrada precisa ser a do ato real, não a que alguém escolheu
+digitar.
+
+Removidos: os 3 campos de data da aba Finalização (`dataEmissaoOficio`,
+`dataEnvioOficio`, `dataEnvioSnt`) e o endpoint que os gravava,
+`POST /processos/{id}/finalizacao` (`ProcessoAnexoController.finalizacao` +
+`ProcessoService.atualizarDatasFinalizacao`). Onde cada data é gravada hoje:
+
+| Campo | Gravado em |
+|---|---|
+| `dataEmissaoOficio` | geração do ofício na decisão (`DecisaoFinalService.gerarDocumentos`) **e** upload manual (`ProcessoAnexoController.uploadOficio` → `ProcessoService.registrarDataEmissaoOficio`) |
+| `dataEnvioSnt` | upload do comprovante (`uploadComprovanteSnt` → `registrarDataEnvioSnt`) |
+| `dataEnvioOficio` | envio real da resposta ao solicitante (`ProcessoService.finalizarResposta`, só INDEFERIDO) |
+
+A gravação da data acontece **depois** do anexo ter sido salvo com sucesso —
+anexo recusado (extensão fora da allowlist, disco cheio) **não** move a data,
+senão a tela exibiria a data de um documento que nunca entrou (coberto por
+teste). Sumiu junto a regeneração do ofício "com as datas novas" que aquele
+endpoint disparava, e com ela `DecisaoFinalService.regerarOficio(Long)` (sem
+chamador) e a dependência de `DecisaoFinalService` no
+`ProcessoAnexoController`: sem edição de data não há divergência possível
+entre a data da tela e a impressa no PDF anexado.
+
+**A regra NÃO se aplica a data que é fato do mundo real informado por
+terceiro**, e não registro de um ato do sistema: `dataSituacaoEspecial`
+(quando a situação de urgência começou, informada pela equipe solicitante)
+continua sendo campo preenchido à mão — inclusive com data passada, que é o
+caso normal. `ControleUrgencia.dataVencimento` também segue editável: é um
+**prazo futuro**, não o registro de um ato ocorrido.
+
+Coberto por `DatasFinalizacaoIntegrationTest` (`@SpringBootTest` + H2 + PDF
+real, renomeado de `OficioRegeracaoDatasIntegrationTest`) e por um teste em
+`ProcessoAnexoControllerTest` que trava a **remoção** do endpoint (404) — se
+alguém reintroduzir a edição manual, a suíte falha.
 
 ## UI da área do operador — 5 fases EXECUTADAS (2026-08-04)
 

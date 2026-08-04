@@ -105,77 +105,25 @@ class ProcessoAnexoControllerTest {
         return out.toByteArray();
     }
 
-    // ----- finalizacao -----
+    // ----- datas de finalizacao: gravadas pelo sistema, nunca digitadas -----
 
+    /**
+     * O endpoint POST /{id}/finalizacao (campos de data editaveis) foi
+     * REMOVIDO em 2026-08-04: a data de um ato registrado por anexo passou a
+     * ser sempre o momento do anexo, pelo relogio do servidor. Um <input
+     * type="date"> aceitava data retroativa, o que e inadmissivel num
+     * processo administrativo. Este teste trava a remocao - se alguem
+     * reintroduzir o endpoint, ele falha.
+     */
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void finalizacaoAtualizaAsDatasDoOficioERegeraOAnexo() throws Exception {
+    void endpointDeEdicaoManualDeDatasNaoExisteMais() throws Exception {
         processo.setStatus(StatusProcesso.INDEFERIDO);
-        mvc.perform(post("/processos/1/finalizacao")
-                .param("dataEmissaoOficio", "2026-07-01")
-                .param("dataEnvioOficio", "2026-07-02")
-                .with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(redirectedUrl("/processos/1#finalizacao"))
-            .andExpect(flash().attribute("msg",
-                "Dados de finalizacao atualizados e oficio regerado com as datas novas."));
-
-        verify(processoService).atualizarDatasFinalizacao(1L,
-            java.time.LocalDate.of(2026, 7, 1), java.time.LocalDate.of(2026, 7, 2), null);
-        // Sem isso, a tela mostraria a data nova e o PDF anexado (o que chega
-        // a equipe solicitante por e-mail) continuaria com a data antiga.
-        verify(decisaoFinalService).regerarOficio(1L);
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void finalizacaoAvisaSemQuebrarQuandoARegeracaoDoOficioFalha() throws Exception {
-        processo.setStatus(StatusProcesso.INDEFERIDO);
-        doThrow(new IllegalStateException("disco cheio"))
-            .when(decisaoFinalService).regerarOficio(1L);
 
         mvc.perform(post("/processos/1/finalizacao")
-                .param("dataEmissaoOficio", "2026-07-01")
+                .param("dataEmissaoOficio", "2020-01-01")
                 .with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attributeExists("aviso"));
-
-        // As datas ficam salvas mesmo assim (a chamada ja aconteceu antes).
-        verify(processoService).atualizarDatasFinalizacao(1L,
-            java.time.LocalDate.of(2026, 7, 1), null, null);
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void finalizacaoGravaADataDeEnvioAoSntEmProcessoDeferido() throws Exception {
-        processo.setStatus(StatusProcesso.DEFERIDO);
-
-        mvc.perform(post("/processos/1/finalizacao")
-                .param("dataEnvioSnt", "2026-07-05")
-                .with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("msg", "Dados de finalizacao atualizados."));
-
-        verify(processoService).atualizarDatasFinalizacao(1L, null, null,
-            java.time.LocalDate.of(2026, 7, 5));
-        // Deferido nao tem oficio nenhum a regerar.
-        verify(decisaoFinalService, never()).regerarOficio(anyLong());
-    }
-
-    @Test
-    @WithMockUser(roles = "OPERADOR")
-    void finalizacaoRecusaProcessoAindaNaoDecidido() throws Exception {
-        processo.setStatus(StatusProcesso.ENVIADO);
-
-        mvc.perform(post("/processos/1/finalizacao")
-                .param("dataEmissaoOficio", "2026-07-01")
-                .with(csrf()))
-            .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("erro",
-                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos."));
-
-        verify(processoService, never()).atualizarDatasFinalizacao(any(), any(), any(), any());
-        verify(decisaoFinalService, never()).regerarOficio(anyLong());
+            .andExpect(status().isNotFound());
     }
 
     // ----- oficio-upload -----
@@ -204,7 +152,7 @@ class ProcessoAnexoControllerTest {
 
         mvc.perform(multipart("/processos/1/oficio-upload").file(arquivo).with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("msg", "Oficio de indeferimento anexado."));
+            .andExpect(flash().attribute("msg", "Oficio de indeferimento anexado (data de emissao registrada com a data de hoje)."));
 
         verify(anexoStorage).salvar(eq(processo), eq(TipoAnexo.OFICIO_INDEFERIMENTO), anyString(), eq(arquivo));
         verify(auditoria).registrar(eq("ANEXO_ADICIONADO"), anyString());
@@ -278,9 +226,48 @@ class ProcessoAnexoControllerTest {
 
         mvc.perform(multipart("/processos/1/comprovante-snt").file(arquivo).with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("msg", "Comprovante SNT anexado."));
+            .andExpect(flash().attribute("msg",
+                "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje)."));
 
         verify(auditoria).registrar(eq("ANEXO_ADICIONADO"), anyString());
+        // A data de envio ao SNT e gravada aqui, no momento do anexo - nao ha
+        // mais campo na tela para digita-la (nem retroativamente).
+        verify(processoService).registrarDataEnvioSnt(1L);
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void uploadDoOficioRegistraADataDeEmissaoComADataDeHoje() throws Exception {
+        processo.setStatus(StatusProcesso.INDEFERIDO);
+        MockMultipartFile arquivo = new MockMultipartFile("arquivo", "oficio.pdf",
+            "application/pdf", "conteudo".getBytes());
+
+        mvc.perform(multipart("/processos/1/oficio-upload").file(arquivo).with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(flash().attribute("msg",
+                "Oficio de indeferimento anexado (data de emissao registrada com a data de hoje)."));
+
+        verify(processoService).registrarDataEmissaoOficio(1L);
+    }
+
+    /**
+     * Se o anexo falhar, a data NAO pode avancar - senao o processo passaria a
+     * exibir uma data de emissao/envio de um documento que nunca entrou.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void anexoQueFalhaNaoRegistraDataNenhuma() throws Exception {
+        processo.setStatus(StatusProcesso.DEFERIDO);
+        when(anexoStorage.salvar(any(), any(), any(), any()))
+            .thenThrow(new IllegalArgumentException("extensao nao permitida"));
+        MockMultipartFile arquivo = new MockMultipartFile("arquivo", "snt.exe",
+            "application/octet-stream", "conteudo".getBytes());
+
+        mvc.perform(multipart("/processos/1/comprovante-snt").file(arquivo).with(csrf()))
+            .andExpect(status().is3xxRedirection())
+            .andExpect(flash().attributeExists("erro"));
+
+        verify(processoService, never()).registrarDataEnvioSnt(anyLong());
     }
 
     @Test
@@ -298,7 +285,7 @@ class ProcessoAnexoControllerTest {
 
         mvc.perform(multipart("/processos/1/comprovante-snt").file(arquivo).with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("msg", "Comprovante SNT anexado."));
+            .andExpect(flash().attribute("msg", "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje)."));
     }
 
     @Test
@@ -316,7 +303,7 @@ class ProcessoAnexoControllerTest {
 
         mvc.perform(multipart("/processos/1/comprovante-snt").file(arquivo).with(csrf()))
             .andExpect(status().is3xxRedirection())
-            .andExpect(flash().attribute("msg", "Comprovante SNT anexado."));
+            .andExpect(flash().attribute("msg", "Comprovante SNT anexado (data de envio ao SNT registrada com a data de hoje)."));
     }
 
     // ----- anexos (upload generico) -----
