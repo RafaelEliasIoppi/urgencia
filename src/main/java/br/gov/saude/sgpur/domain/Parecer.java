@@ -76,6 +76,22 @@ public class Parecer {
     private LocalDateTime conviteEnviadoEm;
 
     /**
+     * Quando o LEMBRETE manual ao avaliador foi disparado pela ultima vez
+     * ({@code ProcessoDecisaoController.lembreteAvaliador}/{@code lembretePendentes}).
+     * Nulo enquanto nenhum lembrete foi enviado a este parecer. Distinto de
+     * {@code conviteEnviadoEm} (o convite AUTOMATICO disparado uma vez ao
+     * registrar o envio) - este campo acompanha os lembretes manuais
+     * repetidos que o operador dispara depois, para saber se ja lembrou hoje
+     * ou ha 2 semanas sem precisar consultar a auditoria. Nullable de
+     * proposito: coluna nova numa tabela ja populada nasce NULL, que e
+     * semanticamente correto ("nunca lembrado") e dispensa backfill manual em
+     * prod (ao contrario de uma coluna tratada como obrigatoria, ex.
+     * @Version - ver CLAUDE.md).
+     */
+    @Column(name = "ultimo_lembrete_em")
+    private LocalDateTime ultimoLembreteEm;
+
+    /**
      * Username de quem registrou o voto (para nao-repudio). Operador que lancou
      * o resultado em nome do medico, ou o proprio medico autenticado.
      */
@@ -191,6 +207,14 @@ public class Parecer {
 
     public void setConviteEnviadoEm(LocalDateTime conviteEnviadoEm) {
         this.conviteEnviadoEm = conviteEnviadoEm;
+    }
+
+    public LocalDateTime getUltimoLembreteEm() {
+        return ultimoLembreteEm;
+    }
+
+    public void setUltimoLembreteEm(LocalDateTime ultimoLembreteEm) {
+        this.ultimoLembreteEm = ultimoLembreteEm;
     }
 
     public String getVotadoPor() {

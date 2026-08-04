@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.AnexoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.MensagemSolicitacao;
+import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.StatusSolicitacaoOnline;
@@ -18,6 +19,8 @@ import br.gov.saude.sgpur.service.RascunhoSolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.domain.StatusProcesso;
+import br.gov.saude.sgpur.web.dto.SituacaoPedidoView;
+import br.gov.saude.sgpur.web.dto.SituacaoPedidoView.AnexoDownload;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -275,8 +278,10 @@ public class SolicitanteController {
         // aceitaria (ver SolicitacaoOnlineService.podeCancelar).
         model.addAttribute("podeCancelar", solicitacaoService.podeCancelar(s));
         model.addAttribute("diasEspera", solicitacaoService.diasEspera(s));
-        model.addAttribute("precisaInformacaoComplementar", solicitacaoService.precisaInformacaoComplementar(s));
-        model.addAttribute("jaEnviouInfoComplementar", solicitacaoService.jaEnviouInformacaoComplementarNestaRodada(s));
+        boolean precisaInformacaoComplementar = solicitacaoService.precisaInformacaoComplementar(s);
+        boolean jaEnviouInfoComplementar = solicitacaoService.jaEnviouInformacaoComplementarNestaRodada(s);
+        model.addAttribute("precisaInformacaoComplementar", precisaInformacaoComplementar);
+        model.addAttribute("jaEnviouInfoComplementar", jaEnviouInfoComplementar);
         // Previsao de prazo (so faz sentido enquanto os avaliadores estao de fato
         // analisando - nao antes da triagem, nem pausado em "Solicita informacao"
         // (aguardando o proprio solicitante), nem depois de decidido). Baseada na
@@ -284,15 +289,24 @@ public class SolicitanteController {
         // nao uma promessa de prazo formal - so uma referencia pro solicitante.
         boolean emAnaliseAtiva = s.getProcessoGerado() != null
             && s.getProcessoGerado().getStatus() == StatusProcesso.ENVIADO;
-        model.addAttribute("previsaoPrazo", emAnaliseAtiva
+        String previsaoPrazo = emAnaliseAtiva
             ? TempoRespostaService.formatarDias(tempoRespostaService.calcular().mediaGeralDias())
-            : null);
+            : null;
+        model.addAttribute("previsaoPrazo", previsaoPrazo);
+        Anexo comprovanteSnt = null;
+        Anexo oficioIndeferimento = null;
         if (s.getProcessoGerado() != null) {
-            model.addAttribute("comprovanteSntAnexo",
-                anexoStorageProcesso.buscarUltimoPorTipo(s.getProcessoGerado().getId(), TipoAnexo.COMPROVANTE_SNT));
-            model.addAttribute("oficioIndeferimentoAnexo",
-                anexoStorageProcesso.buscarUltimoPorTipo(s.getProcessoGerado().getId(), TipoAnexo.OFICIO_INDEFERIMENTO));
+            comprovanteSnt = anexoStorageProcesso.buscarUltimoPorTipo(s.getProcessoGerado().getId(), TipoAnexo.COMPROVANTE_SNT);
+            oficioIndeferimento = anexoStorageProcesso.buscarUltimoPorTipo(s.getProcessoGerado().getId(), TipoAnexo.OFICIO_INDEFERIMENTO);
+            model.addAttribute("comprovanteSntAnexo", comprovanteSnt);
+            model.addAttribute("oficioIndeferimentoAnexo", oficioIndeferimento);
         }
+        // Cartao de situacao unico (Fase 6 do relatorio de UI): toda a decisao
+        // de status/cor/texto e feita AQUI, uma unica vez - o template so
+        // consome situacao.*, nunca recalcula a regra sozinho.
+        model.addAttribute("situacao", montarSituacaoPedido(
+            s, precisaInformacaoComplementar, jaEnviouInfoComplementar,
+            comprovanteSnt, oficioIndeferimento, previsaoPrazo));
         List<MensagemSolicitacao> mensagens = mensagemService.listarPorSolicitacao(id);
         model.addAttribute("mensagens", mensagens);
         long msgNaoLidas = mensagens.stream()
@@ -306,6 +320,117 @@ public class SolicitanteController {
         model.addAttribute("chatAtivoNestaTela", true);
         mensagemService.marcarComoLidas(id, MensagemSolicitacao.RemetenteMensagem.OPERADOR, usuario.getId());
         return "solicitante/detalhe";
+    }
+
+    /**
+     * Fonte unica da regra de exibicao do "cartao de situacao" do detalhe do
+     * Portal do Solicitante (Fase 6 do relatorio de UI, 2026-08). Antes desta
+     * fase a mesma decisao de status vivia reescrita em 8 blocos
+     * {@code <alert>} diferentes no template, com vocabulario divergente
+     * ("Aprovada"/"Deferido"/"Pedido aprovado!" na mesma tela). Aqui ela e
+     * calculada uma unica vez.
+     *
+     * <p>Prioridade das checagens: primeiro o resultado FINAL do processo
+     * (Deferido/Indeferido/Cancelado), porque tanto o espelho antigo direto
+     * em {@link StatusSolicitacaoOnline#APROVADA}/{@code REPROVADA} quanto o
+     * caminho atual ({@code CONVERTIDA} com {@link Processo#getStatus()} ja
+     * finalizado) tem que levar ao MESMO cartao — dados historicos anteriores
+     * ao ajuste do espelho de status (ver CLAUDE.md, "decidir espelha
+     * CANCELADO") podem estar em qualquer um dos dois formatos. Statuses sem
+     * processo (ENVIADA/DEVOLVIDA/CANCELADA/PROCESSO_EXCLUIDO) vem por
+     * ultimo, sao mutuamente exclusivos por definicao.
+     */
+    private SituacaoPedidoView montarSituacaoPedido(SolicitacaoOnline s, boolean precisaInfo,
+            boolean jaEnviouInfo, Anexo comprovanteSnt, Anexo oficioIndeferimento, String previsaoPrazo) {
+        Processo proc = s.getProcessoGerado();
+        String numero = proc != null ? proc.getNumero() : null;
+        boolean processoFinalizado = proc != null && proc.getStatus().isFinalizado();
+
+        boolean cancelado = s.getStatus() == StatusSolicitacaoOnline.CANCELADA
+            || (processoFinalizado && proc.getStatus() == StatusProcesso.CANCELADO);
+        if (cancelado) {
+            String mensagem = s.getStatus() == StatusSolicitacaoOnline.CANCELADA
+                ? "Você cancelou este pedido antes da triagem."
+                : "O processo " + numero + " gerado a partir deste pedido foi cancelado.";
+            return new SituacaoPedidoView("Cancelado", "secondary", "slash-circle-fill", "Cancelado", mensagem,
+                null, false, false, null, numero);
+        }
+
+        boolean deferido = s.getStatus() == StatusSolicitacaoOnline.APROVADA
+            || (processoFinalizado && proc.getStatus() == StatusProcesso.DEFERIDO);
+        if (deferido) {
+            AnexoDownload anexo = comprovanteSnt != null
+                ? new AnexoDownload(comprovanteSnt.getId(), "Baixar comprovante de inserção no SNT")
+                : null;
+            String mensagem = "Seu pedido (processo " + numero + ") foi analisado e DEFERIDO pela Central "
+                + "de Transplantes do Estado do Rio Grande do Sul, resultando no reconhecimento da urgência "
+                + "renal. A resposta oficial foi enviada por e-mail à sua equipe ("
+                + s.getSolicitanteEmail() + "), contendo o comprovante de inserção no Sistema Nacional de "
+                + "Transplantes (SNT) em anexo.";
+            String detalhe = proc != null ? proc.getMensagemResposta() : null;
+            return new SituacaoPedidoView("Deferido", "success", "check-circle-fill",
+                "Deferido — Urgência renal reconhecida", mensagem, detalhe, false, false, anexo, numero);
+        }
+
+        boolean indeferido = s.getStatus() == StatusSolicitacaoOnline.REPROVADA
+            || (processoFinalizado && proc.getStatus() == StatusProcesso.INDEFERIDO);
+        if (indeferido) {
+            AnexoDownload anexo = oficioIndeferimento != null
+                ? new AnexoDownload(oficioIndeferimento.getId(), "Baixar ofício de indeferimento")
+                : null;
+            String mensagem = "Seu pedido (processo " + numero + ") foi analisado e INDEFERIDO pela Central "
+                + "de Transplantes do Estado do Rio Grande do Sul, resultando no indeferimento da urgência "
+                + "renal. O ofício com os detalhes foi enviado por e-mail à sua equipe ("
+                + s.getSolicitanteEmail() + ").";
+            String motivo = proc != null ? proc.getMotivoIndeferimento() : null;
+            String mensagemResposta = proc != null ? proc.getMensagemResposta() : null;
+            String detalhe = motivo != null ? "Motivo informado: " + motivo : mensagemResposta;
+            return new SituacaoPedidoView("Indeferido", "danger", "x-circle-fill",
+                "Indeferido — Urgência renal não reconhecida", mensagem, detalhe, false, false, anexo, numero);
+        }
+
+        if (s.getStatus() == StatusSolicitacaoOnline.DEVOLVIDA) {
+            String mensagem = "Sua solicitação foi devolvida para correção. Esta solicitação não será "
+                + "reanalisada — envie uma nova com os ajustes indicados abaixo.";
+            return new SituacaoPedidoView("Devolvida", "danger", "arrow-return-left", "Devolvida para correção",
+                mensagem, s.getObservacoesTriagem(), false, true, null, null);
+        }
+
+        if (s.getStatus() == StatusSolicitacaoOnline.PROCESSO_EXCLUIDO) {
+            String mensagem = "Sua solicitação foi removida pela equipe de Urgência Renal (o processo "
+                + "gerado foi excluído). Se ainda for necessário, envie uma nova solicitação.";
+            return new SituacaoPedidoView("Processo excluído", "danger", "exclamation-triangle-fill",
+                "Processo excluído", mensagem, null, false, true, null, null);
+        }
+
+        if (s.getStatus() == StatusSolicitacaoOnline.CONVERTIDA) {
+            if (precisaInfo && !jaEnviouInfo) {
+                String mensagem = "Seu pedido virou o processo " + numero + ", mas um(a) avaliador(a) da "
+                    + "Urgência Renal pediu mais informações sobre este pedido. Envie os documentos/dados "
+                    + "solicitados abaixo para que a análise possa continuar.";
+                return new SituacaoPedidoView("Informação necessária", "warning", "exclamation-triangle-fill",
+                    "Informação complementar necessária", mensagem, null, true, false, null, numero);
+            }
+            if (precisaInfo) {
+                return new SituacaoPedidoView("Aguardando análise", "info", "check-circle-fill",
+                    "Informações complementares recebidas",
+                    "Aguardando a análise da equipe de Urgência Renal.", null, false, false, null, numero);
+            }
+            String mensagem = "Seu pedido virou um processo oficial e está em análise pelos médicos "
+                + "avaliadores.";
+            String detalhe = previsaoPrazo != null
+                ? "Previsão baseada no histórico: normalmente decidido em torno de " + previsaoPrazo
+                    + " após o envio para análise (não é um prazo formal, só uma referência)."
+                : null;
+            return new SituacaoPedidoView("Em análise", "primary", "hourglass-split", "Em análise", mensagem,
+                detalhe, false, false, null, numero);
+        }
+
+        // ENVIADA (default): ainda nao triada, nenhum processo gerado ainda.
+        String mensagem = "Não é necessário fazer nada agora. Assim que a equipe de Urgência Renal analisar "
+            + "o pedido, você será avisado por e-mail (" + s.getSolicitanteEmail() + ").";
+        return new SituacaoPedidoView("Aguardando triagem", "warning", "hourglass-split", "Aguardando triagem",
+            mensagem, null, false, false, null, null);
     }
 
     /**

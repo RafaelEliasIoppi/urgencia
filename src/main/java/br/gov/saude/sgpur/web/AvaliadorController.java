@@ -353,6 +353,23 @@ public class AvaliadorController {
             ra.addFlashAttribute("erro", "Parecer invalido: " + resultado);
             return "redirect:/avaliador/" + processoId;
         }
+        // Justificativa OBRIGATORIA para voto desfavoravel ou pedido de
+        // informacao complementar (decisao de produto aprovada em 2026-08-03,
+        // item 1 da Fase 11 do relatorio de UI): o operador depende desse
+        // texto para redigir o oficio de indeferimento ou o pedido de
+        // informacao complementar ao solicitante sem ter que reescrever do
+        // zero. FAVORAVEL continua opcional. Validacao SERVER-SIDE (o
+        // "required" condicional do textarea, no template, e so UX - da pra
+        // burlar via DevTools/requisicao direta) e ANTES de qualquer escrita,
+        // para nunca gravar um voto invalido nem abrir a TX do voto a toa.
+        boolean justificativaObrigatoria = resultado == ResultadoParecer.NAO_FAVORAVEL
+            || resultado == ResultadoParecer.SOLICITA_INFORMACAO;
+        if (justificativaObrigatoria && (justificativa == null || justificativa.isBlank())) {
+            ra.addFlashAttribute("erro",
+                "Justificativa obrigatoria para parecer " + resultado.getDescricao()
+                + ": o operador depende desse texto para o oficio/pedido de informacao.");
+            return "redirect:/avaliador/" + processoId;
+        }
         // ---- TX 1: o voto. Unica escrita critica; commitada aqui e ponto. ----
         VotoGravado voto = txTemplate.execute(status -> {
             MembroUrgenciaRenal membro = resolverMembro(principal);

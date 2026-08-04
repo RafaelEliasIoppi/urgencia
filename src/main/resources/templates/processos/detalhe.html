@@ -677,6 +677,14 @@
                                         title="Enviar lembrete por e-mail ao avaliador">
                                     <i class="bi bi-envelope"></i> Lembrar por e-mail
                                 </button>
+                                <!-- Ultimo lembrete manual enviado a este avaliador (Fase 11.2):
+                                     so faz sentido mostrar enquanto o parecer ainda esta pendente,
+                                     mesmo criterio de exibicao do botao acima. -->
+                                <span class="small text-muted d-block mt-1"
+                                      th:if="${par.resultado == null and par.ultimoLembreteEm != null}">
+                                    <i class="bi bi-envelope-check"></i> Ultimo lembrete:
+                                    <span th:text="${#temporals.format(par.ultimoLembreteEm, 'dd/MM/yyyy HH:mm')}"></span>
+                                </span>
                                 <!-- Sem o botao acima (parecer pendente, processo aberto, nao votado
                                      pelo portal) so por falta de e-mail cadastrado: avisa o motivo em
                                      vez de sumir silenciosamente, para nao parecer que falta uma acao. -->

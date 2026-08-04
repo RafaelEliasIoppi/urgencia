@@ -108,4 +108,17 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
     int reivindicarConviteSeElegivel(@Param("parecerId") Long parecerId,
                                       @Param("agora") LocalDateTime agora,
                                       @Param("limiteJanela") LocalDateTime limiteJanela);
+
+    /**
+     * Grava o momento do LEMBRETE manual mais recente para um parecer
+     * (`ProcessoDecisaoController.lembreteAvaliador`/`lembretePendentes`),
+     * chamado depois que o e-mail ja foi confirmado como enviado. UPDATE de
+     * linha unica sem condicao (ao contrario de
+     * {@link #reivindicarConviteSeElegivel}: aqui nao ha janela de duplo-clique
+     * a fechar, o operador pode legitimamente reenviar o lembrete quantas
+     * vezes quiser - o campo so registra "quando foi a ultima vez").
+     */
+    @Modifying
+    @Query("update Parecer p set p.ultimoLembreteEm = :agora where p.id = :parecerId")
+    int registrarUltimoLembrete(@Param("parecerId") Long parecerId, @Param("agora") LocalDateTime agora);
 }

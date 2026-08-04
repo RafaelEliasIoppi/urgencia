@@ -119,6 +119,30 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   autenticado (`AVALIADOR_SISTEMA`, que dispensa anexo), `decidir` exige
   apenas os ≥2 pareceres emitidos (maioria simples), sem checagem de anexo
   nenhuma.
+- **Justificativa obrigatória em voto Não favorável/Solicita informação
+  (desde 2026-08-03).** Decisão de produto explicitamente aprovada pelo
+  usuário (item 1 da "Fase 11" do
+  `docs/RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md`, antes marcada como
+  "não implementar sem aval"). Quando o avaliador vota
+  `ResultadoParecer.NAO_FAVORAVEL` ou `SOLICITA_INFORMACAO` em
+  `POST /avaliador/{processoId}/votar`, o campo `justificativa` passa a ser
+  **obrigatório** — sem ele, `AvaliadorController.registrarVoto` rejeita
+  ANTES de abrir a transação do voto (flash `erro` + redirect de volta ao
+  formulário, nunca grava nada). Voto `FAVORAVEL` continua com justificativa
+  opcional, sem mudança. Motivo: o operador depende desse texto pronto para
+  redigir o ofício de indeferimento (`OFICIO_INDEFERIMENTO`) ou o pedido de
+  informação complementar ao solicitante (`SOLICITA_INFORMACAO`), evitando
+  ter que reescrever do zero. O `<textarea>` de `avaliador/votar.html` ganha
+  `required` dinâmico via JS (`avaliador-votar.js`,
+  `atualizarObrigatoriedadeJustificativa`, disparado ao trocar o rádio de
+  resultado) — é só UX, a regra de verdade mora no controller (o `required`
+  do HTML sozinho é burlável via DevTools/requisição direta). Não altera
+  `OrigemParecer`, `ProcessoValidator` nem a lógica de maioria
+  simples/coordenador. Coberto por
+  `AvaliadorControllerTest.registrarVotoNaoFavoravelSemJustificativaERejeitado`
+  /`ComJustificativaEmBrancoERejeitado`/`ComJustificativaEAceito`,
+  `registrarVotoSolicitaInformacaoSemJustificativaERejeitado` e
+  `registrarVotoFavoravelSemJustificativaContinuaAceito`.
 - **Deferido exige anexar o comprovante de inserção da urgência renal no SNT**
   (`TipoAnexo.COMPROVANTE_SNT`) e enviá-lo junto na resposta ao solicitante; a
   etapa "Comprovante SNT" bloqueia a conclusão até o anexo existir (simétrico
@@ -1282,17 +1306,57 @@ já usado desde a Fase 4 no card de Respostas dos Avaliadores — em vez de
 ler `${resultado.descricao}` diretamente. Se algum dia esse enum for
 revisado, os dois templates citados devem ser reconferidos.
 
-**Fase 6 (detalhe do solicitante) teve escopo reduzido**: a consolidação
-completa dos 8 blocos `alert` condicionais num único "cartão de situação"
-alimentado por um record novo no controller (itens 6.1/6.2/6.3/6.5 do
-relatório) **não foi feita** — é a mudança de maior superfície/risco do
-plano inteiro (o próprio relatório a marca como "⚠⚠ fase de maior risco" e
-recomenda um PR dedicado só para ela). Foram implementados os itens de
-menor risco da mesma fase: vocabulário unificado (Deferido/Indeferido, que
-antes aparecia como "Aprovada/Reprovada"/"Pedido aprovado!"/"APROVADO" em
-3 lugares diferentes da mesma tela), número do processo no `<h1>`, botão
-de download promovido, e a mesma proteção do voto do avaliador (modal +
+**Fase 6 (detalhe do solicitante) teve escopo reduzido inicialmente**: na
+sessão original (2026-08-03/04) a consolidação completa dos 8 blocos
+`alert` condicionais num único "cartão de situação" alimentado por um
+record novo no controller (itens 6.1/6.2/6.3/6.5 do relatório) **não foi
+feita** — era a mudança de maior superfície/risco do plano inteiro (o
+próprio relatório a marcava como "⚠⚠ fase de maior risco" e recomendava um
+PR dedicado só para ela). Foram implementados ali só os itens de menor
+risco da mesma fase: vocabulário unificado (Deferido/Indeferido, que antes
+aparecia como "Aprovada/Reprovada"/"Pedido aprovado!"/"APROVADO" em 3
+lugares diferentes da mesma tela), número do processo no `<h1>`, botão de
+download promovido, e a mesma proteção do voto do avaliador (modal +
 checkbox) para "Cancelar processo" quando já virou processo em análise.
+
+**Fase 6 completa implementada em sessão posterior** (branch
+`feat/ui-consolidacao-alertas-solicitante`, a pedido explícito do
+usuário). Os itens que faltavam (6.1, 6.2, 6.3, 6.5, 6.6) foram concluídos:
+- `web/dto/SituacaoPedidoView.java` (record novo): `rotulo`, `classeCor`,
+  `icone`, `titulo`, `mensagem`, `detalhe`, `precisaAcao`,
+  `mostrarNovaSolicitacao`, `anexoParaBaixar` (nested record
+  `AnexoDownload(id, rotulo)`), `numeroProcesso`.
+- `SolicitanteController.montarSituacaoPedido` (privado, chamado por
+  `detalhe`): fonte única da decisão de status — calcula o record uma
+  única vez a partir de `SolicitacaoOnline`/`Processo`, cobrindo os dois
+  formatos possíveis de dado "decidido" (o espelho antigo direto em
+  `APROVADA`/`REPROVADA`/`CANCELADA` e o caminho atual, `CONVERTIDA` com
+  `Processo.status` já finalizado — dados históricos anteriores ao ajuste
+  do espelho de status podem estar em qualquer um dos dois formatos, e o
+  método trata ambos como o mesmo resultado).
+- `solicitante/detalhe.html`: os 8 `<alert>` viraram um cartão único
+  (`situacao.*`), posicionado entre o parágrafo "Enviada em" e a timeline.
+  Quando `situacao.precisaAcao` é verdadeiro, o formulário de upload de
+  informação complementar fica dentro desse cartão, no topo da página. O
+  botão de download do anexo final (comprovante SNT / ofício) virou botão
+  de destaque (`btn-{classeCor}`) dentro do cartão, não mais um link
+  pequeno num alerta. O badge do `<h1>` e o item "Decisão" da timeline
+  passaram a consumir `situacao.rotulo`/`classeCor`/`icone` também — nenhum
+  lugar recalcula mais a mesma regra de status separadamente. A timeline
+  ficou só como resumo de progresso (item 6.5): o texto longo de resultado
+  foi removido de lá e vive exclusivamente no cartão.
+- **Bug latente corrigido de graça**: `solicitante/detalhe.html` lia
+  `${mensagemResposta}` para mostrar a "Mensagem enviada à sua equipe", mas
+  nenhum código do `SolicitanteController` jamais preenchia esse model
+  attribute — era sempre `null` (a caixa nunca aparecia, dead code desde
+  que foi escrito). Agora `situacao.detalhe` é alimentado de
+  `Processo.getMensagemResposta()` de verdade nos casos Deferido/Indeferido.
+- Suíte completa (675 testes) e `.\e2e.ps1 -Headless` validados sem
+  regressão (a única falha do E2E é a pré-existente de finalização por
+  e-mail em ambiente sem SMTP local, não relacionada a esta tela).
+- PR aberto contra `main`, **sem merge automático** — mesma decisão
+  deliberada da sessão original: mudança de UI de maior risco visual do
+  plano, requer revisão humana antes de produção.
 
 **Achado real durante a Fase 5** (pego pela suíte antes do commit, nunca
 chegou a produção): `th:attr="max=${T(java.time.LocalDate).now()}"` no
@@ -1417,4 +1481,88 @@ e #4 (Fase 6 da UI, `feat/ui-consolidacao-alertas-solicitante`, mexe em
 implementação — conflito de merge esperado ao integrar os três, resolvido na
 hora da integração (arquivos tocados não coincidem entre este PR e o #4,
 exceto o controller compartilhado).
+
+## Fase 11.2: registro do último lembrete enviado ao avaliador (2026-08-04)
+
+Item da "Fase 11 — Decisões de produto" do
+`docs/RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md` (que exigia aval
+explícito do usuário antes de implementar) — **aprovado explicitamente**
+nesta sessão. Os outros dois itens da Fase 11 (justificativa obrigatória
+para voto negativo, rascunho de solicitação) continuam pendentes de aval,
+não foram tocados.
+
+**O que foi implementado:** o card "Respostas dos Avaliadores" (detalhe do
+processo, `/processos/{id}`) agora mostra, por avaliador pendente, a
+data/hora do último lembrete manual enviado (`POST
+/processos/{id}/lembrete-avaliador`/`lembrete-pendentes`,
+`ProcessoDecisaoController`) — antes o operador não tinha nenhuma
+visibilidade de quando (ou se) já tinha lembrado cada médico.
+
+**Decisão de modelagem — campo novo em `Parecer` (opção "a" do enunciado),
+não consulta a `LogAuditoria` (opção "b"):** `Parecer` já guarda outros
+timestamps de ciclo de vida do próprio parecer (`dataEnvio`,
+`dataResposta`, `dataHoraVoto`, e o precedente direto
+`conviteEnviadoEm`, do convite automático ao Portal). Consultar
+`LogAuditoria` exigiria uma query textual sobre o campo `detalhe` (que hoje
+é só uma string livre, `"Processo NN/AAAA - Nome do Medico"`, sem
+`parecerId` estruturado) para achar "o log de lembrete mais recente deste
+parecer específico" — mais frágil e mais lento que ler um campo já
+indexado por PK. Seguiu o padrão já estabelecido, sem motivo concreto para
+desviar.
+
+**`Parecer.ultimoLembreteEm` (`LocalDateTime`, nullable) — nullable é
+seguro e não precisa de backfill:** distinto de `conviteEnviadoEm` (convite
+automático, uma vez, ao registrar o envio) — este campo acompanha os
+lembretes manuais repetidos que o operador pode disparar depois. Segue o
+mesmo padrão de pitfall documentado em "Convenções de código"
+(`ddl-auto: update` não faz backfill em coluna nova/obrigatória): como o
+campo é **nullable desde a criação** (nem todo parecer teve lembrete
+enviado ainda — `NULL` é o valor semanticamente correto de "nunca
+lembrado"), não há nenhuma linha antiga que fique num estado inválido e
+**nenhum backfill manual é necessário em produção** após o deploy — ao
+contrário de `Processo.versao`/`Usuario.versao`/`MembroUrgenciaRenal.versao`
+(`@Version`, tratados como obrigatórios), que exigiram
+`UPDATE ... SET versao = 0 WHERE versao IS NULL` na VM.
+
+**Onde a escrita acontece:** `ParecerRepository.registrarUltimoLembrete`
+(`@Modifying` de linha única, mesmo padrão de
+`reivindicarConviteSeElegivel`) + `ProcessoService.registrarLembreteAvaliador`
+(`@Transactional`, transação própria — o controller não é
+`@Transactional` de classe, ver javadoc de `ProcessoDecisaoController`).
+`ProcessoDecisaoController.lembreteAvaliador`/`lembretePendentes` chamam
+esse método **somente depois** de `emailSenderService.enviar(...)`
+confirmar sucesso — se o SMTP falhar, o timestamp **não avança** (coberto
+por teste; o operador não deve achar que já lembrou o avaliador se o
+e-mail nem saiu).
+
+**Template:** `processos/detalhe.html`, dentro da célula "Ação" da tabela
+de pareceres, mostra "Último lembrete: dd/MM/yyyy HH:mm"
+(`#temporals.format`, mesmo padrão já usado no resto da tela) quando
+`par.resultado == null and par.ultimoLembreteEm != null` — mesma condição
+de exibição do botão "Lembrar por e-mail" (só pendente, processo não
+finalizado).
+
+**Testes:** `LembreteAvaliadorTimestampIntegrationTest`
+(`src/test/java/br/gov/saude/sgpur/web/`) — `@SpringBootTest` com H2 real e
+`ProcessoDecisaoController`/`ProcessoService` reais (só `EmailSenderService`
+mockado), seguindo o modelo de `ConviteAvaliadorDuplicidadeIntegrationTest`:
+um `@WebMvcTest`/`@MockitoBean` do serviço inteiro não pegaria a escrita
+real via `@Modifying`. Cobre: lembrete individual com sucesso grava o
+timestamp (relido do banco); falha de envio NÃO grava; lembrete em lote
+grava para todos os enviados com sucesso; um segundo lembrete atualiza o
+timestamp para o momento mais recente.
+
+**Validação:** suíte completa 679 testes, 0 falhas (JDK 21). `.\e2e.ps1
+-Headless` falha neste ambiente local em `FluxoCompletoProcessoIT` no passo
+5 (confirmação da resposta final ao solicitante) — **pré-existente e não
+relacionado a esta mudança**: confirmado rodando o mesmo teste isolado
+contra o `main` sem nenhuma alteração desta sessão (`git stash` +
+`mvn verify -Pe2e -Dit.test=FluxoCompletoProcessoIT`), mesma falha. Causa
+raiz aparente: `SGPUR_MAIL_USER`/`SGPUR_MAIL_FROM` não configurados nesta
+máquina local, então `EmailSenderService` loga "remetente (from) nao
+configurado" e o e-mail de resposta ao solicitante (que `finalizarResposta`
+exige com sucesso) falha, travando o passo 5 do fluxo E2E. Não investigado
+a fundo nesta sessão (fora de escopo da Fase 11.2) — fica registrado aqui
+para quem for rodar o E2E localmente de novo não perder tempo achando que é
+regressão.
 
