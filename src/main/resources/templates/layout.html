@@ -274,6 +274,39 @@
     <span th:text="${rotulo}">status</span>
 </span>
 
+<!-- ============================================================
+     badgeEncerramento(p, classes): "Encerrado" (preto) x "Decisão tomada"
+     (cinza) para um processo ja decidido.
+
+     FONTE UNICA da distincao - status final NAO significa trabalho
+     concluido: decidir bloqueia a edicao das etapas 1-4, mas a papelada de
+     conclusao (oficio/comprovante SNT + resposta ao solicitante) continua
+     pendente ate emailEnviadoSolicitante. CANCELADO e sempre "Encerrado":
+     cancelamento nao passa pelo fluxo de resposta formal (mesma regra de
+     FluxoProcessoService.respostaOk).
+
+     Existia so na tela de detalhe (correcao de 2026-08-04); o Painel e a
+     lista continuaram mostrando "Encerrado" para todo status final, dando a
+     impressao de que nada mais faltava num processo que ainda devia
+     comprovante SNT e resposta (bug relatado em producao no 04/2026, mesmo
+     sintoma que motivou a correcao original). Virou fragment justamente
+     para nao existir uma quarta copia dessa regra para divergir de novo.
+
+     Uso: <span th:replace="~{layout :: badgeEncerramento(${p}, 'ms-1')}"></span>
+     ============================================================ -->
+<th:block th:fragment="badgeEncerramento(p, classes)">
+    <span th:if="${p.status.finalizado and (p.emailEnviadoSolicitante or p.status.name() == 'CANCELADO')}"
+          class="badge rounded-pill bg-dark text-white" th:classappend="${classes}"
+          title="Decisão registrada e resposta enviada ao solicitante: processo concluído.">
+        <i class="bi bi-lock-fill" aria-hidden="true"></i> Encerrado
+    </span>
+    <span th:if="${p.status.finalizado and !p.emailEnviadoSolicitante and p.status.name() != 'CANCELADO'}"
+          class="badge rounded-pill bg-secondary text-white" th:classappend="${classes}"
+          title="Decisão registrada. Edição das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusão (ofício/comprovante e resposta ao solicitante).">
+        <i class="bi bi-lock-fill" aria-hidden="true"></i> Decisão tomada
+    </span>
+</th:block>
+
 <div th:fragment="footer" class="footer-sgpur mt-auto">
     <small>SAUR &mdash; Sistema de Avaliação de Urgência Renal &bull; Central de Transplantes do RS</small>
     <!--/* Sem opacity:.7 aqui: empilhada sobre o cinza do rodape, derrubava o

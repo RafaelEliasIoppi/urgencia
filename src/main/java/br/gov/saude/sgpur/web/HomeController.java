@@ -70,12 +70,19 @@ public class HomeController {
                 default -> { }
             }
             // "Em andamento" agrupa os status nao finais (SOLICITADO, ENVIADO,
-            // SOLICITA_INFORMACAO). O que falta por processo reusa o
-            // FluxoProcessoService.
+            // SOLICITA_INFORMACAO).
             if (p.getStatus().isEmAndamento()) {
                 emAndamento++;
-                pendencias.put(p.getId(), fluxoService.resumoPendencia(p));
             }
+            // O que falta por processo reusa o FluxoProcessoService, e vale
+            // TAMBEM para processo ja decidido: status final trava a edicao das
+            // etapas 1-4, mas oficio/comprovante SNT e a resposta ao solicitante
+            // continuam pendentes ate serem feitos. Antes o calculo era feito so
+            // para isEmAndamento(), entao esses ficavam sem nenhum "o que falta"
+            // no Painel - justamente os que precisam de acao e ninguem ve.
+            // pendenciaAberta devolve vazio quando nao ha nada pendente, entao
+            // processo realmente concluido continua com a celula limpa.
+            fluxoService.pendenciaAberta(p).ifPresent(msg -> pendencias.put(p.getId(), msg));
         }
 
         model.addAttribute("totalProcessos", processos.size());

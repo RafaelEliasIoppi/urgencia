@@ -20,16 +20,7 @@
                 <span class="badge align-middle fs-6 px-3 py-1 rounded-pill"
                       th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
-                <span th:if="${processo.status.finalizado and (processo.emailEnviadoSolicitante or processo.status.name() == 'CANCELADO')}"
-                      class="badge align-middle bg-dark text-white rounded-pill px-3 py-1 ms-1"
-                      title="Decisão registrada e resposta enviada ao solicitante: processo concluido.">
-                    <i class="bi bi-lock-fill"></i> Encerrado
-                </span>
-                <span th:if="${processo.status.finalizado and !processo.emailEnviadoSolicitante and processo.status.name() != 'CANCELADO'}"
-                      class="badge align-middle bg-secondary text-white rounded-pill px-3 py-1 ms-1"
-                      title="Decisão registrada. Edição das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusão (ofício/comprovante e resposta ao solicitante) na aba Finalização.">
-                    <i class="bi bi-lock-fill"></i> Decisão tomada
-                </span>
+                <span th:replace="~{layout :: badgeEncerramento(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
                 <span th:if="${statusSubrotulo != null}"
                       class="badge align-middle bg-warning text-dark rounded-pill px-3 py-1"
                       th:text="${statusSubrotulo}">Aguardando parecer</span>
@@ -174,8 +165,10 @@
                     <i class="bi bi-envelope-paper text-secondary"></i> Textos de e-mail prontos
                 </div>
                 <div class="card-body pt-0">
-                    <p class="small text-muted mb-2">Textos pre-preenchidos para copiar e colar.
-                        No envio aos médicos os dados pessoais do paciente são omitidos.</p>
+                    <p class="small text-muted mb-2">Textos pré-preenchidos para copiar e colar
+                        ou enviar direto pelo sistema. O texto dirigido aos <strong>médicos
+                        avaliadores</strong> traz só as iniciais do paciente (imparcialidade); os
+                        dirigidos à <strong>equipe solicitante</strong> trazem o nome completo.</p>
                     <div class="accordion" id="accEmails">
                         <div class="accordion-item" th:each="mail, it : ${emails}">
                             <h2 class="accordion-header">
@@ -539,14 +532,61 @@
                             </span>
                             <span th:replace="~{layout :: status(${envioFeito})}"></span>
                         </h6>
-                        <p class="small text-muted mb-2">
-                            Confirma o envio e gera o PDF consolidado com cabeçalho para os avaliadores.
+                        <p class="small text-muted mb-1">
+                            Ao clicar, o sistema executa <strong>de uma vez</strong> as ações abaixo.
+                            Revise antes de confirmar — os e-mails saem na hora.
                         </p>
+                        <ol class="small text-muted ps-3 mb-2">
+                            <li>Funde os documentos clínicos anexados em um <strong>PDF único</strong>,
+                                carimbado em cada página com o número do processo e as
+                                <strong>iniciais</strong> do paciente (o nome completo nunca vai aos médicos).</li>
+                            <li>Registra a <strong>data de hoje</strong> como data de envio e passa o
+                                processo para <strong>Enviado</strong>.</li>
+                            <li>Envia o <strong>convite do Portal do Avaliador</strong> por e-mail a cada
+                                médico pendente listado abaixo.</li>
+                        </ol>
+
+                        <!-- Quem vai receber o convite: o operador precisa saber ANTES de clicar,
+                             porque o e-mail sai na hora e vai para medicos de verdade. Mesmo
+                             criterio do servidor (RegistroEnvioService.enviarConvitesAvaliadores /
+                             ProcessoService.pareceresPendentesComEmail): so quem ainda nao votou. -->
+                        <div th:with="pendentes=${processo.pareceres.?[resultado == null]}"
+                             class="border rounded p-2 mb-2 bg-light">
+                            <p class="small fw-semibold mb-1">
+                                <i class="bi bi-envelope-at"></i>
+                                O convite será enviado para
+                                <span th:text="${#lists.size(pendentes)}">3</span>
+                                <span th:text="${#lists.size(pendentes) == 1} ? 'médico' : 'médicos'">médicos</span>:
+                            </p>
+                            <ul class="list-unstyled small mb-0">
+                                <li th:each="par : ${pendentes}" class="mb-1">
+                                    <i class="bi bi-person text-secondary"></i>
+                                    <span th:text="${par.membro.rotulo}">Instituição - Médico</span>
+                                    <span th:if="${par.membro.email != null and !par.membro.email.isBlank()}"
+                                          class="text-muted" th:text="'— ' + ${par.membro.email}">— e-mail</span>
+                                    <span th:if="${par.membro.email == null or par.membro.email.isBlank()}"
+                                          class="badge bg-warning text-dark ms-1">
+                                        <i class="bi bi-exclamation-triangle"></i>
+                                        sem e-mail cadastrado — não receberá o convite
+                                    </span>
+                                </li>
+                            </ul>
+                            <p th:if="${#lists.isEmpty(pendentes)}" class="small text-muted mb-0">
+                                Nenhum médico pendente — todos já registraram o parecer. O envio será
+                                registrado e o PDF regerado, sem disparar e-mail a ninguém.
+                            </p>
+                            <p th:if="${#lists.size(pendentes) < #lists.size(processo.pareceres)}"
+                               class="small text-muted mb-0 mt-1">
+                                <i class="bi bi-info-circle"></i>
+                                Quem já votou não recebe o convite de novo.
+                            </p>
+                        </div>
+
                         <form th:unless="${processo.status.finalizado}"
                               th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
                               data-lock-submit="Registrando envio...">
                             <button class="btn btn-primary btn-sm">
-                                <i class="bi bi-calendar-check"></i> Registrar envio (data de hoje)
+                                <i class="bi bi-calendar-check"></i> Registrar envio e enviar convites
                             </button>
                         </form>
                     </div>

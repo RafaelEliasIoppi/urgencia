@@ -108,23 +108,85 @@ class HomeControllerTest {
             .andExpect(model().attribute("deferidosSemComprovanteSnt", 3L));
     }
 
+    /**
+     * Um processo DECIDIDO nao e um processo pronto: o oficio, o comprovante
+     * SNT e a resposta ao solicitante continuam pendentes depois da decisao.
+     * O Painel calculava "o que falta" so para {@code isEmAndamento()}, entao
+     * esses ficavam com a celula vazia - e, ate a correcao do badge, ainda
+     * rotulados "Encerrado" (bug relatado em producao no processo 04/2026).
+     * Quem NAO tem nada pendente continua sem texto nenhum.
+     */
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void pendenciasSoSaoCalculadasParaProcessosEmAndamento() throws Exception {
+    void pendenciasTambemAparecemParaProcessoDecididoQueAindaTemEtapasAFazer() throws Exception {
         int ano = Year.now().getValue();
         Processo emAndamento = processo(1L, 1, StatusProcesso.ENVIADO);
-        Processo finalizado = processo(2L, 2, StatusProcesso.DEFERIDO);
-        when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of(emAndamento, finalizado));
-        when(fluxoService.resumoPendencia(emAndamento)).thenReturn("Falta a decisao");
+        Processo decididoIncompleto = processo(2L, 2, StatusProcesso.DEFERIDO);
+        Processo concluido = processo(3L, 3, StatusProcesso.INDEFERIDO);
+        when(processoRepository.findByAnoComPareceres(ano))
+            .thenReturn(List.of(emAndamento, decididoIncompleto, concluido));
+        when(fluxoService.pendenciaAberta(emAndamento))
+            .thenReturn(java.util.Optional.of("Decisao: aguardando os pareceres"));
+        when(fluxoService.pendenciaAberta(decididoIncompleto))
+            .thenReturn(java.util.Optional.of("Comprovante SNT: anexe o comprovante"));
+        when(fluxoService.pendenciaAberta(concluido)).thenReturn(java.util.Optional.empty());
         when(membroService.contarAtivos()).thenReturn(0L);
         when(tempoRespostaService.calcular()).thenReturn(
             new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
 
         mvc.perform(get("/"))
             .andExpect(status().isOk())
-            .andExpect(model().attribute("pendencias", Map.of(1L, "Falta a decisao")));
+            .andExpect(model().attribute("pendencias", Map.of(
+                1L, "Decisao: aguardando os pareceres",
+                2L, "Comprovante SNT: anexe o comprovante")))
+            // O contador "em andamento" nao muda: decidido continua fora dele.
+            .andExpect(model().attribute("emAndamento", 1L));
+    }
 
-        org.mockito.Mockito.verify(fluxoService, org.mockito.Mockito.never()).resumoPendencia(finalizado);
+    /**
+     * Badge do Painel: "Encerrado" (preto) so quando a resposta ao solicitante
+     * ja saiu; enquanto faltar etapa de conclusao e "Decisao tomada" (cinza).
+     * A distincao foi criada em 2026-08-04 na tela de detalhe e nao chegou ao
+     * Painel nem a lista - dai o processo aparecer como encerrado com etapas
+     * pendentes. Renderiza o template de verdade.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void painelMostraDecisaoTomadaEnquantoFaltaRespostaAoSolicitante() throws Exception {
+        int ano = Year.now().getValue();
+        Processo deferidoSemResposta = processo(4L, 4, StatusProcesso.DEFERIDO);
+        when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of(deferidoSemResposta));
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Decisão tomada")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("Encerrado"))));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void painelMostraEncerradoDepoisQueARespostaAoSolicitanteFoiEnviada() throws Exception {
+        int ano = Year.now().getValue();
+        Processo concluido = processo(4L, 4, StatusProcesso.DEFERIDO);
+        concluido.setEmailEnviadoSolicitante(true);
+        Processo cancelado = processo(5L, 5, StatusProcesso.CANCELADO);
+        when(processoRepository.findByAnoComPareceres(ano))
+            .thenReturn(List.of(concluido, cancelado));
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        String html = mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        // Cancelado tambem conta como encerrado: nao passa pela resposta formal.
+        org.assertj.core.api.Assertions.assertThat(html).contains("Encerrado");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("Decisão tomada");
     }
 
     @Test

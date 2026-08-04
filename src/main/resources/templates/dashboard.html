@@ -209,10 +209,8 @@
                                 <i class="bi" th:classappend="'bi-' + ${l.processo.status.badgeIcone}"></i>
                                 <span th:text="${l.processo.status.descricao}">status</span>
                             </span>
-                            <div th:if="${l.processo.status.isFinalizado()}">
-                                <span class="badge rounded-pill text-bg-dark" style="font-size:.65rem;">
-                                    <i class="bi bi-lock-fill"></i> Encerrado
-                                </span>
+                            <div th:if="${l.processo.status.isFinalizado()}" class="badge-encerramento-xs">
+                                <span th:replace="~{layout :: badgeEncerramento(${l.processo}, '')}"></span>
                             </div>
                             <div th:if="${pendencias.containsKey(l.processo.id)}"
                                  class="mt-1 text-muted fst-italic" style="font-size:.7rem;max-width:12rem;"

@@ -92,10 +92,7 @@
                             <i class="bi" th:classappend="'bi-' + ${p.status.badgeIcone}"></i>
                             <span th:text="${p.status.descricao}">status</span>
                         </span>
-                        <span th:if="${p.status.isFinalizado()}" title="Processo encerrado"
-                              class="badge rounded-pill bg-dark ms-1">
-                            <i class="bi bi-lock-fill"></i> Encerrado
-                        </span>
+                        <span th:replace="~{layout :: badgeEncerramento(${p}, 'ms-1')}"></span>
                         <span th:if="${idsSemComprovanteSnt.contains(p.id)}"
                               title="Deferido sem o comprovante de inserção no SNT: a resposta ao solicitante fica bloqueada até o anexo existir."
                               class="badge rounded-pill bg-warning text-dark ms-1">

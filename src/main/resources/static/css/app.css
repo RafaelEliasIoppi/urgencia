@@ -478,6 +478,12 @@ tr.linha-inativa > td:first-child {
 .badge-rs-green { background: var(--rs-green-light); color: var(--rs-green-dark); }
 .badge-rs-red { background: var(--rs-red-light); color: var(--rs-red); }
 
+/* Badge de encerramento (layout :: badgeEncerramento) na planilha do Painel:
+   a celula ja tem o badge de status acima, entao o segundo entra menor para
+   nao competir com ele. Substitui o style="font-size:.65rem" inline que
+   existia no dashboard antes de o badge virar fragment compartilhado. */
+.badge-encerramento-xs .badge { font-size: .65rem; }
+
 /* === Animacoes === */
 @keyframes fadeInUp {
     from { opacity: 0; transform: translateY(12px); }
