@@ -198,7 +198,9 @@ tr.linha-inativa > td:first-child {
     font-size: .7rem;
     text-transform: uppercase;
     letter-spacing: .03em;
-    color: var(--rs-gray-500);
+    /* gray-600 (5.74:1 sobre gray-100). gray-500 dava 4.34:1 - reprova em AA
+       para texto pequeno, que e exatamente o caso aqui (.7rem maiusculo). */
+    color: var(--rs-gray-600);
     background: var(--rs-gray-100);
     border-bottom: 2px solid var(--rs-gray-200);
     white-space: nowrap;
@@ -424,7 +426,11 @@ tr.linha-inativa > td:first-child {
 
 .timeline-item.atual .timeline-title { color: var(--rs-blue); }
 
-.timeline-item.pendente .timeline-title { color: var(--rs-gray-400); }
+/* gray-600 (7.58:1 sobre branco), nao gray-400 (2.56:1 - reprova em WCAG AA,
+   que exige 4.5:1). E o texto que diz o que ainda falta no processo, o mais
+   consultado do cartao "Progresso". Mesma correcao ja aplicada ao rotulo de
+   passo bloqueado do wizard (.wizard-step.bloqueada .wizard-label). */
+.timeline-item.pendente .timeline-title { color: var(--rs-gray-600); }
 
 .timeline-item.negativa .timeline-title { color: var(--rs-red); }
 
@@ -462,6 +468,13 @@ tr.linha-inativa > td:first-child {
 
 /* === Link com hover na cor institucional (ex.: "Esqueci minha senha") === */
 .link-hover-primary:hover { color: var(--rs-blue) !important; }
+
+/* Texto branco atenuado sobre o gradiente azul do login/esqueci-senha.
+   O .text-white-50 do Bootstrap da 3.35:1 sobre --rs-blue (o ponto mais
+   claro do gradiente) - reprova em WCAG AA, que exige 4.5:1 para texto
+   pequeno. Com 70% de opacidade sobe para 5.03:1, mantendo o efeito de
+   hierarquia visual. */
+.text-white-70 { color: rgba(255, 255, 255, .7) !important; }
 
 /* === Botoes com gradiente ===
    Redefine as variaveis --bs-btn-* para que TODOS os estados (hover, active,
@@ -804,8 +817,12 @@ tr.linha-inativa > td:first-child {
     ::-webkit-scrollbar-thumb:hover { background: var(--rs-gray-400); }
 }
 
-/* === Responsivo: wizard vira scroll horizontal em mobile === */
-@media (max-width: 768px) {
+/* === Responsivo: wizard vira scroll horizontal em mobile ===
+   767.98px (nao 768px): com "max-width: 768px" esta regra e a
+   "@media (min-width: 768px)" acima valiam AO MESMO TEMPO em exatamente
+   768px - que e a largura CSS do iPad em retrato. Mesma convencao ja usada
+   no "max-width: 991.98px" mais abaixo. */
+@media (max-width: 767.98px) {
     .wizard {
         overflow-x: auto;
         overflow-y: hidden;

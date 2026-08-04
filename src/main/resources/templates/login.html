@@ -13,7 +13,7 @@
             </svg>
         </div>
         <h1 class="h3 text-white mt-3 fw-bold" style="letter-spacing:-.02em;">SAUR</h1>
-        <p class="text-white-50 small" style="letter-spacing:.02em;">Sistema de avaliação de urgência renal</p>
+        <p class="text-white-70 small" style="letter-spacing:.02em;">Sistema de avaliação de urgência renal</p>
     </div>
     <div class="card shadow-lg animate-fade-in-d1" style="border:none;border-radius:16px;backdrop-filter:blur(8px);background:rgba(255,255,255,.95);">
         <div class="card-body p-4">
@@ -32,14 +32,16 @@
                     <label class="form-label fw-semibold small text-muted">Usuario</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-person text-muted"></i></span>
-                        <input type="text" name="username" class="form-control border-start-0 ps-0" autofocus required placeholder="Seu login">
+                        <input type="text" name="username" id="usuarioInput" autocomplete="username"
+                               class="form-control border-start-0 ps-0" autofocus required placeholder="Seu login">
                     </div>
                 </div>
                 <div class="mb-4">
                     <label class="form-label fw-semibold small text-muted">Senha</label>
                     <div class="input-group">
                         <span class="input-group-text bg-light border-end-0"><i class="bi bi-lock text-muted"></i></span>
-                        <input type="password" name="password" class="form-control border-start-0 ps-0" id="senhaInput" required placeholder="Sua senha">
+                        <input type="password" name="password" autocomplete="current-password"
+                               class="form-control border-start-0 ps-0" id="senhaInput" required placeholder="Sua senha">
                         <button class="btn btn-light border" type="button" id="olhoSenha"
                                 title="Mostrar/ocultar senha" aria-label="Mostrar/ocultar senha">
                             <i class="bi bi-eye"></i>
@@ -57,10 +59,10 @@
             </form>
         </div>
     </div>
-    <p class="text-center text-white-50 mt-4 animate-fade-in-d2" style="font-size:.75rem;">
+    <p class="text-center text-white-70 mt-4 animate-fade-in-d2" style="font-size:.75rem;">
         <i class="bi bi-shield-check me-1"></i> Central de Transplantes do Estado do Rio Grande do Sul
     </p>
-    <p class="text-center text-white-50 mt-1" style="font-size:.7rem;opacity:.7;">Produzido por Rafael Elias Ioppi</p>
+    <p class="text-center text-white-70 mt-1" style="font-size:.7rem;">Produzido por Rafael Elias Ioppi</p>
 </div>
 <script th:replace="~{layout :: scripts}"></script>
 <script>

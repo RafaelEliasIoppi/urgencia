@@ -23,10 +23,14 @@
                 dos processos do ano selecionado.
             </p>
 
+            <!--/* Microcopy corrigida em 2026-08-04: dizia "Cadastre um processo",
+                   mas o cadastro manual foi removido em 2026-07-27 - todo processo
+                   nasce de uma solicitacao do Portal do Solicitante, triada pelo
+                   operador. A tela orientava a fazer algo que nao existe mais. */-->
             <div th:if="${anos == null or anos.isEmpty()}" class="alert alert-info mb-0">
                 <i class="bi bi-info-circle"></i>
-                Ainda nao ha processos cadastrados. Cadastre um processo para
-                gerar o relatorio anual.
+                Ainda nao ha processos para relatar. Os processos surgem da triagem
+                das solicitacoes recebidas pelo Portal do Solicitante.
             </div>
 
             <form th:if="${anos != null and !anos.isEmpty()}"

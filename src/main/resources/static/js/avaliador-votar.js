@@ -100,7 +100,15 @@
         // lenta) nao deve conseguir disparar duas submissoes do voto antes
         // da pagina navegar para longe.
         btnConfirmar.disabled = true;
-        modal.hide();
+        // Spinner no proprio botao, com o modal AINDA aberto: entre o clique
+        // e a pagina navegar ha um POST que pode levar segundos (rede de
+        // hospital). Escondendo o modal de imediato, a tela voltava ao
+        // formulario aparentemente ocioso, sem nenhum retorno visual na acao
+        // mais importante do sistema. Nao da pra usar o data-lock-submit
+        // generico aqui: form.submit() (abaixo) nao dispara o evento
+        // 'submit', que e o gatilho do lock-submit.js.
+        btnConfirmar.innerHTML =
+            '<span class="spinner-border spinner-border-sm"></span> Registrando voto...';
         // form.submit() nao redispara o evento 'submit' (nem a validacao),
         // entao nao reentra no listener acima - segue direto para o POST.
         form.submit();

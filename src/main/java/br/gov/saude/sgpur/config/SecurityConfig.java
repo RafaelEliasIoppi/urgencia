@@ -106,7 +106,12 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> {
-                auth.requestMatchers("/css/**", "/js/**", "/webjars/**", "/favicon.ico").permitAll();
+                // favicon.svg (nao .ico): o icone e servido como SVG desde
+                // 2026-08-04. O .ico continua liberado por seguranca - alguns
+                // navegadores/leitores de feed ainda o pedem na raiz por conta
+                // propria, e um 401 nesse pedido polui o log de auditoria.
+                auth.requestMatchers("/css/**", "/js/**", "/webjars/**",
+                    "/favicon.ico", "/favicon.svg").permitAll();
                 if (dev) {
                     auth.requestMatchers("/h2-console/**").permitAll();
                 }
