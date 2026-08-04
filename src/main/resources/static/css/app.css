@@ -221,15 +221,8 @@ tr.linha-inativa > td:first-child {
 .tabela-pareceres th:nth-child(3),
 .tabela-pareceres td:nth-child(3),
 .tabela-pareceres th:nth-child(4),
-.tabela-pareceres td:nth-child(4),
-.tabela-pareceres th:nth-child(5),
-.tabela-pareceres td:nth-child(5) {
+.tabela-pareceres td:nth-child(4) {
     white-space: nowrap;
-}
-.tabela-pareceres th:nth-child(6),
-.tabela-pareceres td:nth-child(6) {
-    min-width: 360px;
-    width: 40%;
 }
 .tabela-pareceres .badge {
     font-size: .7rem;
@@ -715,6 +708,17 @@ tr.linha-inativa > td:first-child {
 .stat-card-membros   { --stat-bg: var(--rs-blue-light); --stat-border: var(--rs-blue); --stat-text: var(--rs-blue); --stat-icon-bg: var(--rs-blue-light); --stat-icon-color: var(--rs-blue); }
 .stat-card-tempo     { --stat-bg: #fff; --stat-border: var(--rs-gray-200); --stat-text: var(--rs-gray-800); --stat-icon-bg: var(--rs-gray-100); --stat-icon-color: var(--rs-gray-500); }
 
+/* Estilo base repetido inline nos cards de resumo do Portal do Solicitante
+   (background/border/border-radius/box-shadow via variaveis --stat-*
+   definidas por .stat-card-total/andamento/deferido/indeferido/cancelado
+   acima) — extraido para evitar duplicar o mesmo style="..." em cada card. */
+.stat-card-portal {
+    background: var(--stat-bg);
+    border: 1px solid var(--stat-border);
+    border-radius: 16px;
+    box-shadow: var(--rs-shadow);
+}
+
 /* Tabela do dashboard: scroll vertical so em desktop (evita cortar conteudo em mobile) */
 @media (min-width: 768px) {
     .dashboard-tabela-scroll { max-height: 70vh; overflow-y: auto; }
@@ -814,18 +818,8 @@ tr.linha-inativa > td:first-child {
     .tabela-pareceres th:nth-child(3),
     .tabela-pareceres td:nth-child(3),
     .tabela-pareceres th:nth-child(4),
-    .tabela-pareceres td:nth-child(4),
-    .tabela-pareceres th:nth-child(5),
-    .tabela-pareceres td:nth-child(5) {
+    .tabela-pareceres td:nth-child(4) {
         white-space: normal;
-    }
-
-    /* G1: reduz a largura minima da coluna Acao em mobile para evitar
-       scroll horizontal excessivo */
-    .tabela-pareceres th:nth-child(6),
-    .tabela-pareceres td:nth-child(6) {
-        min-width: 220px;
-        width: auto;
     }
 
     #pane-envio .list-group-item {

@@ -622,8 +622,13 @@
                                       th:text="${par.resultado != null} ? ${par.resultado.descricao} : '—'"
                                       class="small">—</span>
                             </td>
-                            <td class="small text-muted"
-                                th:text="${par.dataResposta != null} ? ${#temporals.format(par.dataResposta, 'dd/MM/yyyy')} : '-'">-</td>
+                            <td class="small text-muted">
+                                <!-- dataHoraVoto se houver (voto pelo portal), senao dataResposta -->
+                                <span th:if="${par.dataHoraVoto != null}"
+                                      th:text="${#temporals.format(par.dataHoraVoto, 'dd/MM/yyyy HH:mm')}">-</span>
+                                <span th:if="${par.dataHoraVoto == null}"
+                                      th:text="${par.dataResposta != null} ? ${#temporals.format(par.dataResposta, 'dd/MM/yyyy')} : '-'">-</span>
+                            </td>
                             <td>
                                 <!-- Portal: voto imutavel, sem acao do operador -->
                                 <th:block th:if="${pareceresPortal.contains(par.id)}">
@@ -654,7 +659,7 @@
                         <!-- Justificativa do avaliador (material INTERNO do operador;
                              NUNCA exibida a outros avaliadores no portal). -->
                         <tr th:if="${par.justificativa != null and !par.justificativa.isBlank()}">
-                            <td colspan="6" class="pt-0">
+                            <td colspan="4" class="pt-0">
                                 <div class="alert alert-light border py-2 mb-0 small">
                                     <i class="bi bi-chat-left-quote text-secondary"></i>
                                     <span class="fw-semibold">Justificativa / observacoes do avaliador:</span>

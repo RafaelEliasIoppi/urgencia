@@ -293,9 +293,10 @@
     <h2 class="h6 text-muted">Documentos anexados</h2>
     <ul class="list-group mb-3">
         <li class="list-group-item" th:each="a : ${solicitacao.anexos}">
-            <a th:href="@{/solicitante/{id}/anexos/{anexoId}(id=${solicitacao.id},anexoId=${a.id})}"
-               th:text="${a.nomeArquivo}">documento.pdf</a>
-            <i class="bi bi-download text-muted ms-1"></i>
+            <a th:href="@{/solicitante/{id}/anexos/{anexoId}(id=${solicitacao.id},anexoId=${a.id})}">
+                <span th:text="${a.nomeArquivo}">documento.pdf</span>
+                <i class="bi bi-download text-muted ms-1"></i>
+            </a>
         </li>
         <li class="list-group-item text-muted" th:if="${solicitacao.anexos.isEmpty()}">
             Nenhum documento anexado.

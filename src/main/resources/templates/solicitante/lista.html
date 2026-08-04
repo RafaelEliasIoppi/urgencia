@@ -37,8 +37,7 @@
     <!-- Cards de resumo por status -->
     <div class="row row-cols-2 row-cols-sm-3 row-cols-md-5 g-3 mb-4">
         <div class="col">
-            <div class="stat-card stat-card-total"
-                 style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+            <div class="stat-card stat-card-portal stat-card-total">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.total()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
@@ -48,8 +47,7 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-andamento"
-                 style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+            <div class="stat-card stat-card-portal stat-card-andamento">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.aguardandoTriagem()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
@@ -59,8 +57,7 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-andamento"
-                 style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+            <div class="stat-card stat-card-portal stat-card-andamento">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.emAnalise()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
@@ -70,8 +67,10 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-deferido"
-                 style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+            <!-- Card agrupa Deferidos E Indeferidos: classe neutra (total),
+                 nao verde (deferido), para nao insinuar que "Decididas" so
+                 significa resultado favoravel. -->
+            <div class="stat-card stat-card-portal stat-card-total">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.decididas()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
@@ -81,8 +80,8 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-indeferido"
-                 style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+            <!-- Devolvida != Indeferida: ambar (andamento), nao vermelho. -->
+            <div class="stat-card stat-card-portal stat-card-andamento">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.devolvidas()}">0</span>
                     <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
