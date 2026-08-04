@@ -26,18 +26,15 @@ public class DecisaoFinalService {
     private static final Logger log = LoggerFactory.getLogger(DecisaoFinalService.class);
 
     private final ProcessoService processoService;
-    private final OficioService oficioService;
     private final RelatorioService relatorioService;
     private final AnexoStorageService anexoStorage;
     private final ProcessoRepository processoRepository;
 
     public DecisaoFinalService(ProcessoService processoService,
-                               OficioService oficioService,
                                RelatorioService relatorioService,
                                AnexoStorageService anexoStorage,
                                ProcessoRepository processoRepository) {
         this.processoService = processoService;
-        this.oficioService = oficioService;
         this.relatorioService = relatorioService;
         this.anexoStorage = anexoStorage;
         this.processoRepository = processoRepository;
@@ -45,22 +42,28 @@ public class DecisaoFinalService {
 
     /**
      * Gera e anexa os PDFs correspondentes a decisao ja gravada no processo:
-     * - INDEFERIDO: gera o Oficio de Indeferimento (com data de emissao = hoje
-     *   se ainda nao preenchida) e o Relatorio Final.
-     * - DEFERIDO / CANCELADO: gera apenas o Relatorio Final.
-     * Erros de geracao de PDF sao logados e lancados para que o chamador possa
-     * exibir avisos sem desfazer a decisao (ja persistida).
+     * o Relatorio Final, para qualquer status final.
+     *
+     * <p><b>O Oficio de Indeferimento NAO e mais gerado/anexado aqui
+     * (2026-08-04, decisao do usuario: "oficio sera sempre anexado").</b> O
+     * oficio precisa ser editavel caso a caso, entao o sistema so oferece um
+     * RASCUNHO para download ({@code OficioService.gerarRascunhoRtf}, aberto no
+     * Word) e o documento de registro e sempre o arquivo que o operador anexa
+     * depois. Aqui so se atribui a NUMERACAO propria do oficio, para o numero
+     * ja aparecer na tela e no rascunho. A {@code dataEmissaoOficio} tambem
+     * deixou de ser gravada neste ponto: ela e o momento do anexo do oficio
+     * (ver {@code ProcessoService.registrarDataEmissaoOficio}), e gravar aqui
+     * dataria um documento que ainda nao existe.
+     *
+     * <p>Erros de geracao de PDF sao logados e lancados para que o chamador
+     * possa exibir avisos sem desfazer a decisao (ja persistida).
      *
      * @param p   Processo ja com status final gravado no banco.
      * @throws IllegalStateException se a geracao de algum PDF falhar.
      */
     public void gerarDocumentos(Processo p) {
         if (p.getStatus() == StatusProcesso.INDEFERIDO) {
-            if (p.getDataEmissaoOficio() == null) {
-                p.setDataEmissaoOficio(LocalDate.now());
-                processoService.salvar(p);
-            }
-            regerarOficio(p);
+            atribuirNumeroOficioSeNecessario(p);
         }
 
         if (p.getStatus().isFinalizado()) {
@@ -80,46 +83,13 @@ public class DecisaoFinalService {
     }
 
     /**
-     * (Re)gera o PDF do Oficio de Indeferimento a partir dos dados ATUAIS do
-     * processo e substitui o anexo {@code OFICIO_INDEFERIMENTO}. Atribui a
-     * numeracao propria do oficio (NNNN/AAAA) se o processo ainda nao tiver
-     * uma.
-     *
-     * <p>Chamado na decisao ({@link #gerarDocumentos}). Ate 2026-08-04 era
-     * chamado tambem pela aba Finalizacao, quando o operador editava as datas
-     * do oficio; esses campos foram removidos (a data de um ato agora e sempre
-     * o momento do anexo, nunca digitada), entao nao existe mais divergencia
-     * possivel entre a data da tela e a do PDF anexado.</p>
-     *
-     * <p><b>Sobrescreve upload manual.</b> Se o operador tiver substituido o
-     * oficio por um documento proprio, esta chamada troca de volta pelo PDF do
-     * sistema.</p>
-     *
-     * @throws IllegalStateException se a gravacao do PDF falhar.
-     */
-    public void regerarOficio(Processo p) {
-        atribuirNumeroOficioSeNecessario(p);
-        try {
-            // Gera e salva o novo oficio ANTES de remover o antigo: se
-            // oficioService.gerar() falhar, o oficio anterior (se houver)
-            // permanece intacto em vez do processo ficar sem nenhum.
-            byte[] of = oficioService.gerar(p);
-            String nomeOf = "oficio-indeferimento-" + p.getNumero().replace("/", "-") + ".pdf";
-            var novoAnexo = anexoStorage.salvarBytes(p, TipoAnexo.OFICIO_INDEFERIMENTO,
-                "Oficio de indeferimento gerado pelo sistema", nomeOf, "application/pdf", of);
-            anexoStorage.removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, novoAnexo.getId());
-        } catch (IOException e) {
-            log.error("Falha ao gerar oficio de indeferimento para processo {}", p.getNumero(), e);
-            throw new IllegalStateException(
-                "Falha ao gerar o oficio de indeferimento: " + e.getMessage(), e);
-        }
-    }
-
-    /**
      * Garante o numero proprio do oficio (NNNN/AAAA), sequencial ANUAL,
-     * independente do numero do processo. Uma vez atribuido, nunca muda — nem
-     * quando o oficio e regerado por alteracao de datas (o documento continua
-     * sendo o mesmo oficio no protocolo do setor).
+     * independente do numero do processo. Uma vez atribuido, nunca muda (o
+     * documento continua sendo o mesmo oficio no protocolo do setor).
+     *
+     * <p>Atribuido na decisao ({@link #gerarDocumentos}) para o numero ja
+     * aparecer na tela e no rascunho editavel que o operador baixa - o oficio
+     * em si nao e mais gerado pelo sistema (ver {@link #gerarDocumentos}).
      *
      * <p><b>Concorrencia:</b> o proximo numero e calculado lendo os numeros ja
      * usados e somando 1, sem lock nem sequence — dois indeferimentos

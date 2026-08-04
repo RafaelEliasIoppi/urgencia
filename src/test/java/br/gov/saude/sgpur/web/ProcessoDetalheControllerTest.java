@@ -766,7 +766,7 @@ class ProcessoDetalheControllerTest {
      */
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void abaFinalizacaoAvisaQueOOficioEGeradoPeloSistemaEQueSalvarDatasORegera() throws Exception {
+    void abaFinalizacaoOfereceRascunhoEditavelEExigeOAnexoComoDocumentoOficial() throws Exception {
         processo.setStatus(StatusProcesso.INDEFERIDO);
         processo.setNumeroOficio("0007/2026");
         when(fluxoService.calcularGating(processo)).thenReturn(
@@ -774,10 +774,16 @@ class ProcessoDetalheControllerTest {
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
+            // O oficio nao e mais gerado/anexado pelo sistema: o operador baixa
+            // o rascunho editavel, ajusta no Word e anexa o documento final.
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "gerado automaticamente pelo sistema")))
+                "Baixar rascunho editável (.rtf)")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "Confira o conteúdo")))
+                "/processos/1/oficio-rascunho")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "sempre o arquivo anexado")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("gerado automaticamente pelo sistema"))))
             // As datas do oficio nao sao mais editaveis: a tela mostra a data
             // que o sistema gravou, sem <input type="date"> (2026-08-04).
             .andExpect(content().string(org.hamcrest.Matchers.not(

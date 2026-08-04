@@ -41,8 +41,6 @@ class DecisaoFinalServiceTest {
     @Mock
     private ProcessoService processoService;
     @Mock
-    private OficioService oficioService;
-    @Mock
     private RelatorioService relatorioService;
     @Mock
     private AnexoStorageService anexoStorage;
@@ -53,7 +51,7 @@ class DecisaoFinalServiceTest {
 
     @BeforeEach
     void setUp() {
-        service = new DecisaoFinalService(processoService, oficioService, relatorioService,
+        service = new DecisaoFinalService(processoService, relatorioService,
             anexoStorage, processoRepository);
     }
 
@@ -77,70 +75,52 @@ class DecisaoFinalServiceTest {
 
     // ---------- INDEFERIDO ----------
 
+    /**
+     * Desde 2026-08-04 o sistema NAO gera nem anexa o oficio de indeferimento
+     * (decisao do usuario: "oficio sera sempre anexado" - ele precisa ser
+     * editavel caso a caso). Na decisao so sai o Relatorio Final; do oficio
+     * fica apenas a NUMERACAO reservada, que aparece na tela e no rascunho
+     * editavel que o operador baixa.
+     */
     @Test
-    void indeferidoGeraOficioERelatorioFinal() throws IOException {
+    void indeferidoNaoAnexaOficioMasGeraRelatorioFinal() throws IOException {
         Processo p = processo(StatusProcesso.INDEFERIDO);
-        p.setDataEmissaoOficio(LocalDate.of(2026, 1, 10));
-        byte[] oficioBytes = "oficio".getBytes();
         byte[] relatorioBytes = "relatorio".getBytes();
-        when(oficioService.gerar(p)).thenReturn(oficioBytes);
         when(relatorioService.gerar(p)).thenReturn(relatorioBytes);
-        when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(10L));
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
             anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(20L));
 
         service.gerarDocumentos(p);
 
-        verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), eq("oficio-indeferimento-01-2026.pdf"), eq("application/pdf"), eq(oficioBytes));
-        verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, 10L);
-
+        verify(anexoStorage, never()).salvarBytes(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
+            anyString(), anyString(), anyString(), any());
         verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
             anyString(), eq("relatorio-processo-01-2026.pdf"), eq("application/pdf"), eq(relatorioBytes));
         verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, 20L);
-
-        // dataEmissaoOficio ja estava preenchida: nao deve setar de novo nem salvar o processo
-        verify(processoService, never()).salvar(any());
     }
 
+    /**
+     * A data de emissao do oficio e o momento em que o OFICIO e anexado (regra
+     * de datas de 2026-08-04), nao o da decisao - gravar aqui dataria um
+     * documento que ainda nao existe.
+     */
     @Test
-    void indeferidoSemDataEmissaoOficioPreencheComHojeESalva() throws IOException {
+    void indeferidoNaoGravaDataDeEmissaoDoOficioNaDecisao() throws IOException {
         Processo p = processo(StatusProcesso.INDEFERIDO);
         p.setDataEmissaoOficio(null);
-        when(oficioService.gerar(p)).thenReturn("oficio".getBytes());
         when(relatorioService.gerar(p)).thenReturn("relatorio".getBytes());
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
             .thenReturn(anexoSalvo(1L));
 
         service.gerarDocumentos(p);
 
-        assertThat(p.getDataEmissaoOficio()).isEqualTo(LocalDate.now());
-        verify(processoService).salvar(p);
-    }
-
-    @Test
-    void indeferidoRemoveOficioAntigoSomenteAposSalvarONovo() throws IOException {
-        Processo p = processo(StatusProcesso.INDEFERIDO);
-        p.setDataEmissaoOficio(LocalDate.now());
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
-        when(relatorioService.gerar(p)).thenReturn(new byte[0]);
-        when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(42L));
-        when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
-            anyString(), anyString(), anyString(), any())).thenReturn(anexoSalvo(43L));
-
-        service.gerarDocumentos(p);
-
-        verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, 42L);
+        assertThat(p.getDataEmissaoOficio()).isNull();
     }
 
     @Test
     void numeroComBarraViraTracoNoNomeDoArquivo() throws IOException {
         Processo p = processo(StatusProcesso.INDEFERIDO);
         p.setNumero("123/2026");
-        p.setDataEmissaoOficio(LocalDate.now());
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
             .thenReturn(anexoSalvo(1L));
@@ -148,9 +128,8 @@ class DecisaoFinalServiceTest {
         service.gerarDocumentos(p);
 
         ArgumentCaptor<String> nomes = ArgumentCaptor.forClass(String.class);
-        verify(anexoStorage, times(2)).salvarBytes(eq(p), any(), anyString(), nomes.capture(), anyString(), any());
-        assertThat(nomes.getAllValues())
-            .containsExactly("oficio-indeferimento-123-2026.pdf", "relatorio-processo-123-2026.pdf");
+        verify(anexoStorage).salvarBytes(eq(p), any(), anyString(), nomes.capture(), anyString(), any());
+        assertThat(nomes.getValue()).isEqualTo("relatorio-processo-123-2026.pdf");
     }
 
     // ---------- DEFERIDO / CANCELADO: so relatorio final ----------
@@ -164,7 +143,6 @@ class DecisaoFinalServiceTest {
 
         service.gerarDocumentos(p);
 
-        verify(oficioService, never()).gerar(any());
         verify(anexoStorage, never()).salvarBytes(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
             anyString(), anyString(), anyString(), any());
         verify(anexoStorage, never()).removerAntigosDoTipo(any(), eq(TipoAnexo.OFICIO_INDEFERIMENTO), any());
@@ -184,7 +162,6 @@ class DecisaoFinalServiceTest {
 
         service.gerarDocumentos(p);
 
-        verify(oficioService, never()).gerar(any());
         verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.RELATORIO_FINAL, 20L);
         verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
             anyString(), anyString(), anyString(), any());
@@ -201,7 +178,7 @@ class DecisaoFinalServiceTest {
 
             service.gerarDocumentos(p);
 
-            verifyNoInteractions(oficioService, relatorioService, anexoStorage, processoService);
+            verifyNoInteractions(relatorioService, anexoStorage, processoService);
         }
     }
 
@@ -213,7 +190,6 @@ class DecisaoFinalServiceTest {
         p.setNumeroOficio(null);
         p.setDataEmissaoOficio(LocalDate.of(2026, 5, 4));
         when(processoRepository.findNumerosOficioDoAno("2026")).thenReturn(java.util.List.of());
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
             .thenReturn(anexoSalvo(1L));
@@ -226,7 +202,6 @@ class DecisaoFinalServiceTest {
 
     @Test
     void doisIndeferimentosNoMesmoAnoRecebemNumerosSequenciaisDistintos() throws IOException {
-        when(oficioService.gerar(any())).thenReturn(new byte[0]);
         when(relatorioService.gerar(any())).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
             .thenReturn(anexoSalvo(1L));
@@ -269,15 +244,15 @@ class DecisaoFinalServiceTest {
     }
 
     @Test
-    void numeroDeOficioJaAtribuidoNaoMudaAoRegerar() throws IOException {
+    void numeroDeOficioJaAtribuidoNaoMudaNumaSegundaChamada() throws IOException {
         Processo p = processo(StatusProcesso.INDEFERIDO);
         p.setNumeroOficio("1398/2026");
-        p.setDataEmissaoOficio(LocalDate.of(2026, 7, 10));
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
+        when(relatorioService.gerar(p)).thenReturn(new byte[0]);
         when(anexoStorage.salvarBytes(any(), any(), anyString(), anyString(), anyString(), any()))
             .thenReturn(anexoSalvo(1L));
 
-        service.regerarOficio(p);
+        service.gerarDocumentos(p);
+        service.gerarDocumentos(p);
 
         assertThat(p.getNumeroOficio()).isEqualTo("1398/2026");
         verify(processoService, never()).salvar(any());
@@ -285,37 +260,6 @@ class DecisaoFinalServiceTest {
     }
 
     // ---------- IllegalStateException real: falha de IO ao salvar o PDF ----------
-
-    /**
-     * ProcessoDecisaoControllerTest so MOCKA decisaoFinalService lancando
-     * IllegalStateException; aqui testamos a condicao real que dispara isso
-     * em producao: AnexoStorageService.salvarBytes falha com IOException
-     * (ex.: disco cheio/sem permissao) ao persistir o Oficio gerado. Como a
-     * remocao do antigo so acontece DEPOIS do save, essa falha nao deve
-     * remover nenhum anexo existente.
-     */
-    @Test
-    void falhaDeIoAoSalvarOficioLancaIllegalStateExceptionEInterrompeAntesDoRelatorio() throws IOException {
-        Processo p = processo(StatusProcesso.INDEFERIDO);
-        p.setDataEmissaoOficio(LocalDate.now());
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
-        when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-                anyString(), anyString(), anyString(), any()))
-            .thenThrow(new IOException("disco cheio"));
-
-        assertThatThrownBy(() -> service.gerarDocumentos(p))
-            .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("gerar o oficio")
-            .hasMessageContaining("disco cheio")
-            .hasCauseInstanceOf(IOException.class);
-
-        // a excecao do oficio interrompe o metodo - o relatorio final (que
-        // viria depois, pois INDEFERIDO tambem e isFinalizado()) nunca chega
-        // a ser gerado, e nada e removido (nem o oficio antigo, que falhou
-        // antes de qualquer remocao).
-        verify(relatorioService, never()).gerar(any());
-        verify(anexoStorage, never()).removerAntigosDoTipo(any(), any(), any());
-    }
 
     @Test
     void falhaDeIoAoSalvarRelatorioFinalLancaIllegalStateExceptionParaDeferido() throws IOException {
@@ -335,30 +279,18 @@ class DecisaoFinalServiceTest {
     }
 
     @Test
-    void falhaDeIoAoSalvarRelatorioFinalLancaIllegalStateExceptionParaIndeferidoAposOficioOk() throws IOException {
-        // No caminho INDEFERIDO, o oficio e salvo com sucesso mas o relatorio
-        // final (gerado na sequencia, pois INDEFERIDO tambem e finalizado)
-        // falha - deve propagar o IllegalStateException do relatorio, nao do
-        // oficio, e o oficio ja deve ter sido persistido (e o antigo
-        // removido) antes da falha do relatorio.
+    void falhaDeIoAoSalvarRelatorioFinalLancaIllegalStateExceptionParaIndeferido() throws IOException {
+        // INDEFERIDO nao gera mais oficio: o unico PDF do caminho e o
+        // relatorio final, entao a falha dele e a unica que pode propagar.
         Processo p = processo(StatusProcesso.INDEFERIDO);
-        p.setDataEmissaoOficio(LocalDate.now());
-        when(oficioService.gerar(p)).thenReturn(new byte[0]);
         when(relatorioService.gerar(p)).thenReturn(new byte[0]);
-        when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-                anyString(), anyString(), anyString(), any()))
-            .thenReturn(anexoSalvo(42L));
         when(anexoStorage.salvarBytes(eq(p), eq(TipoAnexo.RELATORIO_FINAL),
                 anyString(), anyString(), anyString(), any()))
             .thenThrow(new IOException("falha de disco"));
 
         assertThatThrownBy(() -> service.gerarDocumentos(p))
             .isInstanceOf(IllegalStateException.class)
-            .hasMessageContaining("falhou ao gerar o relatorio final");
-
-        verify(anexoStorage).salvarBytes(eq(p), eq(TipoAnexo.OFICIO_INDEFERIMENTO),
-            anyString(), anyString(), anyString(), any());
-        verify(anexoStorage).removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, 42L);
-        verify(anexoStorage, never()).removerAntigosDoTipo(any(), eq(TipoAnexo.RELATORIO_FINAL), any());
+            .hasMessageContaining("falhou ao gerar o relatorio final")
+            .hasMessageContaining("falha de disco");
     }
 }

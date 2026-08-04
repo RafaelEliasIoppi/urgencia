@@ -1731,6 +1731,58 @@ salvar datas (escrita irreversível, seguindo a convenção do projeto) e para
 o scheduler de lembrete SNT (elegibilidade, não reenvio antes do prazo,
 exclusão de processos já com comprovante).
 
+## Ofício de indeferimento: sempre ANEXADO, nunca gerado (2026-08-04)
+
+**Decisão de produto do usuário**, no mesmo dia em que o ofício automático foi
+criado: *"o ofício deve ser algo editável"* / *"ofício será sempre anexado"*.
+Cada indeferimento tem particularidade de redação que nenhum modelo fixo
+cobre, e um PDF gerado pelo sistema não é editável.
+
+- `DecisaoFinalService.gerarDocumentos` **não gera nem anexa mais** o
+  `OFICIO_INDEFERIMENTO`. Na decisão sai só o **Relatório Final**; do ofício
+  fica apenas a **numeração reservada** (`numeroOficio`, `NNNN/AAAA`, ver
+  `atribuirNumeroOficioSeNecessario`), que aparece na tela e no rascunho.
+  `regerarOficio` foi removido (ficou sem chamador), junto com a dependência
+  de `OficioService` nessa classe.
+- `dataEmissaoOficio` **não é mais gravada na decisão** — seria datar um
+  documento que ainda não existe. É gravada no upload do ofício, pela regra de
+  datas da seção seguinte.
+- **Novo:** `GET /processos/{id}/oficio-rascunho` →
+  `OficioService.gerarRascunhoRtf`, um **RTF editável** (abre no Word/
+  LibreOffice) já preenchido com número do ofício, cidade/data por extenso,
+  paciente, motivo, assinatura e bloco do destinatário, seguindo a estrutura
+  do ofício real da Central de Transplantes usado como referência. **RTF e não
+  DOCX** porque é texto puro: nenhuma dependência nova (POI/docx4j) só para
+  isso. Baixar o rascunho **não anexa nada nem move data alguma**.
+- `OficioService.escaparRtf` é obrigatório em todo texto interpolado: `\`, `{`
+  e `}` são caracteres de **controle** do RTF (um motivo de indeferimento com
+  `{` corromperia o documento inteiro) e a acentuação precisa virar `\'hh` no
+  code page declarado. Coberto por teste.
+- O PDF antigo (`OficioService.gerar` + `GET /processos/{id}/oficio`)
+  **continua existindo** como visualização somente-leitura, mas não é mais
+  anexado por nenhum caminho.
+- O **documento de registro é sempre o anexo** (`POST /processos/{id}/
+  oficio-upload`): é ele que vai ao solicitante por e-mail e que o Portal do
+  Solicitante disponibiliza. `validarRespostaSolicitante` continua exigindo o
+  anexo antes de enviar a resposta, então a etapa fica pendente até o operador
+  anexar — foi só a origem do arquivo que mudou.
+- **Ressalva conhecida:** o operador pode trocar o número do ofício ao editar
+  o rascunho, e aí o `numeroOficio` guardado diverge do documento anexado. O
+  sistema não tem como saber — se a numeração oficial vier do controle próprio
+  do setor, avaliar remover `numeroOficio` numa próxima passada.
+- O E2E (`FluxoCompletoProcessoIT`, caminho INDEFERIDO) passou a **anexar o
+  ofício** antes de confirmar a resposta (`ProcessoDetalhePage
+  .passo5_anexarOficioIndeferimento`); antes ele contava com o ofício
+  automático.
+
+**Não confundir com o item 8 do `docs/RELATORIO-OFICIO-COMPROVANTE-SNT-2026-08.md`
+(ofício ao SNT).** O modelo `Of nº 1398 Julho 2026 SNT.doc` na raiz do
+repositório é um ofício **à Coordenadora-Geral do SNT em Brasília** (pedido de
+alteração de status de paciente) — documento diferente do ofício de
+indeferimento, que vai à equipe solicitante. Esse item continua **não
+implementado**; o modelo foi usado aqui só como referência de estrutura
+(numeração, cabeçalho do departamento, bloco do destinatário).
+
 ## Regra de datas: data de ato = momento do anexo, nunca digitada (2026-08-04)
 
 **Decisão de produto do usuário, vale para todo o sistema.** A data de um ato

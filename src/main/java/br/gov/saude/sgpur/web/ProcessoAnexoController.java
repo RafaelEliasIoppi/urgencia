@@ -316,6 +316,40 @@ public class ProcessoAnexoController {
         }
     }
 
+    /**
+     * RASCUNHO EDITAVEL do oficio de indeferimento (.rtf, abre no Word).
+     *
+     * <p>Desde 2026-08-04 o sistema NAO gera mais o oficio como anexo: cada
+     * caso tem particularidade de redacao, entao o oficio precisa ser editavel
+     * e <b>o documento de registro e sempre o que o operador anexa</b>
+     * ({@link #uploadOficio}). Este endpoint entrega so o ponto de partida,
+     * ja preenchido com numero do oficio, cidade/data, paciente e motivo -
+     * baixar o rascunho nao anexa nada ao processo nem muda data alguma.
+     *
+     * <p>Mesma guarda de status do PDF acima: rascunho de indeferimento nao
+     * faz sentido em processo que nao foi indeferido.
+     */
+    @GetMapping("/{id}/oficio-rascunho")
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> oficioRascunho(@PathVariable Long id) {
+        Processo p;
+        try {
+            p = processoService.buscar(id);
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+        if (p.getStatus() != StatusProcesso.INDEFERIDO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Oficio de indeferimento so existe para processos Indeferidos.");
+        }
+        byte[] rtf = oficioService.gerarRascunhoRtf(p);
+        String nome = "oficio-rascunho-" + p.getNumero().replace("/", "-") + ".rtf";
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType("application/rtf"))
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + nome + "\"")
+            .body(rtf);
+    }
+
     @GetMapping("/anexos/{anexoId}/download")
     @Transactional(readOnly = true)
     public ResponseEntity<Resource> baixarAnexo(@PathVariable Long anexoId) {

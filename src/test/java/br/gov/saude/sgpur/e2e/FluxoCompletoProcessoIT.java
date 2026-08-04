@@ -218,9 +218,12 @@ class FluxoCompletoProcessoIT extends PlaywrightTestBase {
             assertThat(detalhe.passoConcluido(3)).isTrue();
             assertThat(detalhe.passoConcluido(4)).isTrue();
 
-            // Passo 5: o oficio de indeferimento ja foi gerado automaticamente
-            // pela decisao acima - falta so o operador confirmar o envio da
-            // resposta final ao solicitante (unico botao, sem upload manual).
+            // Passo 5: o oficio NAO e gerado pelo sistema (2026-08-04) - o
+            // operador redige por fora (partindo do rascunho editavel que a
+            // tela oferece) e anexa o documento assinado, que e o unico oficio
+            // valido do processo. So depois disso a resposta pode ser enviada.
+            detalhe.passo5_anexarOficioIndeferimento(
+                pdfPayload("oficio-indeferimento.pdf", "Oficio de indeferimento assinado"));
             detalhe.passo5_confirmarRespostaAoSolicitante();
             assertThat(detalhe.passoConcluido(5)).isTrue();
 

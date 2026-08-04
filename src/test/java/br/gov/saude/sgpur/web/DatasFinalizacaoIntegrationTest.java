@@ -111,30 +111,6 @@ class DatasFinalizacaoIntegrationTest {
         tx.executeWithoutResult(st -> decisaoFinalService.gerarDocumentos(relido()));
     }
 
-    private String textoDoOficioAnexado() throws Exception {
-        List<Anexo> oficios = anexoRepo.findAll().stream()
-            .filter(a -> a.getTipo() == TipoAnexo.OFICIO_INDEFERIMENTO)
-            .toList();
-        assertThat(oficios).hasSize(1);      // sempre exatamente 1 (substitui, nao acumula)
-        byte[] bytes = Files.readAllBytes(anexoStorage.resolverArquivo(oficios.get(0)));
-        PdfReader reader = new PdfReader(bytes);
-        try {
-            return new PdfTextExtractor(reader).getTextFromPage(1);
-        } finally {
-            reader.close();
-        }
-    }
-
-    @Test
-    void oficioGeradoNaDecisaoNasceComADataDeHojeEOPdfMostraAMesmaData() throws Exception {
-        gerarDocumentosComoNaDecisao();
-
-        assertThat(relido().getDataEmissaoOficio()).isEqualTo(LocalDate.now());
-        // O PDF anexado carrega exatamente a mesma data da tela - nao ha mais
-        // como as duas divergirem, porque nao ha campo para editar uma delas.
-        assertThat(textoDoOficioAnexado()).contains(String.valueOf(LocalDate.now().getYear()));
-    }
-
     @Test
     void uploadManualDoOficioGravaADataDeEmissaoComOMomentoDoAnexo() {
         Processo p = relido();
@@ -186,15 +162,41 @@ class DatasFinalizacaoIntegrationTest {
             .anyMatch(a -> a.getTipo() == TipoAnexo.COMPROVANTE_SNT)).isFalse();
     }
 
+    /**
+     * A decisao NAO anexa mais oficio nenhum ("oficio sera sempre anexado",
+     * 2026-08-04): so reserva a numeracao, que o rascunho editavel carrega.
+     */
     @Test
-    void numeroProprioDoOficioEAtribuidoNaGeracaoEPreservadoNaRegeracao() throws Exception {
+    void decisaoReservaONumeroDoOficioMasNaoAnexaOficioNenhum() {
         gerarDocumentosComoNaDecisao();
-        assertThat(relido().getNumeroOficio()).isEqualTo("0001/2026");
-        assertThat(textoDoOficioAnexado()).contains("0001/2026");
-
-        tx.executeWithoutResult(st -> decisaoFinalService.regerarOficio(relido()));
 
         assertThat(relido().getNumeroOficio()).isEqualTo("0001/2026");
-        assertThat(textoDoOficioAnexado()).contains("0001/2026");
+        assertThat(relido().getDataEmissaoOficio()).isNull();
+        assertThat(anexoRepo.findAll().stream()
+            .anyMatch(a -> a.getTipo() == TipoAnexo.OFICIO_INDEFERIMENTO)).isFalse();
+        // O relatorio final continua sendo gerado normalmente.
+        assertThat(anexoRepo.findAll().stream()
+            .anyMatch(a -> a.getTipo() == TipoAnexo.RELATORIO_FINAL)).isTrue();
+    }
+
+    /**
+     * O rascunho editavel e so um download: nao anexa nada ao processo nem
+     * move data alguma. O documento de registro continua sendo o que o
+     * operador anexa depois.
+     */
+    @Test
+    void baixarORascunhoEditavelNaoAnexaNadaNemMoveData() {
+        gerarDocumentosComoNaDecisao();
+        int anexosAntes = anexoRepo.findAll().size();
+
+        var resposta = controller.oficioRascunho(processoId);
+
+        assertThat(resposta.getStatusCode().value()).isEqualTo(200);
+        String rtf = new String(resposta.getBody(), java.nio.charset.StandardCharsets.ISO_8859_1);
+        assertThat(rtf).startsWith("{\\rtf1");
+        assertThat(rtf).contains("0001/2026");                       // numero do oficio
+        assertThat(rtf).contains("Ausencia de indicacao clinica.");  // motivo do indeferimento
+        assertThat(anexoRepo.findAll()).hasSize(anexosAntes);
+        assertThat(relido().getDataEmissaoOficio()).isNull();
     }
 }
