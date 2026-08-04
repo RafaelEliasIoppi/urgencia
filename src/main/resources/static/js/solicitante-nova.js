@@ -34,6 +34,69 @@ document.addEventListener('DOMContentLoaded', function () {
         atualizarContador();
     }
 
+    // Salvar rascunho (AJAX, sem recarregar a pagina) - ver
+    // SolicitanteController#salvarRascunho. Nenhum campo e validado aqui: o
+    // rascunho pode ser salvo parcialmente preenchido.
+    var form = document.getElementById('formNovaSolicitacao');
+    var btnSalvarRascunho = document.getElementById('btnSalvarRascunho');
+    var rascunhoStatus = document.getElementById('rascunhoStatus');
+    if (form && btnSalvarRascunho) {
+        var rascunhoUrl = form.getAttribute('data-rascunho-url');
+        var csrfMeta = document.querySelector('meta[name="_csrf"]');
+        var csrfHeaderMeta = document.querySelector('meta[name="_csrf_header"]');
+        var csrfToken = csrfMeta ? csrfMeta.content : null;
+        var csrfHeader = csrfHeaderMeta ? csrfHeaderMeta.content : null;
+
+        btnSalvarRascunho.addEventListener('click', function () {
+            var campoNome = document.getElementById('pacienteNome');
+            var campoRgct = document.getElementById('pacienteRgct');
+            var campoData = document.getElementById('dataSituacaoEspecial');
+            var campoJustificativa = document.getElementById('justificativaClinica');
+
+            var params = new URLSearchParams();
+            params.set('pacienteNome', (campoNome && campoNome.value) || '');
+            params.set('pacienteRgct', (campoRgct && campoRgct.value) || '');
+            params.set('dataSituacaoEspecial', (campoData && campoData.value) || '');
+            params.set('justificativaClinica', (campoJustificativa && campoJustificativa.value) || '');
+
+            var headers = {'Content-Type': 'application/x-www-form-urlencoded'};
+            if (csrfHeader && csrfToken) {
+                headers[csrfHeader] = csrfToken;
+            }
+
+            btnSalvarRascunho.disabled = true;
+            fetch(rascunhoUrl, {
+                method: 'POST',
+                headers: headers,
+                credentials: 'same-origin',
+                body: params.toString()
+            }).then(function (resp) {
+                if (!resp.ok) {
+                    throw new Error('Falha ao salvar rascunho');
+                }
+                return resp.json();
+            }).then(function () {
+                var agora = new Date();
+                var hh = String(agora.getHours()).padStart(2, '0');
+                var mm = String(agora.getMinutes()).padStart(2, '0');
+                if (rascunhoStatus) {
+                    rascunhoStatus.textContent = 'Rascunho salvo às ' + hh + ':' + mm;
+                }
+                if (typeof mostrarToast === 'function') {
+                    mostrarToast('Rascunho salvo.', 'success');
+                }
+            }).catch(function () {
+                if (typeof mostrarToast === 'function') {
+                    mostrarToast('Não foi possível salvar o rascunho. Tente novamente.', 'danger');
+                } else if (rascunhoStatus) {
+                    rascunhoStatus.textContent = 'Falha ao salvar rascunho.';
+                }
+            }).finally(function () {
+                btnSalvarRascunho.disabled = false;
+            });
+        });
+    }
+
     var input = document.getElementById('documentos');
     var lista = document.getElementById('documentosSelecionados');
     if (!input || !lista) {

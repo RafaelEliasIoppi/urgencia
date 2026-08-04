@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.AnexoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.MensagemSolicitacao;
+import br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.StatusSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.TipoAnexo;
@@ -13,12 +14,14 @@ import br.gov.saude.sgpur.service.AnexoSolicitacaoOnlineStorageService;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
+import br.gov.saude.sgpur.service.RascunhoSolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -40,6 +43,7 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * Portal do Solicitante — modulo experimental e OPCIONAL (ver
@@ -93,6 +97,7 @@ public class SolicitanteController {
     private final AnexoStorageService anexoStorageProcesso;
     private final MensagemSolicitacaoService mensagemService;
     private final TempoRespostaService tempoRespostaService;
+    private final RascunhoSolicitacaoOnlineService rascunhoService;
 
     public SolicitanteController(UsuarioRepository usuarioRepo,
                                  SolicitacaoOnlineService solicitacaoService,
@@ -101,7 +106,8 @@ public class SolicitanteController {
                                  AnexoSolicitacaoOnlineStorageService anexoStorage,
                                  AnexoStorageService anexoStorageProcesso,
                                  MensagemSolicitacaoService mensagemService,
-                                 TempoRespostaService tempoRespostaService) {
+                                 TempoRespostaService tempoRespostaService,
+                                 RascunhoSolicitacaoOnlineService rascunhoService) {
         this.usuarioRepo = usuarioRepo;
         this.solicitacaoService = solicitacaoService;
         this.auditoria = auditoria;
@@ -110,6 +116,7 @@ public class SolicitanteController {
         this.anexoStorage = anexoStorage;
         this.mensagemService = mensagemService;
         this.tempoRespostaService = tempoRespostaService;
+        this.rascunhoService = rascunhoService;
     }
 
     /**
@@ -155,16 +162,67 @@ public class SolicitanteController {
         return "solicitante/lista";
     }
 
+    /**
+     * Pre-preenche o formulario com o rascunho salvo, se houver (ver
+     * {@link RascunhoSolicitacaoOnlineService}) - o solicitante retoma de
+     * onde parou em vez de comecar do zero. Sem rascunho, comporta-se como
+     * antes (formulario em branco, so a data de hoje pre-selecionada).
+     */
     @GetMapping("/nova")
     @Transactional(readOnly = true)
     public String nova(Principal principal, Model model) {
         Usuario usuario = resolverUsuario(principal);
+        Optional<RascunhoSolicitacaoOnline> rascunho = rascunhoService.buscarPorUsuario(usuario.getId());
         SolicitacaoOnline s = new SolicitacaoOnline();
-        s.setDataSituacaoEspecial(LocalDate.now());
+        if (rascunho.isPresent()) {
+            RascunhoSolicitacaoOnline r = rascunho.get();
+            s.setPacienteNome(r.getPacienteNome());
+            s.setPacienteRgct(r.getPacienteRgct());
+            s.setDataSituacaoEspecial(
+                r.getDataSituacaoEspecial() != null ? r.getDataSituacaoEspecial() : LocalDate.now());
+            s.setJustificativaClinica(r.getJustificativaClinica());
+            model.addAttribute("rascunhoSalvoEm", r.getAtualizadoEm());
+        } else {
+            s.setDataSituacaoEspecial(LocalDate.now());
+        }
         model.addAttribute("solicitacao", s);
         model.addAttribute("equipe", usuario.getEquipeSolicitante());
         model.addAttribute("email", usuario.getEmail());
         return "solicitante/nova";
+    }
+
+    /**
+     * Salva/atualiza o rascunho do formulario (AJAX, sem recarregar a
+     * pagina). Nenhum campo e obrigatorio aqui - o rascunho pode estar
+     * parcialmente preenchido; a validacao completa so ocorre no envio final
+     * ({@link #criar}). Nao aceita upload de documentos (os arquivos
+     * selecionados no &lt;input type="file"&gt; nao sobrevivem a um reload de
+     * pagina de qualquer forma - o solicitante os re-seleciona ao voltar).
+     */
+    @PostMapping("/nova/rascunho")
+    @ResponseBody
+    @Transactional
+    public Map<String, Object> salvarRascunho(
+            @RequestParam(value = "pacienteNome", required = false) String pacienteNome,
+            @RequestParam(value = "pacienteRgct", required = false) String pacienteRgct,
+            @RequestParam(value = "dataSituacaoEspecial", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dataSituacaoEspecial,
+            @RequestParam(value = "justificativaClinica", required = false) String justificativaClinica,
+            Principal principal) {
+        Usuario usuario = resolverUsuario(principal);
+        RascunhoSolicitacaoOnline r = rascunhoService.salvar(
+            usuario.getId(), pacienteNome, pacienteRgct, dataSituacaoEspecial, justificativaClinica);
+        return Map.of("ok", true, "salvoEm", r.getAtualizadoEm().toString());
+    }
+
+    /** Descarta o rascunho em andamento (o solicitante quer comecar do zero). */
+    @PostMapping("/nova/rascunho/apagar")
+    @Transactional
+    public String apagarRascunho(Principal principal, RedirectAttributes ra) {
+        Usuario usuario = resolverUsuario(principal);
+        rascunhoService.apagar(usuario.getId());
+        ra.addFlashAttribute("msg", "Rascunho descartado.");
+        return "redirect:/solicitante/nova";
     }
 
     /**
@@ -185,6 +243,17 @@ public class SolicitanteController {
             SolicitacaoOnline salva = solicitacaoService.criar(solicitacao, usuario, documentos);
             auditoria.registrar("SOLICITACAO_ONLINE_ENVIADA",
                 "Solicitacao " + salva.getId() + " - " + salva.identificacao());
+            // Envio efetivado: o rascunho (se havia) ja virou uma SolicitacaoOnline
+            // de verdade, nao faz mais sentido mante-lo. Best-effort: uma falha
+            // aqui nao pode desfazer o envio que ja foi commitado acima.
+            try {
+                rascunhoService.apagar(usuario.getId());
+            } catch (RuntimeException e) {
+                // Rascunho orfao nao e um problema serio (so reaparece no proximo
+                // /solicitante/nova, sem nenhum efeito colateral) - nunca vale a
+                // pena arriscar confundir o solicitante com um erro depois que a
+                // solicitacao real ja foi enviada com sucesso.
+            }
             ra.addFlashAttribute("msg",
                 "Solicitacao enviada. Aguarde a triagem da equipe de Urgencia Renal.");
             return "redirect:/solicitante";
