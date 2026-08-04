@@ -93,6 +93,23 @@ class HomeControllerTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR")
+    void painelExpoeAContagemDeDeferidosSemComprovanteSnt() throws Exception {
+        // Pendencia que antes nao entrava em contador nenhum: um Deferido sem
+        // comprovante SNT bloqueia a resposta oficial ao solicitante.
+        int ano = Year.now().getValue();
+        when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of());
+        when(processoRepository.contarDeferidosSemComprovanteSnt()).thenReturn(3L);
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("deferidosSemComprovanteSnt", 3L));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
     void pendenciasSoSaoCalculadasParaProcessosEmAndamento() throws Exception {
         int ano = Year.now().getValue();
         Processo emAndamento = processo(1L, 1, StatusProcesso.ENVIADO);

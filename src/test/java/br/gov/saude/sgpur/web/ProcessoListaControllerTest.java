@@ -100,6 +100,45 @@ class ProcessoListaControllerTest {
         verify(processoService).buscar(null, null, PageRequest.of(0, 15));
     }
 
+    // ----- pendencia de comprovante SNT (badge + filtro) -----
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void listaExpoeOsIdsDeferidosSemComprovanteSntParaOBadge() throws Exception {
+        Page<Processo> pagina = new PageImpl<>(List.of(processo), PageRequest.of(0, 15), 1);
+        when(processoService.buscar(isNull(), isNull(), any())).thenReturn(pagina);
+        when(processoService.idsDeferidosSemComprovanteSnt()).thenReturn(java.util.Set.of(1L, 9L));
+
+        mvc.perform(get("/processos"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("idsSemComprovanteSnt", java.util.Set.of(1L, 9L)))
+            .andExpect(model().attribute("totalSemComprovanteSnt", 2))
+            .andExpect(model().attribute("filtroSntPendente", false));
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void filtroSntPendenteListaSomenteOsDeferidosSemComprovante() throws Exception {
+        Processo deferidoSemComprovante = new Processo();
+        deferidoSemComprovante.setId(9L);
+        deferidoSemComprovante.setNumero("09/2026");
+        deferidoSemComprovante.setStatus(StatusProcesso.DEFERIDO);
+        when(processoService.listarDeferidosSemComprovanteSnt())
+            .thenReturn(List.of(deferidoSemComprovante));
+        when(processoService.idsDeferidosSemComprovanteSnt()).thenReturn(java.util.Set.of(9L));
+        when(fluxoService.resumoPendencia(any())).thenReturn("Comprovante SNT: anexe o comprovante.");
+
+        mvc.perform(get("/processos").param("filtro", "snt-pendente"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("processos/lista"))
+            .andExpect(model().attribute("processos", List.of(deferidoSemComprovante)))
+            .andExpect(model().attribute("filtroSntPendente", true))
+            .andExpect(model().attribute("totalPaginas", 1));
+
+        // O filtro nao passa pela busca paginada normal.
+        verify(processoService, org.mockito.Mockito.never()).buscar(any(), any(), any());
+    }
+
     @Test
     @WithMockUser(roles = "OPERADOR")
     void expoeTodosOsValoresDeStatusParaOFiltro() throws Exception {

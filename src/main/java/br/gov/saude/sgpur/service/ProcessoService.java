@@ -12,6 +12,7 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Year;
 import java.util.List;
@@ -434,6 +435,60 @@ public class ProcessoService {
     @Transactional
     public void registrarLembreteAvaliador(Long parecerId) {
         parecerRepository.registrarUltimoLembrete(parecerId, LocalDateTime.now());
+    }
+
+    /**
+     * Grava as datas da aba Finalizacao (passo 5) de acordo com o status:
+     * emissao/envio do oficio para INDEFERIDO, data de envio ao SNT para
+     * DEFERIDO. As datas sao todas opcionais (o operador pode salvar so uma).
+     *
+     * <p>Transacao propria e carregamento por id DENTRO dela: o metodo altera
+     * a entidade GERENCIADA (dirty check), sem depender de um merge de
+     * entidade desanexada com colecoes {@code cascade = ALL} nao
+     * inicializadas — mesmo motivo documentado em
+     * {@code ProcessoAnexoController}.</p>
+     */
+    @Transactional
+    public Processo atualizarDatasFinalizacao(Long id, LocalDate dataEmissaoOficio,
+                                              LocalDate dataEnvioOficio, LocalDate dataEnvioSnt) {
+        Processo p = buscar(id);
+        if (p.getStatus() == StatusProcesso.INDEFERIDO) {
+            p.setDataEmissaoOficio(dataEmissaoOficio);
+            p.setDataEnvioOficio(dataEnvioOficio);
+        } else if (p.getStatus() == StatusProcesso.DEFERIDO) {
+            p.setDataEnvioSnt(dataEnvioSnt);
+        } else {
+            throw new IllegalStateException(
+                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos.");
+        }
+        return processoRepository.save(p);
+    }
+
+    /**
+     * Grava a data/hora de agora como o ultimo lembrete de comprovante SNT
+     * enviado para este processo ({@code ComprovanteSntLembreteScheduler}),
+     * SOMENTE apos a confirmacao de envio do e-mail. Transacao propria pelo
+     * mesmo motivo de {@link #registrarLembreteAvaliador}: delega a um
+     * {@code @Modifying} de linha unica.
+     */
+    @Transactional
+    public void registrarLembreteComprovanteSnt(Long processoId) {
+        processoRepository.registrarUltimoLembreteSnt(processoId, LocalDateTime.now());
+    }
+
+    /** Quantos processos Deferidos ainda nao tem o comprovante SNT anexado. */
+    public long contarDeferidosSemComprovanteSnt() {
+        return processoRepository.contarDeferidosSemComprovanteSnt();
+    }
+
+    /** Ids dos processos Deferidos sem comprovante SNT (badge de pendencia na lista). */
+    public java.util.Set<Long> idsDeferidosSemComprovanteSnt() {
+        return new java.util.HashSet<>(processoRepository.findIdsDeferidosSemComprovanteSnt());
+    }
+
+    /** Processos Deferidos sem comprovante SNT (filtro da lista), mais antigos primeiro. */
+    public List<Processo> listarDeferidosSemComprovanteSnt() {
+        return processoRepository.findDeferidosSemComprovanteSnt();
     }
 
     /** True se o processo esta encerrado e, portanto, com a edicao travada. */

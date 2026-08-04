@@ -180,6 +180,51 @@ public class EmailTemplateService {
     }
 
     /**
+     * Lembrete automatico INTERNO (ADMIN/OPERADOR) de um processo DEFERIDO que
+     * segue sem o comprovante de insercao no SNT anexado. Enquanto esse anexo
+     * nao existe, a resposta oficial ao solicitante fica bloqueada
+     * ({@code ProcessoValidator}) — o paciente foi deferido e a equipe
+     * solicitante nao foi comunicada.
+     *
+     * <p>Destinatario e a propria equipe da Secretaria (nao avaliadores), entao
+     * o e-mail leva o NOME COMPLETO do paciente: a regra de imparcialidade vale
+     * para o material dos avaliadores, nao para a operacao interna.</p>
+     *
+     * @param diasDesdeDecisao dias corridos desde a decisao, so para o texto.
+     */
+    public EmailTemplate emailLembreteComprovanteSnt(Processo p, long diasDesdeDecisao) {
+        String linkProcesso = baseUrl + "/processos/" + p.getId() + "#finalizacao";
+
+        String corpo = """
+            Ola,
+
+            O processo de Urgencia Renal abaixo foi DEFERIDO ha %d dia(s) e ainda
+            nao tem o comprovante de insercao da urgencia renal no Sistema Nacional
+            de Transplantes (SNT) anexado.
+
+            Processo: %s
+            Paciente: %s
+            Equipe solicitante: %s
+
+            Enquanto o comprovante nao for anexado, a resposta oficial ao
+            solicitante permanece bloqueada - ou seja, a equipe que abriu o pedido
+            ainda nao foi comunicada do deferimento.
+
+            Anexe o comprovante na aba Finalizacao do processo:
+            %s
+
+            Atenciosamente,
+            %s
+            """.formatted(diasDesdeDecisao, p.getNumero(), p.getPacienteNome(),
+                p.getSolicitanteEquipe(), linkProcesso, assinatura());
+
+        return new EmailTemplate("lembrete-comprovante-snt",
+            "Lembrete interno: comprovante SNT pendente", "clipboard2-x",
+            assunto("Comprovante SNT pendente - Processo " + p.getNumero()),
+            corpo);
+    }
+
+    /**
      * Template agrupado de convite ao portal (exibido na aba Envio do processo).
      * Lista todos os avaliadores com o link unico do portal.
      * SEM nome completo do paciente (so iniciais).

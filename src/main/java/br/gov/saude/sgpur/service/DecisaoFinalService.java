@@ -3,9 +3,11 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.domain.TipoAnexo;
+import br.gov.saude.sgpur.repository.ProcessoRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.time.LocalDate;
@@ -27,15 +29,18 @@ public class DecisaoFinalService {
     private final OficioService oficioService;
     private final RelatorioService relatorioService;
     private final AnexoStorageService anexoStorage;
+    private final ProcessoRepository processoRepository;
 
     public DecisaoFinalService(ProcessoService processoService,
                                OficioService oficioService,
                                RelatorioService relatorioService,
-                               AnexoStorageService anexoStorage) {
+                               AnexoStorageService anexoStorage,
+                               ProcessoRepository processoRepository) {
         this.processoService = processoService;
         this.oficioService = oficioService;
         this.relatorioService = relatorioService;
         this.anexoStorage = anexoStorage;
+        this.processoRepository = processoRepository;
     }
 
     /**
@@ -55,20 +60,7 @@ public class DecisaoFinalService {
                 p.setDataEmissaoOficio(LocalDate.now());
                 processoService.salvar(p);
             }
-            try {
-                // Gera e salva o novo oficio ANTES de remover o antigo: se
-                // oficioService.gerar() falhar, o oficio anterior (se houver)
-                // permanece intacto em vez do processo ficar sem nenhum.
-                byte[] of = oficioService.gerar(p);
-                String nomeOf = "oficio-indeferimento-" + p.getNumero().replace("/", "-") + ".pdf";
-                var novoAnexo = anexoStorage.salvarBytes(p, TipoAnexo.OFICIO_INDEFERIMENTO,
-                    "Oficio de indeferimento gerado na decisao", nomeOf, "application/pdf", of);
-                anexoStorage.removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, novoAnexo.getId());
-            } catch (IOException e) {
-                log.error("Falha ao gerar oficio de indeferimento para processo {}", p.getNumero(), e);
-                throw new IllegalStateException(
-                    "Decisao salva, mas falhou ao gerar o oficio: " + e.getMessage(), e);
-            }
+            regerarOficio(p);
         }
 
         if (p.getStatus().isFinalizado()) {
@@ -85,5 +77,90 @@ public class DecisaoFinalService {
                     "Decisao salva, mas falhou ao gerar o relatorio final: " + e.getMessage(), e);
             }
         }
+    }
+
+    /**
+     * (Re)gera o PDF do Oficio de Indeferimento a partir dos dados ATUAIS do
+     * processo e substitui o anexo {@code OFICIO_INDEFERIMENTO}. Atribui a
+     * numeracao propria do oficio (NNNN/AAAA) se o processo ainda nao tiver
+     * uma.
+     *
+     * <p>Chamado na decisao ({@link #gerarDocumentos}) e tambem quando o
+     * operador altera as datas do oficio na aba Finalizacao — sem isso, a tela
+     * e o relatorio final mostravam uma data e o PDF anexado (que e o que
+     * chega a equipe solicitante por e-mail) continuava com a data antiga.</p>
+     *
+     * <p><b>Sobrescreve upload manual.</b> Se o operador tiver substituido o
+     * oficio por um documento proprio, esta chamada troca de volta pelo PDF do
+     * sistema — a tela avisa isso no formulario de datas.</p>
+     *
+     * @throws IllegalStateException se a gravacao do PDF falhar.
+     */
+    public void regerarOficio(Processo p) {
+        atribuirNumeroOficioSeNecessario(p);
+        try {
+            // Gera e salva o novo oficio ANTES de remover o antigo: se
+            // oficioService.gerar() falhar, o oficio anterior (se houver)
+            // permanece intacto em vez do processo ficar sem nenhum.
+            byte[] of = oficioService.gerar(p);
+            String nomeOf = "oficio-indeferimento-" + p.getNumero().replace("/", "-") + ".pdf";
+            var novoAnexo = anexoStorage.salvarBytes(p, TipoAnexo.OFICIO_INDEFERIMENTO,
+                "Oficio de indeferimento gerado pelo sistema", nomeOf, "application/pdf", of);
+            anexoStorage.removerAntigosDoTipo(p, TipoAnexo.OFICIO_INDEFERIMENTO, novoAnexo.getId());
+        } catch (IOException e) {
+            log.error("Falha ao gerar oficio de indeferimento para processo {}", p.getNumero(), e);
+            throw new IllegalStateException(
+                "Falha ao gerar o oficio de indeferimento: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Versao por id, com transacao propria, para quem chama de fora de uma
+     * transacao (o controller da aba Finalizacao). Recarrega o processo dentro
+     * da sessao porque a geracao do PDF navega colecoes LAZY.
+     */
+    @Transactional
+    public void regerarOficio(Long processoId) {
+        regerarOficio(processoService.buscar(processoId));
+    }
+
+    /**
+     * Garante o numero proprio do oficio (NNNN/AAAA), sequencial ANUAL,
+     * independente do numero do processo. Uma vez atribuido, nunca muda — nem
+     * quando o oficio e regerado por alteracao de datas (o documento continua
+     * sendo o mesmo oficio no protocolo do setor).
+     *
+     * <p><b>Concorrencia:</b> o proximo numero e calculado lendo os numeros ja
+     * usados e somando 1, sem lock nem sequence — dois indeferimentos
+     * simultaneos no mesmo instante poderiam receber o mesmo numero. E o mesmo
+     * compromisso ja aceito em {@code ProcessoService.proximoNumero} e e
+     * aceitavel aqui pelo volume real (poucos indeferimentos por dia, sempre
+     * disparados por um operador humano ou pela varredura sequencial). Nao ha
+     * constraint UNIQUE na coluna de proposito: uma colisao remota nao deve
+     * impedir o registro da decisao ja tomada.</p>
+     */
+    private void atribuirNumeroOficioSeNecessario(Processo p) {
+        if (p.getNumeroOficio() != null && !p.getNumeroOficio().isBlank()) {
+            return;
+        }
+        int ano = p.getDataEmissaoOficio() != null
+            ? p.getDataEmissaoOficio().getYear() : LocalDate.now().getYear();
+        p.setNumeroOficio(proximoNumeroOficio(ano));
+        processoService.salvar(p);
+    }
+
+    /** Proximo sequencial de oficio do ano, no formato NNNN/AAAA (comeca em 1). */
+    String proximoNumeroOficio(int ano) {
+        int maior = processoRepository.findNumerosOficioDoAno(String.valueOf(ano)).stream()
+            .map(n -> n.split("/")[0])
+            .mapToInt(seq -> {
+                try {
+                    return Integer.parseInt(seq.trim());
+                } catch (NumberFormatException e) {
+                    return 0;   // numero fora do padrao (dado historico): ignora
+                }
+            })
+            .max().orElse(0);
+        return String.format("%04d/%d", maior + 1, ano);
     }
 }

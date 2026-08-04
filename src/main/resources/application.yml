@@ -135,6 +135,28 @@ app:
       # validacoes de schema terminarem antes de o job tocar em processos.
       atraso-inicial-ms: ${SGPUR_VARREDURA_DECISAO_ATRASO_MS:120000}
 
+  # Lembrete automatico do Comprovante SNT (ComprovanteSntLembreteScheduler).
+  # Um processo DEFERIDO fica travado (a equipe solicitante nao recebe a
+  # comunicacao oficial) enquanto ninguem anexa o comprovante de insercao no
+  # SNT - e nada cobrava esse anexo de ninguem. Esta varredura envia, uma vez
+  # por dia, um e-mail aos ADMIN/OPERADOR ativos listando cada processo
+  # Deferido ha mais de "prazo-dias" sem comprovante.
+  #
+  # DESLIGADA por padrao aqui (dev/teste), pelo mesmo motivo da varredura de
+  # decisao automatica: job escrevendo no banco poluiria os testes.
+  # application-prod.yml liga por padrao.
+  #
+  # prazo-dias e usado para as DUAS coisas: quantos dias apos a decisao o
+  # primeiro lembrete e disparado e qual o intervalo minimo ate o proximo
+  # lembrete do mesmo processo (nao reenvia todo dia).
+  snt:
+    lembrete:
+      varredura:
+        habilitado: ${SGPUR_SNT_LEMBRETE_HABILITADO:false}
+        intervalo-ms: ${SGPUR_SNT_LEMBRETE_INTERVALO_MS:86400000}
+        atraso-inicial-ms: ${SGPUR_SNT_LEMBRETE_ATRASO_MS:180000}
+      prazo-dias: ${SGPUR_SNT_PRAZO_DIAS:7}
+
   # Portal do Solicitante (modulo experimental, ver docs/PLANO-SOLICITANTE.md):
   # kill-switch que registra ou nao SolicitanteController/triagem
   # (@ConditionalOnProperty). Ligado por padrao em dev; application-prod.yml
@@ -157,6 +179,10 @@ app:
 sgpur:
   # Textos literais e estaveis usados na geracao dos e-mails prontos
   # (EmailTemplateService): assinatura padrao e prefixo dos assuntos.
+  # oficio-cidade tambem alimenta o Oficio de Indeferimento (OficioService):
+  # e a cidade impressa na linha "Cidade, dd de mes de aaaa" - antes de
+  # 2026-08-04 saia a palavra literal "Local," no documento oficial.
   email:
     assinatura: ${SGPUR_EMAIL_ASSINATURA:Equipe de Urgencia Renal - Secretaria de Saude}
     prefixo-assunto: ${SGPUR_EMAIL_PREFIXO_ASSUNTO:Urgencia Renal}
+    oficio-cidade: ${SGPUR_OFICIO_CIDADE:Porto Alegre}

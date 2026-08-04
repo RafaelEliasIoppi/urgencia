@@ -86,6 +86,17 @@ public class HomeController {
         model.addAttribute("pendencias", pendencias);
         model.addAttribute("membrosAtivos", membroService.contarAtivos());
 
+        // Pendencia ATIVA de comprovante SNT: processo Deferido cujo comprovante
+        // de insercao no SNT nunca foi anexado. Enquanto ele nao existe, a
+        // resposta oficial ao solicitante fica BLOQUEADA (ProcessoValidator) —
+        // ou seja, o paciente foi deferido e a equipe nao foi comunicada. Antes
+        // isso nao entrava em contador nenhum (o painel so olhava processos em
+        // andamento) e so aparecia como texto na coluna da lista.
+        // Conta TODOS os anos de proposito (nao so o corrente): uma pendencia
+        // dessas herdada do ano anterior continua sendo uma comunicacao devida.
+        model.addAttribute("deferidosSemComprovanteSnt",
+            processoRepository.contarDeferidosSemComprovanteSnt());
+
         // Planilha do painel: os processos do ano com os 3 medicos e o status
         // de cada parecer (Favoravel / Desfavoravel / Aguardando / ...).
         List<PainelLinha> linhas = processos.stream().map(PainelLinha::de).toList();

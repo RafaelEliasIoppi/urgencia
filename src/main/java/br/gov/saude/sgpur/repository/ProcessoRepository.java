@@ -95,6 +95,97 @@ public interface ProcessoRepository extends JpaRepository<Processo, Long> {
 
     long countByStatus(StatusProcesso status);
 
+    /**
+     * Numeros de oficio ja usados num ano (formato NNNN/AAAA). Devolve a lista
+     * crua para o chamador comparar NUMERICAMENTE em Java
+     * ({@code DecisaoFinalService.proximoNumeroOficio}): um
+     * {@code max(p.numeroOficio)} no banco compararia texto, e "999/2026"
+     * seria "maior" que "1000/2026". O volume e de poucas dezenas de oficios
+     * por ano, entao a lista e minuscula.
+     */
+    @Query("select p.numeroOficio from Processo p "
+        + "where p.numeroOficio is not null and p.numeroOficio like concat('%/', :ano)")
+    List<String> findNumerosOficioDoAno(@Param("ano") String ano);
+
+    /**
+     * Quantos processos estao DEFERIDOS sem nenhum anexo
+     * {@code COMPROVANTE_SNT} - a pendencia que trava a comunicacao oficial ao
+     * solicitante (o envio da resposta e bloqueado sem esse documento).
+     * Contagem feita no SQL, sem carregar processo/anexo nenhum em memoria.
+     */
+    @Query("""
+        select count(p) from Processo p
+        where p.status = br.gov.saude.sgpur.domain.StatusProcesso.DEFERIDO
+          and not exists (
+            select 1 from Anexo a
+            where a.processo = p
+              and a.tipo = br.gov.saude.sgpur.domain.TipoAnexo.COMPROVANTE_SNT)
+        """)
+    long contarDeferidosSemComprovanteSnt();
+
+    /**
+     * Ids dos processos Deferidos sem comprovante SNT - usado para destacar a
+     * pendencia com badge na lista de processos sem incorrer em N+1 (uma
+     * consulta so, em vez de navegar {@code getAnexos()} linha a linha).
+     */
+    @Query("""
+        select p.id from Processo p
+        where p.status = br.gov.saude.sgpur.domain.StatusProcesso.DEFERIDO
+          and not exists (
+            select 1 from Anexo a
+            where a.processo = p
+              and a.tipo = br.gov.saude.sgpur.domain.TipoAnexo.COMPROVANTE_SNT)
+        """)
+    List<Long> findIdsDeferidosSemComprovanteSnt();
+
+    /**
+     * Processos Deferidos sem comprovante SNT, mais antigos primeiro. Usado
+     * pelo filtro "so pendentes de comprovante SNT" da lista.
+     */
+    @Query("""
+        select p from Processo p
+        where p.status = br.gov.saude.sgpur.domain.StatusProcesso.DEFERIDO
+          and not exists (
+            select 1 from Anexo a
+            where a.processo = p
+              and a.tipo = br.gov.saude.sgpur.domain.TipoAnexo.COMPROVANTE_SNT)
+        order by p.dataDecisao asc, p.ano desc, p.sequencial desc
+        """)
+    List<Processo> findDeferidosSemComprovanteSnt();
+
+    /**
+     * Candidatos ao lembrete automatico de comprovante SNT
+     * ({@code ComprovanteSntLembreteScheduler}): Deferidos, sem comprovante,
+     * decididos ANTES de {@code limiteDecisao} e que nunca foram lembrados ou
+     * cujo ultimo lembrete e anterior a {@code limiteLembrete}.
+     */
+    @Query("""
+        select p from Processo p
+        where p.status = br.gov.saude.sgpur.domain.StatusProcesso.DEFERIDO
+          and p.dataDecisao is not null
+          and p.dataDecisao < :limiteDecisao
+          and (p.ultimoLembreteSntEm is null or p.ultimoLembreteSntEm < :limiteLembrete)
+          and not exists (
+            select 1 from Anexo a
+            where a.processo = p
+              and a.tipo = br.gov.saude.sgpur.domain.TipoAnexo.COMPROVANTE_SNT)
+        order by p.dataDecisao asc
+        """)
+    List<Processo> findCandidatosLembreteSnt(
+        @Param("limiteDecisao") java.time.LocalDateTime limiteDecisao,
+        @Param("limiteLembrete") java.time.LocalDateTime limiteLembrete);
+
+    /**
+     * Grava o momento do ultimo lembrete de comprovante SNT enviado para um
+     * processo. UPDATE de linha unica (mesmo padrao de
+     * {@code ParecerRepository.registrarUltimoLembrete}) para nao disputar o
+     * {@code @Version} do processo com nenhuma outra escrita em curso.
+     */
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("update Processo p set p.ultimoLembreteSntEm = :agora where p.id = :processoId")
+    int registrarUltimoLembreteSnt(@Param("processoId") Long processoId,
+                                   @Param("agora") java.time.LocalDateTime agora);
+
     @Query("""
         select p from Processo p
         where (:status is null or p.status = :status)

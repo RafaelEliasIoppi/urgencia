@@ -524,6 +524,72 @@ class FluxoProcessoServiceTest {
         assertThat(estado(etapas, "Resposta ao solicitante")).isEqualTo(EtapaFluxo.Estado.ATUAL);
     }
 
+    // ----------------------------------------------------------------
+    // CANCELADO: a etapa "Resposta ao solicitante" nao pode travar o
+    // progresso (corrigido em 2026-08-04). Processo cancelado nao gera
+    // resposta formal por e-mail - o botao fica desabilitado na tela e
+    // ProcessoService.finalizarResposta recusa explicitamente -, entao antes
+    // essa etapa era impossivel de concluir e o progresso nunca chegava a
+    // 100%.
+    // ----------------------------------------------------------------
+
+    @Test
+    void canceladoConcluiRespostaAoSolicitanteSemExigirEmailEnviado() {
+        Processo p = processoProntoParaDecisao();
+        p.setStatus(StatusProcesso.CANCELADO);
+        assertThat(p.isEmailEnviadoSolicitante()).isFalse();
+
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+
+        assertThat(estado(etapas, "Resposta ao solicitante")).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(etapas.stream()
+            .filter(e -> e.titulo().equals("Resposta ao solicitante")).findFirst().orElseThrow()
+            .detalhe()).contains("Cancelamento nao exige envio de resposta formal");
+    }
+
+    @Test
+    void canceladoChegaA100PorCentoDeProgresso() {
+        Processo p = processoProntoParaDecisao();
+        p.setStatus(StatusProcesso.CANCELADO);
+
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+        long concluidas = etapas.stream()
+            .filter(e -> e.estado() == EtapaFluxo.Estado.CONCLUIDA).count();
+
+        // Nao ha etapa de oficio nem de comprovante SNT em processo cancelado:
+        // sobram Recebimento, Envio, Respostas, Decisao e Resposta ao
+        // solicitante - todas concluidas.
+        assertThat(etapas).hasSize(5);
+        assertThat(concluidas).isEqualTo(etapas.size());
+    }
+
+    @Test
+    void canceladoTemOPassoDeFinalizacaoConcluidoNoWizard() {
+        Processo p = processoProntoParaDecisao();
+        p.setStatus(StatusProcesso.CANCELADO);
+
+        PassoWizard finalizacao = fluxo().montarPassosWizard(p).stream()
+            .filter(passo -> passo.numero() == 5).findFirst().orElseThrow();
+
+        assertThat(finalizacao.estado()).isEqualTo(PassoWizard.Estado.CONCLUIDA);
+    }
+
+    @Test
+    void deferidoSemEmailContinuaComRespostaAoSolicitantePendente() {
+        // Guarda de regressao da correcao acima: a excecao vale SO para
+        // CANCELADO, nunca para Deferido/Indeferido (onde a resposta ao
+        // solicitante e obrigatoria de verdade).
+        Processo p = processoProntoParaDecisao();
+        p.setStatus(StatusProcesso.DEFERIDO);
+        Anexo comprovanteSnt = new Anexo();
+        comprovanteSnt.setTipo(TipoAnexo.COMPROVANTE_SNT);
+        p.addAnexo(comprovanteSnt);
+
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+
+        assertThat(estado(etapas, "Resposta ao solicitante")).isEqualTo(EtapaFluxo.Estado.ATUAL);
+    }
+
     @Test
     void resumoPendenciaApontaComprovanteSntQuandoDeferidoSemComprovante() {
         Processo p = processoProntoParaDecisao();

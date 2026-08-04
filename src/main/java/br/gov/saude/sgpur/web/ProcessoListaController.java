@@ -31,26 +31,47 @@ public class ProcessoListaController {
         return StatusProcesso.values();
     }
 
+    /** Valor de {@code ?filtro=} que restringe a lista aos Deferidos sem comprovante SNT. */
+    static final String FILTRO_SNT_PENDENTE = "snt-pendente";
+
     @GetMapping
     @Transactional(readOnly = true)
     public String listar(@RequestParam(required = false) String q,
                          @RequestParam(required = false) StatusProcesso status,
+                         @RequestParam(required = false) String filtro,
                          @RequestParam(defaultValue = "0") int page,
                          Model model) {
-        var pagina = processoService.buscar(q, status,
-            org.springframework.data.domain.PageRequest.of(Math.max(page, 0), 15));
-        var processos = pagina.getContent();
+        boolean sntPendente = FILTRO_SNT_PENDENTE.equals(filtro);
+        java.util.List<Processo> processos;
+        if (sntPendente) {
+            // Lista curta por natureza (pendencias abertas): sem paginacao, para
+            // o operador ver de uma vez tudo o que esta travando comunicacao.
+            processos = processoService.listarDeferidosSemComprovanteSnt();
+            model.addAttribute("paginaAtual", 0);
+            model.addAttribute("totalPaginas", 1);
+        } else {
+            var pagina = processoService.buscar(q, status,
+                org.springframework.data.domain.PageRequest.of(Math.max(page, 0), 15));
+            processos = pagina.getContent();
+            model.addAttribute("paginaAtual", pagina.getNumber());
+            model.addAttribute("totalPaginas", pagina.getTotalPages());
+        }
         model.addAttribute("processos", processos);
-        model.addAttribute("paginaAtual", pagina.getNumber());
-        model.addAttribute("totalPaginas", pagina.getTotalPages());
         model.addAttribute("q", q);
         model.addAttribute("statusSelecionado", status);
+        model.addAttribute("filtroSntPendente", sntPendente);
         // resumo de pendencia por processo (id -> texto)
         java.util.Map<Long, String> pendencias = new java.util.LinkedHashMap<>();
         for (Processo p : processos) {
             pendencias.put(p.getId(), fluxoService.resumoPendencia(p));
         }
         model.addAttribute("pendencias", pendencias);
+        // Deferidos sem comprovante SNT: badge de pendencia na linha + atalho
+        // para o filtro. Uma consulta so (ids), nunca navegando getAnexos()
+        // processo a processo (N+1).
+        java.util.Set<Long> idsSemComprovanteSnt = processoService.idsDeferidosSemComprovanteSnt();
+        model.addAttribute("idsSemComprovanteSnt", idsSemComprovanteSnt);
+        model.addAttribute("totalSemComprovanteSnt", idsSemComprovanteSnt.size());
         return "processos/lista";
     }
 }

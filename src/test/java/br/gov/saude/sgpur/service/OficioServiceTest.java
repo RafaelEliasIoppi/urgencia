@@ -1,5 +1,6 @@
 package br.gov.saude.sgpur.service;
 
+import br.gov.saude.sgpur.config.EmailProperties;
 import br.gov.saude.sgpur.domain.Processo;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.parser.PdfTextExtractor;
@@ -19,7 +20,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class OficioServiceTest {
 
-    private final OficioService service = new OficioService();
+    private final EmailProperties emailProperties = emailProperties();
+
+    private final OficioService service = new OficioService(emailProperties);
+
+    private static EmailProperties emailProperties() {
+        EmailProperties props = new EmailProperties();
+        props.setOficioCidade("Porto Alegre");
+        props.setAssinatura("Fulana Coordenadora - Divisao de Transplantes / SES-RS");
+        return props;
+    }
 
     private Processo processoCompleto() {
         Processo p = new Processo();
@@ -28,6 +38,7 @@ class OficioServiceTest {
         p.setSolicitanteEquipe("Hospital de Clinicas");
         p.setMotivoIndeferimento("Ausencia de indicacao clinica para urgencia renal.");
         p.setDataEmissaoOficio(LocalDate.of(2026, 3, 15));
+        p.setNumeroOficio("1398/2026");
         return p;
     }
 
@@ -55,11 +66,11 @@ class OficioServiceTest {
         String texto = textoDaPagina1(service.gerar(p));
 
         assertThat(texto)
-            .contains("OFICIO DE INDEFERIMENTO")
+            .contains("INDEFERIMENTO")
             .contains(p.identificacao())
-            .contains("Processo de Urgencia Renal n. 07/2026")
+            .contains("Processo de Urgência Renal n. 07/2026")
             .contains("Fulano de Tal")
-            .contains("Ao(A) solicitante: Hospital de Clinicas")
+            .contains("solicitante: Hospital de Clinicas")
             .contains("INDEFERIDO");
     }
 
@@ -79,7 +90,7 @@ class OficioServiceTest {
 
         String texto = textoDaPagina1(service.gerar(p));
 
-        assertThat(texto).contains("Motivo do indeferimento: (motivo nao informado)");
+        assertThat(texto).contains("Motivo do indeferimento: (motivo não informado)");
     }
 
     @Test
@@ -89,7 +100,7 @@ class OficioServiceTest {
 
         String texto = textoDaPagina1(service.gerar(p));
 
-        assertThat(texto).contains("(motivo nao informado)");
+        assertThat(texto).contains("(motivo não informado)");
     }
 
     @Test
@@ -157,6 +168,66 @@ class OficioServiceTest {
 
         assertThat(texto)
             .contains("Central de Transplantes do Estado do Rio Grande do Sul")
-            .contains("URGENCIA RENAL");
+            .contains("URGÊNCIA RENAL");
+    }
+
+    // ----- placeholders eliminados (cidade e assinatura configuraveis) -----
+
+    @Test
+    void naoImprimeMaisOPlaceholderLocalEUsaACidadeConfigurada() throws Exception {
+        String texto = textoDaPagina1(service.gerar(processoCompleto()));
+
+        assertThat(texto).doesNotContain("Local,");
+        assertThat(texto).contains("Porto Alegre, 15 de março de 2026.");
+    }
+
+    @Test
+    void usaACidadeConfiguradaQuandoDiferenteDoPadrao() throws Exception {
+        EmailProperties props = emailProperties();
+        props.setOficioCidade("Santa Maria");
+
+        String texto = textoDaPagina1(new OficioService(props).gerar(processoCompleto()));
+
+        assertThat(texto).contains("Santa Maria, 15 de março de 2026.");
+    }
+
+    @Test
+    void caiParaPortoAlegreQuandoCidadeConfiguradaEmBranco() throws Exception {
+        EmailProperties props = emailProperties();
+        props.setOficioCidade("  ");
+
+        String texto = textoDaPagina1(new OficioService(props).gerar(processoCompleto()));
+
+        assertThat(texto).doesNotContain("Local,");
+        assertThat(texto).contains("Porto Alegre, 15 de março de 2026.");
+    }
+
+    @Test
+    void assinaturaVemDaConfiguracaoENaoDoPlaceholderFixo() throws Exception {
+        String texto = textoDaPagina1(service.gerar(processoCompleto()));
+
+        assertThat(texto).contains("Fulana Coordenadora - Divisao de Transplantes / SES-RS");
+        // O placeholder antigo ("Responsavel - Equipe de Urgencia Renal /
+        // Secretaria de Saude", escrito no codigo) nao existe mais.
+        assertThat(texto).doesNotContain("Responsavel - Equipe de Urgencia Renal");
+    }
+
+    // ----- numeracao propria do oficio -----
+
+    @Test
+    void tituloTrazONumeroProprioDoOficio() throws Exception {
+        String texto = textoDaPagina1(service.gerar(processoCompleto()));
+
+        assertThat(texto).contains("Ofício nº 1398/2026");
+    }
+
+    @Test
+    void tituloUsaFallbackQuandoProcessoAntigoNaoTemNumeroDeOficio() throws Exception {
+        Processo p = processoCompleto();
+        p.setNumeroOficio(null);
+
+        String texto = textoDaPagina1(service.gerar(p));
+
+        assertThat(texto).contains("(numero nao atribuido)");
     }
 }

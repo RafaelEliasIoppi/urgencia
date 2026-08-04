@@ -125,6 +125,23 @@
                 <div class="stat-label" style="color:var(--stat-text);">Membros ativos</div>
             </a>
         </div>
+        <!-- Deferidos aguardando o comprovante SNT: enquanto o anexo nao existe,
+             a resposta oficial ao solicitante fica bloqueada. So aparece quando
+             ha ao menos um, para nao poluir o painel com um zero permanente. -->
+        <div class="col" th:if="${deferidosSemComprovanteSnt > 0}">
+            <a th:href="@{/processos(filtro='snt-pendente')}"
+               class="stat-card text-decoration-none d-block stat-card-andamento"
+               title="Processos Deferidos sem o comprovante de insercao no SNT anexado (todos os anos). A resposta ao solicitante fica bloqueada ate o anexo existir."
+               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" style="color:var(--stat-text);"
+                          th:text="${deferidosSemComprovanteSnt}">0</span>
+                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                        <i class="bi bi-clipboard2-x"></i></span>
+                </div>
+                <div class="stat-label" style="color:var(--stat-text);">Sem comprovante SNT</div>
+            </a>
+        </div>
         <!-- Tempo de resposta medio total dos avaliadores -->
         <div class="col">
             <a th:href="@{/membros}"

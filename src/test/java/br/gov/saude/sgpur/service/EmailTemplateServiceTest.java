@@ -43,6 +43,24 @@ class EmailTemplateServiceTest {
     }
 
     @Test
+    void lembreteDeComprovanteSntEDirigidoAEquipeInternaEExplicaOBloqueio() {
+        Processo p = processo();
+        p.setId(42L);
+        p.setStatus(StatusProcesso.DEFERIDO);
+
+        EmailTemplate lembrete = service.emailLembreteComprovanteSnt(p, 12);
+
+        assertThat(lembrete.chave()).isEqualTo("lembrete-comprovante-snt");
+        assertThat(lembrete.assunto()).contains("07/2026");
+        // Destinatario e a equipe INTERNA (ADMIN/OPERADOR), nao os avaliadores:
+        // aqui o nome completo do paciente e legitimo.
+        assertThat(lembrete.corpo()).contains("Joao Paciente Secreto");
+        assertThat(lembrete.corpo()).contains("12 dia(s)");
+        assertThat(lembrete.corpo()).contains("bloqueada");
+        assertThat(lembrete.corpo()).contains("/processos/42#finalizacao");
+    }
+
+    @Test
     void emailSolicitaInfoLevaNomeCompletoAoSolicitante() {
         Processo p = processo();
         p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);

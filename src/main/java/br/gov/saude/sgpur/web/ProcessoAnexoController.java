@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.*;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
+import br.gov.saude.sgpur.service.DecisaoFinalService;
 import br.gov.saude.sgpur.service.GeminiService;
 import br.gov.saude.sgpur.service.OficioService;
 import br.gov.saude.sgpur.service.ProcessoService;
@@ -57,6 +58,7 @@ public class ProcessoAnexoController {
     private final OficioService oficioService;
     private final RelatorioService relatorioService;
     private final GeminiService geminiService;
+    private final DecisaoFinalService decisaoFinalService;
 
     public ProcessoAnexoController(ProcessoService processoService,
                                    ProcessoValidator validator,
@@ -64,7 +66,8 @@ public class ProcessoAnexoController {
                                    AuditoriaService auditoria,
                                    OficioService oficioService,
                                    RelatorioService relatorioService,
-                                   GeminiService geminiService) {
+                                   GeminiService geminiService,
+                                   DecisaoFinalService decisaoFinalService) {
         this.processoService = processoService;
         this.validator = validator;
         this.anexoStorage = anexoStorage;
@@ -72,6 +75,7 @@ public class ProcessoAnexoController {
         this.oficioService = oficioService;
         this.relatorioService = relatorioService;
         this.geminiService = geminiService;
+        this.decisaoFinalService = decisaoFinalService;
     }
 
     /**
@@ -111,16 +115,25 @@ public class ProcessoAnexoController {
     }
 
     /**
-     * Atualiza as datas do oficio de indeferimento (aba Finalizacao).
+     * Atualiza as datas da aba Finalizacao: emissao/envio do oficio
+     * (INDEFERIDO) ou data de envio ao SNT (DEFERIDO).
      *
-     * <p>{@code @Transactional} proprio: o metodo altera a entidade carregada e
-     * chama {@code processoService.salvar(p)} - com a entidade gerenciada o
-     * update e um simples dirty-check, sem depender de um {@code merge} de
-     * entidade desanexada com colecoes {@code cascade = ALL} nao inicializadas.
-     * Nao ha {@code try/catch} em volta de servico transacional aqui.
+     * <p><b>Sem {@code @Transactional} de metodo (mudou em 2026-08-04).</b> A
+     * escrita das datas passou a ser feita por
+     * {@code ProcessoService.atualizarDatasFinalizacao}, que carrega o processo
+     * dentro da PROPRIA transacao (dirty check na entidade gerenciada, mesma
+     * garantia de antes). Isso e o que permite regerar o oficio logo em
+     * seguida dentro de um {@code try/catch}: com transacao de controller, a
+     * falha capturada la dentro marcaria a transacao compartilhada como
+     * rollback-only e o commit final estouraria {@code UnexpectedRollbackException}
+     * (500 cru) — o mesmo bug ja documentado no javadoc desta classe.</p>
+     *
+     * <p><b>Regera o oficio</b> (INDEFERIDO): sem isso, a tela e o relatorio
+     * final passavam a mostrar a data nova enquanto o PDF anexado — que e o
+     * que chega a equipe solicitante por e-mail — continuava com a data
+     * antiga.</p>
      */
     @PostMapping("/{id}/finalizacao")
-    @Transactional
     public String finalizacao(@PathVariable Long id,
                               @RequestParam(required = false)
                               @org.springframework.format.annotation.DateTimeFormat(iso =
@@ -130,16 +143,30 @@ public class ProcessoAnexoController {
                               @org.springframework.format.annotation.DateTimeFormat(iso =
                                   org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
                               LocalDate dataEnvioOficio,
+                              @RequestParam(required = false)
+                              @org.springframework.format.annotation.DateTimeFormat(iso =
+                                  org.springframework.format.annotation.DateTimeFormat.ISO.DATE)
+                              LocalDate dataEnvioSnt,
                               RedirectAttributes ra) {
         Processo p = processoService.buscar(id);
-        if (p.getStatus() != StatusProcesso.INDEFERIDO) {
-            ra.addFlashAttribute("erro", "Datas do oficio so podem ser registradas em processos Indeferidos.");
+        if (p.getStatus() != StatusProcesso.INDEFERIDO && p.getStatus() != StatusProcesso.DEFERIDO) {
+            ra.addFlashAttribute("erro",
+                "Datas de finalizacao so podem ser registradas em processos Deferidos ou Indeferidos.");
             return "redirect:/processos/" + id + "#finalizacao";
         }
-        p.setDataEmissaoOficio(dataEmissaoOficio);
-        p.setDataEnvioOficio(dataEnvioOficio);
-        processoService.salvar(p);
-        ra.addFlashAttribute("msg", "Dados de finalizacao atualizados.");
+        processoService.atualizarDatasFinalizacao(id, dataEmissaoOficio, dataEnvioOficio, dataEnvioSnt);
+        if (p.getStatus() == StatusProcesso.INDEFERIDO) {
+            try {
+                decisaoFinalService.regerarOficio(id);
+                ra.addFlashAttribute("msg",
+                    "Dados de finalizacao atualizados e oficio regerado com as datas novas.");
+            } catch (RuntimeException e) {
+                ra.addFlashAttribute("aviso", "Datas salvas, mas nao foi possivel regerar o oficio: "
+                    + e.getMessage() + " O oficio anexado pode estar com a data anterior.");
+            }
+        } else {
+            ra.addFlashAttribute("msg", "Dados de finalizacao atualizados.");
+        }
         return "redirect:/processos/" + id + "#finalizacao";
     }
 
@@ -282,11 +309,32 @@ public class ProcessoAnexoController {
         }
     }
 
+    /**
+     * Previa do Oficio de Indeferimento gerada sob demanda (nao e o anexo).
+     *
+     * <p>So para processos INDEFERIDOS (mesma guarda de {@link #uploadOficio},
+     * desde 2026-08-04): antes esta URL gerava um "Oficio de Indeferimento"
+     * para qualquer processo — inclusive um Deferido —, produzindo um
+     * documento que contradiz a decisao do processo. Quem quer o oficio que
+     * de fato foi enviado deve baixar o anexo
+     * ({@code /processos/anexos/{id}/download}), que e o que a tela oferece.</p>
+     */
     @GetMapping("/{id}/oficio")
     @Transactional(readOnly = true)
     public ResponseEntity<byte[]> oficio(@PathVariable Long id) {
+        Processo p;
         try {
-            Processo p = processoService.buscar(id);
+            p = processoService.buscar(id);
+        } catch (RuntimeException e) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, e.getMessage());
+        }
+        // Guarda FORA do try/catch de baixo de proposito: ResponseStatusException
+        // tambem e RuntimeException e seria reconvertida em 500 la dentro.
+        if (p.getStatus() != StatusProcesso.INDEFERIDO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                "Oficio de indeferimento so existe para processos Indeferidos.");
+        }
+        try {
             byte[] pdf = oficioService.gerar(p);
             String nome = "oficio-indeferimento-" + p.getNumero().replace("/", "-") + ".pdf";
             return ResponseEntity.ok()

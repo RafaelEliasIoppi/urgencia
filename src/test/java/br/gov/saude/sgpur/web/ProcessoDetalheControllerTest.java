@@ -686,6 +686,53 @@ class ProcessoDetalheControllerTest {
                 "<strong>Cancelado</strong> (que nunca e")));
     }
 
+    // ----- aba Finalizacao: avisos do oficio e data de envio ao SNT -----
+
+    /**
+     * Renderiza o template de verdade num processo INDEFERIDO: a aba
+     * Finalizacao precisa avisar que o oficio anexado e gerado pelo sistema
+     * (item 3 do relatorio de 2026-08) e que salvar as datas regera esse PDF
+     * (item 7), senao o operador envia ao solicitante um documento que nunca
+     * conferiu, ou fica com tela e anexo mostrando datas diferentes.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaFinalizacaoAvisaQueOOficioEGeradoPeloSistemaEQueSalvarDatasORegera() throws Exception {
+        processo.setStatus(StatusProcesso.INDEFERIDO);
+        processo.setNumeroOficio("0007/2026");
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "gerado automaticamente pelo sistema")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "Confira o conteudo")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "regera o oficio anexado")))
+            // numeracao propria do oficio, distinta do numero do processo
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("0007/2026")));
+    }
+
+    /**
+     * Mesma aba num processo DEFERIDO: o campo de data de envio ao SNT tem de
+     * existir (item 4 do relatorio) - antes a unica data disponivel era a de
+     * upload do arquivo no sistema.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaFinalizacaoOfereceADataDeEnvioAoSntEmProcessoDeferido() throws Exception {
+        processo.setStatus(StatusProcesso.DEFERIDO);
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("Data de envio ao SNT")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"dataEnvioSnt\"")));
+    }
+
     /** Anexo em staging (veio do portal, ainda nao revisado) vinculado ao processo. */
     private Anexo anexoPendente(Long id) {
         Anexo a = new Anexo();

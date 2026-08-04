@@ -99,6 +99,44 @@ public class Processo {
     @Column(name = "data_envio_oficio")
     private LocalDate dataEnvioOficio;
 
+    /**
+     * Numeracao PROPRIA do oficio de indeferimento, no formato NNNN/AAAA
+     * (sequencial anual do setor, reiniciado a cada ano) - independente do
+     * numero do processo (NN/AAAA). E o numero pelo qual o documento e
+     * rastreado no protocolo da Central de Transplantes.
+     *
+     * <p>NULLABLE de proposito: so e atribuido no momento em que o sistema
+     * gera o oficio ({@code DecisaoFinalService}), ou seja, apenas em
+     * processos INDEFERIDOS. Processos antigos (indeferidos antes desta
+     * coluna existir) permanecem com {@code null} sem nenhum estado invalido
+     * - NAO exige backfill manual em producao, ao contrario de colunas
+     * tratadas como obrigatorias (ver CLAUDE.md, "ddl-auto: update nao faz
+     * backfill em coluna nova").</p>
+     */
+    @Column(name = "numero_oficio", length = 12)
+    private String numeroOficio;
+
+    // ----- Deferimento / SNT (obrigatorio quando DEFERIDO) -----
+
+    /**
+     * Data em que a urgencia renal foi de fato inserida/enviada ao Sistema
+     * Nacional de Transplantes (SNT) - informada pelo operador, espelhando o
+     * que {@code dataEmissaoOficio}/{@code dataEnvioOficio} ja fazem do lado
+     * do indeferimento. Nao se confunde com a data de upload do comprovante
+     * no sistema (que e apenas quando alguem subiu o arquivo). Nullable.
+     */
+    @Column(name = "data_envio_snt")
+    private LocalDate dataEnvioSnt;
+
+    /**
+     * Momento do ultimo lembrete automatico enviado a equipe (ADMIN/OPERADOR)
+     * cobrando o comprovante SNT de um processo Deferido
+     * ({@code ComprovanteSntLembreteScheduler}). Nullable: {@code null}
+     * significa "nunca lembrado" - valor semanticamente correto, sem backfill.
+     */
+    @Column(name = "ultimo_lembrete_snt_em")
+    private LocalDateTime ultimoLembreteSntEm;
+
     // ----- Auditoria -----
     @Column(name = "data_cadastro", nullable = false)
     private LocalDateTime dataCadastro = LocalDateTime.now();
@@ -303,6 +341,30 @@ public class Processo {
 
     public void setDataEnvioOficio(LocalDate dataEnvioOficio) {
         this.dataEnvioOficio = dataEnvioOficio;
+    }
+
+    public String getNumeroOficio() {
+        return numeroOficio;
+    }
+
+    public void setNumeroOficio(String numeroOficio) {
+        this.numeroOficio = numeroOficio;
+    }
+
+    public LocalDate getDataEnvioSnt() {
+        return dataEnvioSnt;
+    }
+
+    public void setDataEnvioSnt(LocalDate dataEnvioSnt) {
+        this.dataEnvioSnt = dataEnvioSnt;
+    }
+
+    public LocalDateTime getUltimoLembreteSntEm() {
+        return ultimoLembreteSntEm;
+    }
+
+    public void setUltimoLembreteSntEm(LocalDateTime ultimoLembreteSntEm) {
+        this.ultimoLembreteSntEm = ultimoLembreteSntEm;
     }
 
     public LocalDateTime getDataCadastro() {
