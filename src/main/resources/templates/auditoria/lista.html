@@ -7,13 +7,13 @@
 
 <main id="conteudo" class="container my-4">
     <h1 class="h3 mb-3">Auditoria</h1>
-    <p class="text-muted small">Registro das acoes realizadas no sistema (quem, o que e quando).</p>
+    <p class="text-muted small">Registro das ações realizadas no sistema (quem, o que e quando).</p>
 
     <div class="card">
         <div class="table-responsive">
             <table class="table table-sm table-hover align-middle mb-0">
                 <thead class="table-light">
-                <tr><th>Hora</th><th>Usuario</th><th>Acao</th><th>Detalhe</th><th>IP</th></tr>
+                <tr><th>Hora</th><th>Usuário</th><th>Ação</th><th>Detalhe</th><th>IP</th></tr>
                 </thead>
                 <tbody>
                 <th:block th:each="grupo : ${gruposPorDia}">
@@ -27,7 +27,7 @@
                     <tr th:each="log : ${grupo.value}">
                         <td class="small text-nowrap"
                             th:text="${#temporals.format(log.dataHora, 'HH:mm:ss')}">hora</td>
-                        <td th:text="${log.usuario}">usuario</td>
+                        <td th:text="${log.usuario}">usuário</td>
                         <td><span class="badge bg-secondary" th:text="${log.acao}">ACAO</span></td>
                         <td class="small text-truncate" style="max-width:240px;" th:text="${log.detalhe}" th:title="${log.detalhe}">detalhe</td>
                         <td class="small font-monospace text-muted"
@@ -54,7 +54,7 @@
                 </span>
             </li>
             <li class="page-item" th:classappend="${paginaAtual + 1 >= totalPaginas} ? 'disabled'">
-                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual + 1})}">Proxima</a>
+                <a class="page-link" th:href="@{/auditoria(page=${paginaAtual + 1})}">Próxima</a>
             </li>
         </ul>
     </nav>

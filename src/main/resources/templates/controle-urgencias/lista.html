@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="pt-br" xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{layout :: head('Controle de Urgencias')}"></head>
+<head th:replace="~{layout :: head('Controle de Urgências')}"></head>
 <body>
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
@@ -8,7 +8,7 @@
 <main id="conteudo" class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-3">
         <h1 class="h3 mb-0">
-            <i class="bi bi-clock-history me-2"></i>Urgencias para Transplante Renal
+            <i class="bi bi-clock-history me-2"></i>Urgências para Transplante Renal
         </h1>
         <a th:href="@{/controle-urgencias/novo}" class="btn btn-primary">
             <i class="bi bi-plus-lg"></i> Novo registro
@@ -69,8 +69,8 @@
                         <th>Equipe</th>
                         <th class="d-none d-md-table-cell">ABO</th>
                         <th>Vencimento</th>
-                        <th class="d-none d-md-table-cell">Ultima renovacao</th>
-                        <th>Situacao</th>
+                        <th class="d-none d-md-table-cell">Última renovação</th>
+                        <th>Situação</th>
                         <th></th>
                     </tr>
                     </thead>
@@ -102,13 +102,13 @@
                         <td class="text-end">
                             <div class="d-flex flex-column flex-sm-row justify-content-sm-end gap-1">
                                 <a th:href="@{/controle-urgencias/{id}/editar(id=${r.id})}"
-                                   class="btn btn-sm btn-outline-secondary" title="Editar" aria-label="Editar urgencia">
+                                   class="btn btn-sm btn-outline-secondary" title="Editar" aria-label="Editar urgência">
                                     <i class="bi bi-pencil"></i>
                                 </a>
                                 <form th:if="${r.situacao.name() == 'ATIVA' or r.situacao.name() == 'RENOVADA'}"
                                       th:action="@{/controle-urgencias/{id}/renovar(id=${r.id})}"
                                       method="post"
-                                      data-confirm-msg="Renovar esta urgencia por mais 30 dias?">
+                                      data-confirm-msg="Renovar esta urgência por mais 30 dias?">
                                     <button class="btn btn-sm btn-outline-success w-100" title="Renovar por mais 30 dias">
                                         <i class="bi bi-arrow-clockwise"></i> Renovar
                                     </button>
@@ -116,8 +116,8 @@
                                 <form th:if="${r.situacao.name() == 'ATIVA' or r.situacao.name() == 'RENOVADA'}"
                                       th:action="@{/controle-urgencias/{id}/cancelar(id=${r.id})}"
                                       method="post"
-                                      data-confirm-msg="Cancelar esta urgencia?">
-                                    <button class="btn btn-sm btn-outline-danger w-100" title="Cancelar" aria-label="Cancelar urgencia">
+                                      data-confirm-msg="Cancelar esta urgência?">
+                                    <button class="btn btn-sm btn-outline-danger w-100" title="Cancelar" aria-label="Cancelar urgência">
                                         <i class="bi bi-x-lg"></i>
                                     </button>
                                 </form>
@@ -127,7 +127,7 @@
                     <tr th:if="${registros.isEmpty()}">
                         <td colspan="8" class="text-center text-muted py-4">
                             <i class="bi bi-inbox d-block mb-1" style="font-size:2rem;opacity:.5;"></i>
-                        Nenhum registro de urgencia cadastrado.
+                        Nenhum registro de urgência cadastrado.
                         </td>
                     </tr>
                     </tbody>

@@ -12,12 +12,12 @@
         <div class="card-body">
             <input type="hidden" th:field="*{id}">
             <div class="mb-3">
-                <label class="form-label" th:for="instituicao">Instituicao (sigla) *</label>
+                <label class="form-label" th:for="instituicao">Instituição (sigla) *</label>
                 <input type="text" th:field="*{instituicao}" class="form-control" placeholder="HCPA" required th:classappend="${#fields.hasErrors('instituicao')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('instituicao')} ? 'true' : null,aria-describedby=${#fields.hasErrors('instituicao')} ? 'instituicaoErro' : null">
                 <div class="invalid-feedback d-block" id="instituicaoErro" role="alert" th:errors="*{instituicao}"></div>
             </div>
             <div class="mb-3">
-                <label class="form-label" th:for="nome">Nome do medico *</label>
+                <label class="form-label" th:for="nome">Nome do médico *</label>
                 <input type="text" th:field="*{nome}" class="form-control" required th:classappend="${#fields.hasErrors('nome')} ? 'is-invalid'" th:attr="aria-invalid=${#fields.hasErrors('nome')} ? 'true' : null,aria-describedby=${#fields.hasErrors('nome')} ? 'nomeErro' : null">
                 <div class="invalid-feedback d-block" id="nomeErro" role="alert" th:errors="*{nome}"></div>
             </div>
@@ -33,7 +33,7 @@
             <div class="form-check mt-2">
                 <input type="checkbox" th:field="*{coordenador}" class="form-check-input" id="coordenador">
                 <label class="form-check-label" for="coordenador">
-                    Coordenador CET-RS (voto favoravel defere o processo independentemente dos demais pareceres)
+                    Coordenador CET-RS (voto favorável defere o processo independentemente dos demais pareceres)
                 </label>
             </div>
         </div>

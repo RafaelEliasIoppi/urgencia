@@ -98,12 +98,12 @@
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/processos}">Processos</a></li>
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/arquivo}"><i class="bi bi-archive me-1"></i>Arquivo</a></li>
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/controle-urgencias}">
-                    <i class="bi bi-clock-history me-1"></i>Urgencias</a></li>
+                    <i class="bi bi-clock-history me-1"></i>Urgências</a></li>
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/membros}">Membros</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/relatorios/anual}">Relatorio anual</a></li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/relatorios/anual}">Relatório anual</a></li>
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')" th:if="${solicitanteHabilitado}">
                     <a class="nav-link d-inline-flex align-items-center gap-1" th:href="@{/processos/solicitacoes-online}">
-                        <i class="bi bi-inbox-fill"></i> Solicitacoes online
+                        <i class="bi bi-inbox-fill"></i> Solicitações online
                         <span th:if="${pendentesTriagemOnline > 0}"
                               class="badge rounded-pill bg-danger"
                               style="font-size:.65rem;"
@@ -115,7 +115,7 @@
                     </a>
                 </li>
                 <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                    <a class="nav-link" th:href="@{/usuarios}">Usuarios</a>
+                    <a class="nav-link" th:href="@{/usuarios}">Usuários</a>
                 </li>
                 <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                     <a class="nav-link" th:href="@{/auditoria}">Auditoria</a>
@@ -124,7 +124,7 @@
             <ul class="navbar-nav">
                 <li class="nav-item me-2" sec:authorize="hasRole('AVALIADOR')">
                     <a class="nav-link position-relative" th:href="@{/avaliador}"
-                       title="Suas avaliacoes pendentes">
+                       title="Suas avaliações pendentes">
                         <i class="bi bi-bell-fill"></i>
                         <span th:if="${pendentesAvaliador > 0}"
                               class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
@@ -132,14 +132,14 @@
                     </a>
                 </li>
                 <li class="nav-item me-2" sec:authorize="hasRole('SOLICITANTE')" th:if="${solicitanteHabilitado}">
-                    <a class="nav-link" th:href="@{/solicitante}" title="Minhas solicitacoes">
-                        <i class="bi bi-send-plus"></i> Minhas solicitacoes
+                    <a class="nav-link" th:href="@{/solicitante}" title="Minhas solicitações">
+                        <i class="bi bi-send-plus"></i> Minhas solicitações
                     </a>
                 </li>
                 <li class="nav-item dropdown" sec:authorize="isAuthenticated()">
                     <a class="nav-link dropdown-toggle text-white d-flex align-items-center" href="#"
                        id="menuUsuario" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-person-circle me-1"></i><span sec:authentication="name">usuario</span>
+                        <i class="bi bi-person-circle me-1"></i><span sec:authentication="name">usuário</span>
                     </a>
                     <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="menuUsuario">
                         <li>
@@ -260,7 +260,7 @@
 <span th:fragment="status(ok)" class="status-mark fw-semibold"
       th:classappend="${ok} ? 'text-success' : 'text-danger'">
     <i class="bi" th:classappend="${ok} ? 'bi-check-lg' : 'bi-x-lg'" aria-hidden="true"></i>
-    <span th:text="${ok} ? 'Concluido' : 'Pendente'">status</span>
+    <span th:text="${ok} ? 'Concluído' : 'Pendente'">status</span>
 </span>
 <span th:fragment="statusRotulo(ok, rotulo)" class="status-mark fw-semibold"
       th:classappend="${ok} ? 'text-success' : 'text-danger'">
@@ -273,7 +273,7 @@
 </span>
 
 <div th:fragment="footer" class="footer-sgpur mt-auto">
-    <small>SAUR &mdash; Sistema de Avaliacao de Urgencia Renal &bull; Central de Transplantes do RS</small>
+    <small>SAUR &mdash; Sistema de Avaliação de Urgência Renal &bull; Central de Transplantes do RS</small>
     <!--/* Sem opacity:.7 aqui: empilhada sobre o cinza do rodape, derrubava o
            contraste para 3.55:1 (WCAG AA exige 4.5:1). Sem ela fica 5.71:1,
            com a mesma hierarquia visual - o texto ja e menor que o de cima. */-->
@@ -289,11 +289,11 @@
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="modalConfirmarAcaoLabel">
-                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Confirmar acao</h5>
+                    <i class="bi bi-exclamation-triangle-fill text-warning"></i> Confirmar ação</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fechar"></button>
             </div>
             <div class="modal-body">
-                <p id="modalConfirmarAcaoMensagem" class="mb-0">Confirma esta acao?</p>
+                <p id="modalConfirmarAcaoMensagem" class="mb-0">Confirma esta ação?</p>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>

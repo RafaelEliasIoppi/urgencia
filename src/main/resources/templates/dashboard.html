@@ -10,10 +10,10 @@
     <!-- Cabecalho -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold" style="color: var(--rs-gray-800);">Painel da Urgencia Renal</h1>
+            <h1 class="h3 fw-bold" style="color: var(--rs-gray-800);">Painel da Urgência Renal</h1>
             <p class="text-muted small mb-0">Dados do ano corrente
-                (<span th:text="${anoCorrente}">2026</span>): acompanhe para quais medicos cada
-                solicitacao foi enviada e a situacao de cada parecer.</p>
+                (<span th:text="${anoCorrente}">2026</span>): acompanhe para quais médicos cada
+                solicitação foi enviada e a situação de cada parecer.</p>
         </div>
     </div>
 
@@ -27,11 +27,11 @@
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-database-exclamation fs-4"></i>
             <div class="flex-grow-1">
-                <h2 class="h6 fw-bold mb-1">Banco de dados desatualizado: restricao de enum</h2>
+                <h2 class="h6 fw-bold mb-1">Banco de dados desatualizado: restrição de enum</h2>
                 <p class="small mb-2">
-                    O banco tem uma restricao (<code>CHECK</code>) que ainda nao conhece todos os
-                    valores usados pelo sistema. Gravar um desses valores vai falhar em producao.
-                    Corrija executando o comando abaixo no PostgreSQL (nenhuma alteracao e feita
+                    O banco tem uma restrição (<code>CHECK</code>) que ainda não conhece todos os
+                    valores usados pelo sistema. Gravar um desses valores vai falhar em produção.
+                    Corrija executando o comando abaixo no PostgreSQL (nenhuma alteração e feita
                     automaticamente). Este aviso e visivel apenas para administradores.
                 </p>
                 <div th:each="d : ${enumCheckDivergencias}" class="mb-3">
@@ -125,7 +125,7 @@
         <div class="col" th:if="${deferidosSemComprovanteSnt > 0}">
             <a th:href="@{/processos(filtro='snt-pendente')}"
                class="stat-card stat-card-portal text-decoration-none d-block stat-card-andamento"
-               title="Processos Deferidos sem o comprovante de insercao no SNT anexado (todos os anos). A resposta ao solicitante fica bloqueada ate o anexo existir."
+               title="Processos Deferidos sem o comprovante de inserção no SNT anexado (todos os anos). A resposta ao solicitante fica bloqueada até o anexo existir."
                >
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number"
@@ -158,17 +158,17 @@
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
             <h2 class="h6 mb-0 d-flex align-items-center gap-2" style="color:var(--rs-gray-700);">
                 <i class="bi bi-table" style="color:var(--rs-blue);"></i>
-                Solicitacoes e situacao dos pareceres
+                Solicitações e situação dos pareceres
             </h2>
             <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-green);"></span>Favoravel</span>
+                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-green);"></span>Favorável</span>
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-red);"></span>Desfavoravel</span>
+                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-red);"></span>Desfavorável</span>
                 <span class="d-inline-flex align-items-center gap-1">
                     <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-gold);"></span>Aguardando</span>
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-gray-300);"></span>Sem medico</span>
+                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-gray-300);"></span>Sem médico</span>
             </div>
         </div>
 
@@ -179,10 +179,10 @@
                         <th class="fw-semibold text-nowrap">Nº / Ano</th>
                         <th class="fw-semibold text-nowrap">Paciente / Solicitante</th>
                         <th class="fw-semibold text-nowrap">Status</th>
-                        <th class="fw-semibold text-nowrap">Medico 1</th>
-                        <th class="fw-semibold text-nowrap">Medico 2</th>
-                        <th class="fw-semibold text-nowrap">Medico 3</th>
-                        <th class="fw-semibold text-center text-nowrap">Acao</th>
+                        <th class="fw-semibold text-nowrap">Médico 1</th>
+                        <th class="fw-semibold text-nowrap">Médico 2</th>
+                        <th class="fw-semibold text-nowrap">Médico 3</th>
+                        <th class="fw-semibold text-center text-nowrap">Ação</th>
                     </tr>
                 </thead>
                 <tbody class="border-top">
@@ -222,35 +222,35 @@
                         <td class="align-top" style="min-width:9rem;max-width:12rem;" th:each="c : ${l.medicos}">
                             <th:block th:if="${c.definido}">
                                 <div class="fw-medium text-truncate" style="font-size:.8rem;max-width:12rem;"
-                                     th:text="${c.medico}" th:title="${c.medico}">Medico</div>
+                                     th:text="${c.medico}" th:title="${c.medico}">Médico</div>
                                 <!-- Mapeamento cor logica (CelulaMedico.cor) -> classe Bootstrap via
                                      th:switch, em vez de ternarios aninhados em th:classappend (regra
                                      do CLAUDE.md contra ternario aninhado > 3 niveis). -->
                                 <th:block th:switch="${c.cor}">
                                     <span th:case="'success'" class="badge rounded-1 mt-1 text-bg-success">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                        <span th:text="${c.texto}">situacao</span>
+                                        <span th:text="${c.texto}">situação</span>
                                     </span>
                                     <span th:case="'danger'" class="badge rounded-1 mt-1 text-bg-danger">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                        <span th:text="${c.texto}">situacao</span>
+                                        <span th:text="${c.texto}">situação</span>
                                     </span>
                                     <span th:case="'warning'" class="badge rounded-1 mt-1 text-bg-warning text-dark">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                        <span th:text="${c.texto}">situacao</span>
+                                        <span th:text="${c.texto}">situação</span>
                                     </span>
                                     <span th:case="'info'" class="badge rounded-1 mt-1 text-bg-info">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                        <span th:text="${c.texto}">situacao</span>
+                                        <span th:text="${c.texto}">situação</span>
                                     </span>
                                     <span th:case="*" class="badge rounded-1 mt-1 text-bg-light text-muted">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
-                                        <span th:text="${c.texto}">situacao</span>
+                                        <span th:text="${c.texto}">situação</span>
                                     </span>
                                 </th:block>
                             </th:block>
                             <th:block th:unless="${c.definido}">
-                                <span class="fst-italic text-muted" style="font-size:.75rem;">— nao definido —</span>
+                                <span class="fst-italic text-muted" style="font-size:.75rem;">— não definido —</span>
                             </th:block>
                         </td>
                         <td class="align-top text-center text-nowrap">

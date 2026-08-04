@@ -20,7 +20,7 @@
                 <div class="col-md-8">
                     <label class="form-label small fw-semibold text-muted mb-1" for="q">Busca</label>
                     <input type="text" name="q" class="form-control form-control-sm" th:value="${q}"
-                           placeholder="Numero, paciente ou solicitante..." id="q">
+                           placeholder="Número, paciente ou solicitante..." id="q">
                 </div>
                 <div class="col-md-4 d-flex gap-2">
                     <button class="btn btn-primary btn-sm flex-grow-1">
@@ -42,9 +42,9 @@
                 <tr>
                     <th class="ps-3">Processo</th>
                     <th>Solicitante</th>
-                    <th>Situacao</th>
-                    <th>Decisao</th>
-                    <th class="pe-3 text-end">Acoes</th>
+                    <th>Situação</th>
+                    <th>Decisão</th>
+                    <th class="pe-3 text-end">Ações</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -69,7 +69,7 @@
                         </a>
                         <form th:action="@{/processos/{id}/reabrir(id=${p.id})}" method="post" class="d-inline"
                               sec:authorize="hasRole('ADMIN')"
-                              data-confirm-msg="Reabrir este processo encerrado? Ele voltara para o status Enviado e podera ser decidido novamente.">
+                              data-confirm-msg="Reabrir este processo encerrado? Ele voltará para o status Enviado e poderá ser decidido novamente.">
                             <button class="btn btn-sm btn-outline-warning">
                                 <i class="bi bi-arrow-counterclockwise"></i> Reabrir
                             </button>

@@ -22,13 +22,13 @@
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
                 <span th:if="${processo.status.finalizado and (processo.emailEnviadoSolicitante or processo.status.name() == 'CANCELADO')}"
                       class="badge align-middle bg-dark text-white rounded-pill px-3 py-1 ms-1"
-                      title="Decisao registrada e resposta enviada ao solicitante: processo concluido.">
+                      title="Decisão registrada e resposta enviada ao solicitante: processo concluido.">
                     <i class="bi bi-lock-fill"></i> Encerrado
                 </span>
                 <span th:if="${processo.status.finalizado and !processo.emailEnviadoSolicitante and processo.status.name() != 'CANCELADO'}"
                       class="badge align-middle bg-secondary text-white rounded-pill px-3 py-1 ms-1"
-                      title="Decisao registrada. Edicao das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusao (oficio/comprovante e resposta ao solicitante) na aba Finalizacao.">
-                    <i class="bi bi-lock-fill"></i> Decisao tomada
+                      title="Decisão registrada. Edição das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusão (ofício/comprovante e resposta ao solicitante) na aba Finalização.">
+                    <i class="bi bi-lock-fill"></i> Decisão tomada
                 </span>
                 <span th:if="${statusSubrotulo != null}"
                       class="badge align-middle bg-warning text-dark rounded-pill px-3 py-1"
@@ -44,7 +44,7 @@
         <form th:if="${processo.status.finalizado}"
               th:action="@{/processos/{id}/reabrir(id=${processo.id})}" method="post"
               sec:authorize="hasRole('ADMIN')"
-              data-confirm-msg="Reabrir este processo encerrado? Ele voltara para o status Enviado e podera ser decidido novamente.">
+              data-confirm-msg="Reabrir este processo encerrado? Ele voltará para o status Enviado e poderá ser decidido novamente.">
             <button class="btn btn-outline-warning">
                 <i class="bi bi-arrow-counterclockwise me-1"></i> Reabrir processo
             </button>
@@ -61,10 +61,10 @@
          class="alert alert-warning border d-flex align-items-center gap-2 mb-4" role="alert">
         <i class="bi bi-exclamation-triangle-fill fs-5"></i>
         <div>
-            <strong>Decisao registrada, mas o processo ainda nao esta concluido.</strong>
-            A edicao das etapas 1-4 (recebimento, envio, pareceres) foi bloqueada, porem
-            ainda faltam etapas de conclusao na <a href="#finalizacao">aba Finalizacao</a>
-            (anexar o oficio/comprovante e enviar a resposta ao solicitante).
+            <strong>Decisão registrada, mas o processo ainda não esta concluido.</strong>
+            A edição das etapas 1-4 (recebimento, envio, pareceres) foi bloqueada, porém
+            ainda faltam etapas de conclusão na <a href="#finalizacao">aba Finalização</a>
+            (anexar o ofício/comprovante e enviar a resposta ao solicitante).
         </div>
     </div>
     <div th:if="${processo.status.finalizado and (processo.emailEnviadoSolicitante or processo.status.name() == 'CANCELADO')}"
@@ -72,7 +72,7 @@
         <i class="bi bi-lock-fill fs-5"></i>
         <div>
             <strong>Processo encerrado.</strong>
-            Nenhuma alteracao e permitida (anexos, pareceres, envio). Para voltar a
+            Nenhuma alteração e permitida (anexos, pareceres, envio). Para voltar a
             editar, um administrador precisa <em>reabrir</em> o processo.
         </div>
     </div>
@@ -124,7 +124,7 @@
                     <div class="d-grid gap-2">
                         <a th:href="@{/processos/{id}/relatorio(id=${processo.id})}" target="_blank"
                            class="btn btn-outline-danger btn-sm text-start">
-                            <i class="bi bi-file-earmark-pdf me-2"></i> Relatorio Final (PDF)
+                            <i class="bi bi-file-earmark-pdf me-2"></i> Relatório Final (PDF)
                         </a>
                         <!-- So aparece depois de anexado de fato (nao gera um PDF novo na
                              hora: baixa o mesmo arquivo que esta anexado ao processo,
@@ -132,7 +132,7 @@
                         <a th:if="${processo.status.name() == 'INDEFERIDO' and oficioAnexo != null}"
                            th:href="@{/processos/anexos/{id}/download(id=${oficioAnexo.id})}" target="_blank"
                            class="btn btn-outline-warning btn-sm text-start">
-                            <i class="bi bi-file-earmark-text me-2"></i> Oficio de Indeferimento
+                            <i class="bi bi-file-earmark-text me-2"></i> Ofício de Indeferimento
                         </a>
                         <a th:if="${processo.status.name() == 'DEFERIDO' and comprovanteSnT != null}"
                            th:href="@{/processos/anexos/{id}/download(id=${comprovanteSnT.id})}" target="_blank"
@@ -146,7 +146,7 @@
                         <p class="text-muted small mb-0">
                             Ao descompactar, cria a pasta
                             <strong th:text="${nomePastaExportacao}">Paciente - Processo CET-RS NN-AAAA</strong>
-                            com o relatorio final, o resumo da movimentacao e todos os anexos.
+                            com o relatório final, o resumo da movimentação e todos os anexos.
                         </p>
                         <a th:href="@{/processos/{id}/editar(id=${processo.id})}"
                            class="btn btn-outline-primary btn-sm text-start">
@@ -161,8 +161,8 @@
                             </button>
                         </form>
                         <p class="text-muted small mb-0" th:if="${processo.status.finalizado}">
-                            <i class="bi bi-lock-fill"></i> Processo encerrado: nao e
-                            possivel excluir.
+                            <i class="bi bi-lock-fill"></i> Processo encerrado: não e
+                            possível excluir.
                         </p>
                     </div>
                 </div>
@@ -175,7 +175,7 @@
                 </div>
                 <div class="card-body pt-0">
                     <p class="small text-muted mb-2">Textos pre-preenchidos para copiar e colar.
-                        No envio aos medicos os dados pessoais do paciente sao omitidos.</p>
+                        No envio aos médicos os dados pessoais do paciente são omitidos.</p>
                     <div class="accordion" id="accEmails">
                         <div class="accordion-item" th:each="mail, it : ${emails}">
                             <h2 class="accordion-header">
@@ -183,7 +183,7 @@
                                         data-bs-toggle="collapse" th:data-bs-target="'#mail' + ${it.index}"
                                         aria-expanded="false" th:attr="aria-controls='mail' + ${it.index}">
                                     <i class="bi me-1" th:classappend="'bi-' + ${mail.icone}"></i>
-                                    <span class="small" th:text="${mail.titulo}">titulo</span>
+                                    <span class="small" th:text="${mail.titulo}">título</span>
                                 </button>
                             </h2>
                             <div th:id="'mail' + ${it.index}" class="accordion-collapse collapse"
@@ -274,9 +274,9 @@
                         <dd class="col-sm-8" th:text="${processo.solicitanteEquipe}"></dd>
                         <dt class="col-sm-4">E-mail solicitante</dt>
                         <dd class="col-sm-8" th:text="${processo.solicitanteEmail} ?: '-'"></dd>
-                        <dt class="col-sm-4">Data de solicitacao da urgencia renal</dt>
+                        <dt class="col-sm-4">Data de solicitação da urgência renal</dt>
                         <dd class="col-sm-8" th:text="${#temporals.format(processo.dataSituacaoEspecial, 'dd/MM/yyyy')}"></dd>
-                        <dt class="col-sm-4" th:if="${processo.observacoes}">Observacoes</dt>
+                        <dt class="col-sm-4" th:if="${processo.observacoes}">Observações</dt>
                         <dd class="col-sm-8" th:if="${processo.observacoes}" th:text="${processo.observacoes}"></dd>
                     </dl>
                 </div>
@@ -340,12 +340,12 @@
                                  anexar e sem acao manual do operador. -->
                             <p class="small text-muted mb-0">
                                 <i class="bi bi-check-circle-fill text-success"></i>
-                                Esta solicitacao foi enviada diretamente pelo <strong>Portal do
-                                Solicitante</strong> — recebimento automatico, sem necessidade de
-                                confirmacao manual.
+                                Esta solicitação foi enviada diretamente pelo <strong>Portal do
+                                Solicitante</strong> — recebimento automático, sem necessidade de
+                                confirmação manual.
                                 <a th:if="${solicitacaoOnlineOrigemId != null}"
                                    th:href="@{/processos/solicitacoes-online/{id}(id=${solicitacaoOnlineOrigemId})}">
-                                    Ver solicitacao original
+                                    Ver solicitação original
                                 </a>
                             </p>
                         </div>
@@ -355,7 +355,7 @@
                             <div>
                                 <i class="bi bi-check-circle-fill fs-5 me-2"></i>
                                 <strong>Recebimento concluido!</strong>
-                                <span class="text-muted small ms-2">Recebimento automatico (solicitacao enviada pelo Portal do Solicitante).</span>
+                                <span class="text-muted small ms-2">Recebimento automático (solicitação enviada pelo Portal do Solicitante).</span>
                             </div>
                             <button type="button" class="btn btn-success btn-sm"
                                     data-goto-pane="pane-envio">
@@ -375,11 +375,11 @@
                     <!-- Aviso: medico da mesma equipe/instituicao do solicitante (NAO bloqueia) -->
                     <div th:if="${!medicosMesmaEquipe.isEmpty()}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle-fill"></i>
-                        <strong>Possivel conflito de interesse.</strong>
-                        Avaliador(es) aparentemente da mesma equipe/instituicao do solicitante
+                        <strong>Possível conflito de interesse.</strong>
+                        Avaliador(es) aparentemente da mesma equipe/instituição do solicitante
                         (<span th:text="${processo.solicitanteEquipe}">equipe</span>):
-                        <strong th:text="${#strings.listJoin(medicosMesmaEquipe, '; ')}">medicos</strong>.
-                        Confira antes de enviar &mdash; o envio nao e bloqueado, apenas sinalizado.
+                        <strong th:text="${#strings.listJoin(medicosMesmaEquipe, '; ')}">médicos</strong>.
+                        Confira antes de enviar &mdash; o envio não e bloqueado, apenas sinalizado.
                     </div>
 
                     <!-- Status do envio (se ja registrado) -->
@@ -390,8 +390,8 @@
                         para os 3 avaliadores.
                         <span th:if="${solicitacaoPdf != null}" class="ms-3">
                             <a th:href="@{/processos/anexos/{id}/download(id=${solicitacaoPdf.id})}"
-                               class="btn btn-sm btn-outline-danger" title="Baixar solicitacao de avaliacao gerada automaticamente">
-                                <i class="bi bi-file-earmark-pdf"></i> Solicitacao PDF
+                               class="btn btn-sm btn-outline-danger" title="Baixar solicitação de avaliação gerada automaticamente">
+                                <i class="bi bi-file-earmark-pdf"></i> Solicitação PDF
                             </a>
                         </span>
                     </div>
@@ -405,15 +405,15 @@
                          class="alert alert-danger mb-4" id="pendentes-anonimizacao">
                         <h6 class="fw-bold mb-2">
                             <i class="bi bi-shield-exclamation"></i>
-                            Documento do solicitante <span class="text-uppercase">pendente de anonimizacao</span>
+                            Documento do solicitante <span class="text-uppercase">pendente de anonimização</span>
                         </h6>
                         <p class="small mb-3">
                             Este arquivo chegou pelo Portal do Solicitante <strong>com o nome completo do
-                            paciente impresso no corpo</strong> e, por isso, <strong>NAO sera enviado aos
+                            paciente impresso no corpo</strong> e, por isso, <strong>NÃO será enviado aos
                             avaliadores</strong> nem libera o registro do envio. Baixe, remova/oculte o nome
-                            do paciente e reenvie o arquivo ja anonimizado no passo 1 abaixo &mdash; ou, se
-                            voce ja conferiu que este documento nao identifica o paciente, confirme a
-                            anonimizacao para libera-lo.
+                            do paciente e reenvie o arquivo já anonimizado no passo 1 abaixo &mdash; ou, se
+                            você já conferiu que este documento não identifica o paciente, confirme a
+                            anonimização para libera-lo.
                         </p>
                         <ul class="list-group list-group-flush mb-0">
                             <li class="list-group-item px-0 bg-transparent border-danger-subtle"
@@ -423,13 +423,13 @@
                                         <i class="bi bi-file-earmark-lock text-danger"></i>
                                         <a th:href="@{/processos/anexos/{id}/download(id=${doc.id})}"
                                            th:text="${doc.nomeArquivo}">arquivo</a>
-                                        <span class="badge bg-danger ms-1">Nao sera enviado</span>
+                                        <span class="badge bg-danger ms-1">Não será enviado</span>
                                     </span>
                                     <form th:unless="${processo.status.finalizado}"
                                           th:action="@{/processos/anexos/{id}/excluir(id=${doc.id})}" method="post"
                                           class="d-inline" data-confirm-msg="Remover este documento do processo?">
                                         <button class="btn btn-sm btn-outline-danger" title="Remover"
-                                                aria-label="Remover documento pendente de anonimizacao">
+                                                aria-label="Remover documento pendente de anonimização">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -437,7 +437,7 @@
                                 <form th:unless="${processo.status.finalizado}"
                                       th:action="@{/processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao(id=${processo.id},anexoId=${doc.id})}"
                                       method="post" class="mt-2"
-                                      data-confirm-msg="Confirmar que este documento esta anonimizado? Ele passara a ser enviado aos 3 medicos avaliadores.">
+                                      data-confirm-msg="Confirmar que este documento esta anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
                                     <div class="form-check small mb-2">
                                         <input class="form-check-input" type="checkbox" name="confirmo" value="true"
                                                th:id="'confirmo-anonimizacao-' + ${doc.id}" required>
@@ -458,26 +458,26 @@
                         <h6 class="fw-bold text-primary mb-2 d-flex justify-content-between align-items-center">
                             <span>
                                 <span class="badge bg-primary me-2 rounded-pill">1</span>
-                                Anexar documentos clinicos anonimizados
+                                Anexar documentos clínicos anonimizados
                             </span>
                             <span th:replace="~{layout :: status(${!documentosClinicos.isEmpty()})}"></span>
                         </h6>
                         <p class="small text-muted mb-2">
-                            Anexe o(s) documento(s) clinico(s) <strong>ja anonimizados</strong> (sem o nome do
-                            paciente). Ao registrar o envio eles serao fundidos em um unico PDF e cada pagina
-                            recebera um <strong>cabecalho carimbado</strong> com o numero do processo e as iniciais do
-                            paciente (sem alterar o conteudo). A solicitacao original NUNCA entra neste PDF
-                            (contem o nome completo). Apenas arquivos PDF entram na consolidacao;
-                            <strong>e obrigatorio ao menos um</strong> para registrar o envio.
+                            Anexe o(s) documento(s) clínico(s) <strong>já anonimizados</strong> (sem o nome do
+                            paciente). Ao registrar o envio eles serão fundidos em um único PDF e cada página
+                            receberá um <strong>cabeçalho carimbado</strong> com o número do processo e as iniciais do
+                            paciente (sem alterar o conteúdo). A solicitação original NUNCA entra neste PDF
+                            (contem o nome completo). Apenas arquivos PDF entram na consolidação;
+                            <strong>e obrigatório ao menos um</strong> para registrar o envio.
                         </p>
                         <div class="alert alert-warning py-2 small mb-2">
                             <i class="bi bi-exclamation-triangle-fill"></i>
-                            <strong>Anonimize o CORPO dos documentos, nao so o nome do arquivo.</strong>
-                            O cabecalho carimbado e apenas sobreposto - ele <em>nao apaga</em> o nome do
+                            <strong>Anonimize o CORPO dos documentos, não so o nome do arquivo.</strong>
+                            O cabeçalho carimbado e apenas sobreposto - ele <em>não apaga</em> o nome do
                             paciente que estiver escrito dentro do documento. Confira cada PDF e remova/oculte
                             o nome completo antes de registrar o envio aos avaliadores. Documentos vindos do
-                            <strong>Portal do Solicitante</strong> chegam sem anonimizacao e ficam bloqueados
-                            acima ate voce confirmar a revisao &mdash; eles nao aparecem nesta lista.
+                            <strong>Portal do Solicitante</strong> chegam sem anonimização e ficam bloqueados
+                            acima até você confirmar a revisão &mdash; eles não aparecem nesta lista.
                         </div>
                         <ul class="list-group list-group-flush mb-2" th:if="${!documentosClinicos.isEmpty()}">
                             <li class="list-group-item px-0 bg-transparent" th:each="doc : ${documentosClinicos}">
@@ -487,7 +487,7 @@
                                         <a th:href="@{/processos/anexos/{id}/download(id=${doc.id})}"
                                            th:text="${doc.nomeArquivo}">arquivo</a>
                                         <span th:if="${doc.contentType == null or !#strings.containsIgnoreCase(doc.contentType, 'application/pdf')}"
-                                              class="badge bg-warning text-dark ms-1" title="Nao sera incluido no PDF consolidado">nao-PDF</span>
+                                              class="badge bg-warning text-dark ms-1" title="Não será incluido no PDF consolidado">não-PDF</span>
                                     </span>
                                     <span>
                                         <button type="button" class="btn btn-sm btn-outline-secondary btn-resumir-ia"
@@ -497,8 +497,8 @@
                                         </button>
                                         <form th:unless="${processo.status.finalizado}"
                                               th:action="@{/processos/anexos/{id}/excluir(id=${doc.id})}" method="post"
-                                              class="d-inline" data-confirm-msg="Remover este documento clinico?">
-                                            <button class="btn btn-sm btn-outline-danger" title="Remover" aria-label="Remover documento clinico">
+                                              class="d-inline" data-confirm-msg="Remover este documento clínico?">
+                                            <button class="btn btn-sm btn-outline-danger" title="Remover" aria-label="Remover documento clínico">
                                                 <i class="bi bi-trash"></i>
                                             </button>
                                         </form>
@@ -508,25 +508,25 @@
                             </li>
                         </ul>
                         <p class="small text-muted fst-italic mb-2" th:if="${documentosClinicos.isEmpty()}">
-                            Nenhum documento clinico anexado ainda.
+                            Nenhum documento clínico anexado ainda.
                         </p>
                         <form th:unless="${processo.status.finalizado}"
                               th:action="@{/processos/{id}/documento-clinico(id=${processo.id})}" method="post"
                               enctype="multipart/form-data" class="row g-2 align-items-end"
                               data-lock-submit="Enviando documento...">
                             <div class="col-md-7">
-                                <label class="form-label small" for="arquivo">Documento clinico anonimizado (PDF)</label>
+                                <label class="form-label small" for="arquivo">Documento clínico anonimizado (PDF)</label>
                                 <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required id="arquivo">
                             </div>
                             <div class="col-md-5 d-flex align-items-end">
                                 <button class="btn btn-outline-primary btn-sm">
-                                    <i class="bi bi-upload"></i> Anexar documento clinico
+                                    <i class="bi bi-upload"></i> Anexar documento clínico
                                 </button>
                             </div>
                         </form>
                         <p th:if="${documentosClinicos.isEmpty()}" class="small text-muted mb-0 mt-2">
                             <i class="bi bi-info-circle"></i>
-                            Anexe ao menos um documento clinico (PDF) para registrar o envio.
+                            Anexe ao menos um documento clínico (PDF) para registrar o envio.
                         </p>
                     </div>
 
@@ -540,7 +540,7 @@
                             <span th:replace="~{layout :: status(${envioFeito})}"></span>
                         </h6>
                         <p class="small text-muted mb-2">
-                            Confirma o envio e gera o PDF consolidado com cabecalho para os avaliadores.
+                            Confirma o envio e gera o PDF consolidado com cabeçalho para os avaliadores.
                         </p>
                         <form th:unless="${processo.status.finalizado}"
                               th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
@@ -573,28 +573,28 @@
             <!-- Aviso quando o envio ainda nao foi registrado -->
             <div th:unless="${envioFeito}" class="alert alert-warning">
                 <i class="bi bi-hourglass-split"></i>
-                Registre o envio aos avaliadores (aba <strong>1. Envio</strong>) antes de lancar as respostas.
+                Registre o envio aos avaliadores (aba <strong>1. Envio</strong>) antes de lançar as respostas.
             </div>
 
             <!-- PAUSA: avaliador pediu informacao complementar ao solicitante -->
             <div th:if="${aguardandoInfo}" class="card border-info mb-4" id="info-complementar">
                 <div class="card-header bg-info text-dark">
-                    <i class="bi bi-question-circle-fill"></i> Aguardando informacao complementar do solicitante
+                    <i class="bi bi-question-circle-fill"></i> Aguardando informação complementar do solicitante
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        Um(a) avaliador(a) pediu mais informacoes. O processo esta <strong>em pausa</strong>:
-                        a decisao fica bloqueada ate o solicitante responder. O solicitante envia a
-                        informacao complementar diretamente pelo <strong>Portal do Solicitante</strong>
-                        (ou, se preferir reforcar por e-mail, use o texto pronto
-                        <em>"Pedido de informacao complementar ao solicitante"</em> na secao de e-mails
-                        abaixo). Quando a resposta chegar, retome a analise.
+                        Um(a) avaliador(a) pediu mais informações. O processo esta <strong>em pausa</strong>:
+                        a decisão fica bloqueada até o solicitante responder. O solicitante envia a
+                        informação complementar diretamente pelo <strong>Portal do Solicitante</strong>
+                        (ou, se preferir reforçar por e-mail, use o texto pronto
+                        <em>"Pedido de informação complementar ao solicitante"</em> na seção de e-mails
+                        abaixo). Quando a resposta chegar, retome a análise.
                     </p>
 
                     <!-- Anexos de informacao complementar ja recebidos (por e-mail lancado pelo
                          operador OU enviados diretamente pelo solicitante no Portal do Solicitante) -->
                     <div th:if="${!anexosInfoComplementar.isEmpty()}" class="mb-3">
-                        <h6 class="small fw-semibold mb-2">Informacoes complementares recebidas</h6>
+                        <h6 class="small fw-semibold mb-2">Informações complementares recebidas</h6>
                         <div th:each="a : ${anexosInfoComplementar}" class="alert alert-success py-2 mb-2">
                             <span th:replace="~{layout :: status(true)}"></span>
                             <a th:href="@{/processos/anexos/{id}/download(id=${a.id})}"
@@ -608,15 +608,15 @@
                     <!-- Registrar o recebimento da resposta e retomar a analise -->
                     <form th:action="@{/processos/{id}/retomar-analise(id=${processo.id})}" method="post"
                           enctype="multipart/form-data" class="row g-2 align-items-end"
-                          data-lock-submit="Retomando analise..."
-                          data-confirm-msg="Confirmar o recebimento da informacao e retomar a analise? Os pareceres marcados como Solicita informacao serao reabertos.">
+                          data-lock-submit="Retomando análise..."
+                          data-confirm-msg="Confirmar o recebimento da informação e retomar a análise? Os pareceres marcados como Solicita informação serão reabertos.">
                         <div class="col-md-8">
-                            <label class="form-label small fw-semibold" for="arquivo">Resposta com as informacoes complementares (opcional)</label>
+                            <label class="form-label small fw-semibold" for="arquivo">Resposta com as informações complementares (opcional)</label>
                             <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg" id="arquivo">
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button class="btn btn-success btn-sm w-100">
-                                <i class="bi bi-arrow-repeat"></i> Informacao recebida - retomar analise
+                                <i class="bi bi-arrow-repeat"></i> Informação recebida - retomar análise
                             </button>
                         </div>
                     </form>
@@ -642,9 +642,9 @@
                 <div class="card-body py-2 border-bottom bg-light-subtle">
                     <div class="d-flex flex-wrap align-items-center gap-3">
                         <span class="badge bg-success"><i class="bi bi-hand-thumbs-up"></i>
-                            <span th:text="${favoraveis}">0</span> favoravel(is)</span>
+                            <span th:text="${favoraveis}">0</span> favorável(is)</span>
                         <span class="badge bg-danger"><i class="bi bi-hand-thumbs-down"></i>
-                            <span th:text="${naoFavoraveis}">0</span> nao favoravel(is)</span>
+                            <span th:text="${naoFavoraveis}">0</span> não favorável(is)</span>
                         <span class="badge bg-secondary"><i class="bi bi-hourglass-split"></i>
                             <span th:text="${pendentesVoto}">0</span> pendente(s)</span>
                         <span class="fw-semibold text-muted small" th:text="${fraseMaioria}">Faltam N votos</span>
@@ -652,27 +652,27 @@
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        O parecer de cada medico e registrado por ele mesmo, autenticado no
+                        O parecer de cada médico e registrado por ele mesmo, autenticado no
                         <strong>Portal do Avaliador</strong>. Aqui o operador so acompanha o
                         resultado de cada avaliador e pode enviar um lembrete por e-mail para
-                        quem ainda nao votou.
-                        A decisao ocorre por <strong>maioria simples</strong> (2 de 3):
-                        &ge;2 favoraveis = Deferido, &ge;2 desfavoraveis = Indeferido.
+                        quem ainda não votou.
+                        A decisão ocorre por <strong>maioria simples</strong> (2 de 3):
+                        &ge;2 favoráveis = Deferido, &ge;2 desfavoráveis = Indeferido.
                     </p>
                     <!-- Formulario unificado: resultado + upload por medico -->
                     <div class="table-responsive">
                         <table class="table align-middle table-hover mb-0 tabela-pareceres">
                         <thead><tr>
-                            <th>Medico</th>
+                            <th>Médico</th>
                             <th>Parecer</th>
                             <th>Data resposta</th>
-                            <th>Acao</th>
+                            <th>Ação</th>
                         </tr></thead>
                         <tbody>
                         <th:block th:each="par : ${processo.pareceres}">
                         <tr>
                             <td>
-                                <span th:text="${par.membro.rotulo}">Medico</span>
+                                <span th:text="${par.membro.rotulo}">Médico</span>
                                 <!-- Aguardando ha N dias: mesmo criterio/prazo-meta do Portal do
                                      Avaliador, para o operador decidir se vale lembrar (Fase 4). -->
                                 <span th:if="${par.resultado == null and diasAguardandoPorParecer.get(par.id) != null}"
@@ -694,11 +694,11 @@
                                 <span th:if="${!processo.status.finalizado or par.resultado != null}"
                                       th:switch="${par.resultado != null} ? ${par.resultado.name()} : 'PENDENTE'">
                                     <span th:case="'FAVORAVEL'" class="badge bg-success">
-                                        <i class="bi bi-hand-thumbs-up"></i> Favoravel</span>
+                                        <i class="bi bi-hand-thumbs-up"></i> Favorável</span>
                                     <span th:case="'NAO_FAVORAVEL'" class="badge bg-danger">
-                                        <i class="bi bi-hand-thumbs-down"></i> Nao favoravel</span>
+                                        <i class="bi bi-hand-thumbs-down"></i> Não favorável</span>
                                     <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-primary">
-                                        <i class="bi bi-question-circle"></i> Solicita informacao</span>
+                                        <i class="bi bi-question-circle"></i> Solicita informação</span>
                                     <span th:case="*" class="small text-muted">—</span>
                                 </span>
                             </td>
@@ -730,7 +730,7 @@
                                      mesmo criterio de exibicao do botao acima. -->
                                 <span class="small text-muted d-block mt-1"
                                       th:if="${par.resultado == null and par.ultimoLembreteEm != null}">
-                                    <i class="bi bi-envelope-check"></i> Ultimo lembrete:
+                                    <i class="bi bi-envelope-check"></i> Último lembrete:
                                     <span th:text="${#temporals.format(par.ultimoLembreteEm, 'dd/MM/yyyy HH:mm')}"></span>
                                 </span>
                                 <!-- Sem o botao acima (parecer pendente, processo aberto, nao votado
@@ -738,7 +738,7 @@
                                      vez de sumir silenciosamente, para nao parecer que falta uma acao. -->
                                 <span class="small text-muted fst-italic d-block mt-1"
                                       th:if="${par.resultado == null and !processo.status.finalizado and !pareceresPortal.contains(par.id) and (par.membro.email == null or par.membro.email.isBlank())}"
-                                      title="Cadastre o e-mail do medico em Membros da Urgencia Renal para poder enviar o lembrete">
+                                      title="Cadastre o e-mail do médico em Membros da Urgência Renal para poder enviar o lembrete">
                                     <i class="bi bi-envelope-slash"></i> Sem e-mail cadastrado
                                 </span>
                             </td>
@@ -749,7 +749,7 @@
                             <td colspan="4" class="pt-0">
                                 <div class="alert alert-light border py-2 mb-0 small">
                                     <i class="bi bi-chat-left-quote text-secondary"></i>
-                                    <span class="fw-semibold">Justificativa / observacoes do avaliador:</span>
+                                    <span class="fw-semibold">Justificativa / observações do avaliador:</span>
                                     <div class="text-body mt-1" style="white-space: pre-wrap"
                                          th:text="${par.justificativa}">...</div>
                                 </div>
@@ -762,9 +762,9 @@
 
                     <div class="alert alert-info py-2 mb-0 mt-2" th:if="${sugestao != null}">
                         <i class="bi bi-lightbulb"></i>
-                        Sugestao automatica: <strong th:text="${sugestao.descricao}"></strong>
+                        Sugestão automática: <strong th:text="${sugestao.descricao}"></strong>
                         (maioria simples de 2 em 3 votos, tanto para deferir quanto para
-                        indeferir; o voto favoravel do coordenador da CET-RS defere sozinho).
+                        indeferir; o voto favorável do coordenador da CET-RS defere sozinho).
                     </div>
 
                     <!-- Finalizacao explicita da etapa -->
@@ -777,7 +777,7 @@
                         </div>
                         <button type="button" class="btn btn-success btn-sm"
                                 data-goto-pane="pane-decisao">
-                            <i class="bi bi-arrow-right"></i> Avancar para Decisao
+                            <i class="bi bi-arrow-right"></i> Avancar para Decisão
                         </button>
                     </div>
                 </div>
@@ -789,7 +789,7 @@
                      id="pane-decisao" role="tabpanel" aria-labelledby="tab-decisao">
             <!-- Decisao -->
             <div class="card mb-4" id="decisao">
-                <div class="card-header"><i class="bi bi-hammer"></i> Decisao final</div>
+                <div class="card-header"><i class="bi bi-hammer"></i> Decisão final</div>
                 <div class="card-body">
                     <!-- Processo ja decidido (manual ou automaticamente ao atingir a maioria):
                          some o formulario, so a confirmacao. Evita o formulario "Registrar
@@ -799,30 +799,30 @@
                         <p class="small text-muted mb-3">
                             <strong>O sistema decide sozinho</strong> assim que os votos formam
                             <strong>maioria simples (2 de 3)</strong>, nos dois sentidos: 2
-                            favoraveis deferem, 2 desfavoraveis indeferem. O voto
-                            <strong>favoravel do coordenador da CET-RS defere sozinho</strong>,
-                            com um voto so. No indeferimento automatico o motivo gravado e um
-                            texto institucional padrao — para substitui-lo, o ADMIN reabre o
+                            favoráveis deferem, 2 desfavoráveis indeferem. O voto
+                            <strong>favorável do coordenador da CET-RS defere sozinho</strong>,
+                            com um voto so. No indeferimento automático o motivo gravado e um
+                            texto institucional padrão — para substitui-lo, o ADMIN reabre o
                             processo e redecide por aqui.
                             <br>
                             Use o formulario abaixo para <strong>Cancelado</strong> (que nunca e
-                            automatico), para redecidir apos uma reabertura, ou se a maioria ja
-                            existe e o processo continua em analise.
-                            <strong>Deferido</strong> — exige &ge;2 pareceres favoraveis (ou o
-                            coordenador favoravel). <strong>Indeferido</strong> — exige &ge;2
-                            pareceres desfavoraveis e o motivo preenchido.
+                            automático), para redecidir após uma reabertura, ou se a maioria já
+                            existe e o processo continua em análise.
+                            <strong>Deferido</strong> — exige &ge;2 pareceres favoráveis (ou o
+                            coordenador favorável). <strong>Indeferido</strong> — exige &ge;2
+                            pareceres desfavoráveis e o motivo preenchido.
                             <br>
-                            Deferir/Indeferir fica bloqueado — aqui e no automatico — enquanto
+                            Deferir/Indeferir fica bloqueado — aqui e no automático — enquanto
                             houver parecer antigo (registrado por e-mail) sem o anexo
-                            comprobatorio, ou o processo estiver pausado aguardando informacao
-                            complementar (salvo o voto favoravel do coordenador, que defere
-                            mesmo assim). Resolva a pendencia na aba <strong>3. Respostas</strong>.
+                            comprobatório, ou o processo estiver pausado aguardando informação
+                            complementar (salvo o voto favorável do coordenador, que defere
+                            mesmo assim). Resolva a pendência na aba <strong>3. Respostas</strong>.
                         </p>
                         <form th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post"
-                              data-lock-submit="Registrando decisao...">
+                              data-lock-submit="Registrando decisão...">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
-                                    <label class="form-label" for="decisaoSelect">Decisao</label>
+                                    <label class="form-label" for="decisaoSelect">Decisão</label>
                                     <select name="decisao" class="form-select" id="decisaoSelect">
                                         <option th:each="s : ${decisaoValores}"
                                                 th:value="${s.name()}" th:text="${s.descricao}"
@@ -830,7 +830,7 @@
                                     </select>
                                 </div>
                                 <div class="col-md-8" id="motivoBox">
-                                    <label class="form-label" for="motivoIndeferimentoInput">Motivo do indeferimento (obrigatorio se reprovado)</label>
+                                    <label class="form-label" for="motivoIndeferimentoInput">Motivo do indeferimento (obrigatório se reprovado)</label>
                                     <div class="input-group">
                                         <input type="text" name="motivoIndeferimento" id="motivoIndeferimentoInput"
                                                class="form-control" th:value="${processo.motivoIndeferimento}">
@@ -844,7 +844,7 @@
                                 </div>
                             </div>
                             <div class="text-end mt-2">
-                                <button class="btn btn-primary btn-sm">Registrar decisao</button>
+                                <button class="btn btn-primary btn-sm">Registrar decisão</button>
                             </div>
                         </form>
                     </div>
@@ -854,12 +854,12 @@
                          class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0 mt-2">
                         <div>
                             <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                            <strong>Decisao registrada!</strong>
+                            <strong>Decisão registrada!</strong>
                             <span class="text-muted small ms-2" th:text="'Processo ' + ${processo.status.descricao}"></span>
                         </div>
                         <button type="button" class="btn btn-success btn-sm"
                                 data-goto-pane="pane-finalizacao">
-                            <i class="bi bi-arrow-right"></i> Avancar para Finalizacao
+                            <i class="bi bi-arrow-right"></i> Avancar para Finalização
                         </button>
                     </div>
                 </div>
@@ -871,54 +871,54 @@
                      id="pane-finalizacao" role="tabpanel" aria-labelledby="tab-finalizacao">
             <!-- Finalizacao / oficio / comprovante / resposta -->
             <div class="card mb-4" id="finalizacao">
-                <div class="card-header"><i class="bi bi-flag"></i> Finalizacao</div>
+                <div class="card-header"><i class="bi bi-flag"></i> Finalização</div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        Conclua o processo preenchendo os campos abaixo. As etapas obrigatorias
-                        variam conforme a decisao:
+                        Conclua o processo preenchendo os campos abaixo. As etapas obrigatórias
+                        variam conforme a decisão:
                         <span th:if="${processo.status.name() == 'INDEFERIDO'}">
-                            <strong>Indeferido:</strong> anexe o oficio de indeferimento e registre as datas.
+                            <strong>Indeferido:</strong> anexe o ofício de indeferimento e registre as datas.
                         </span>
                         <span th:if="${processo.status.name() == 'DEFERIDO'}">
-                            <strong>Deferido:</strong> anexe o comprovante de insercao no SNT.
+                            <strong>Deferido:</strong> anexe o comprovante de inserção no SNT.
                         </span>
                         Em ambos os casos, registre o envio da resposta ao solicitante.
                     </p>
 
                     <!-- Oficio de Indeferimento (apenas INDEFERIDO) -->
                     <div th:if="${processo.status.name() == 'INDEFERIDO'}" class="border rounded p-3 mb-3 bg-light">
-                        <h6 class="mb-2"><i class="bi bi-file-earmark-text text-danger"></i> Oficio de Indeferimento</h6>
+                        <h6 class="mb-2"><i class="bi bi-file-earmark-text text-danger"></i> Ofício de Indeferimento</h6>
                         <!-- Aviso permanente: o PDF anexado pelo sistema e um documento
                              gerado a partir dos dados do processo, nao um oficio conferido
                              por alguem. Ele vai ANEXO ao e-mail de resposta e fica
                              disponivel ao solicitante no Portal. -->
                         <div class="alert alert-info py-2 mb-2 small">
                             <i class="bi bi-info-circle me-1"></i>
-                            O oficio e gerado automaticamente pelo sistema a partir dos dados do
-                            processo (numero, paciente, motivo, datas). <strong>Confira o conteudo
+                            O ofício e gerado automaticamente pelo sistema a partir dos dados do
+                            processo (número, paciente, motivo, datas). <strong>Confira o conteúdo
                             antes de enviar a resposta ao solicitante</strong> - se precisar de um
                             documento diferente, substitua pelo arquivo oficial no campo abaixo.
                         </div>
                         <div th:if="${oficioAnexo != null}" class="alert alert-success py-2 mb-2">
                             <span th:replace="~{layout :: status(true)}"></span>
-                            Oficio anexado:
+                            Ofício anexado:
                             <a th:href="@{/processos/anexos/{id}/download(id=${oficioAnexo.id})}"
                                th:text="${oficioAnexo.nomeArquivo}">arquivo</a>
                             <span class="text-muted small ms-2"
                                   th:text="${#temporals.format(oficioAnexo.dataUpload,'dd/MM/yyyy')}"></span>
                         </div>
                         <div th:if="${processo.numeroOficio != null}" class="small text-muted mb-2">
-                            Numero do oficio:
+                            Número do ofício:
                             <strong th:text="${processo.numeroOficio}">0001/2026</strong>
-                            <span class="ms-1">(sequencial anual, independente do numero do processo)</span>
+                            <span class="ms-1">(sequencial anual, independente do número do processo)</span>
                         </div>
                         <div th:unless="${oficioAnexo != null}" class="alert alert-warning py-2 mb-2">
-                            <span th:replace="~{layout :: status(false)}"></span> Oficio ainda nao anexado.
-                            O sistema gera automaticamente ao indeferir — ou faca upload manual abaixo.
+                            <span th:replace="~{layout :: status(false)}"></span> Ofício ainda não anexado.
+                            O sistema gera automaticamente ao indeferir — ou faça upload manual abaixo.
                         </div>
                         <div th:unless="${processo.emailEnviadoSolicitante}" class="row g-2 align-items-end">
                             <div class="col-md-4">
-                                <label class="form-label small" for="dataEmissaoOficio">Data emissao do oficio</label>
+                                <label class="form-label small" for="dataEmissaoOficio">Data emissão do ofício</label>
                                 <form th:action="@{/processos/{id}/finalizacao(id=${processo.id})}" method="post" id="formDatasOficio">
                                     <input type="date" name="dataEmissaoOficio" id="dataEmissaoOficio" class="form-control form-control-sm"
                                            th:value="${processo.dataEmissaoOficio}"
@@ -926,7 +926,7 @@
                                 </form>
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label small" for="dataEnvioOficio">Data envio do oficio</label>
+                                <label class="form-label small" for="dataEnvioOficio">Data envio do ofício</label>
                                 <input type="date" name="dataEnvioOficio" id="dataEnvioOficio" class="form-control form-control-sm"
                                        th:value="${processo.dataEnvioOficio}"
                                        form="formDatasOficio">
@@ -939,7 +939,7 @@
                             <div class="col-12">
                                 <p class="form-text mb-0">
                                     <i class="bi bi-exclamation-triangle me-1"></i>
-                                    Salvar as datas <strong>regera o oficio anexado</strong> com os dados
+                                    Salvar as datas <strong>regerá o ofício anexado</strong> com os dados
                                     atuais (sobrescrevendo qualquer arquivo enviado manualmente antes),
                                     para a tela e o documento nunca mostrarem datas diferentes.
                                 </p>
@@ -949,18 +949,18 @@
                         <form th:unless="${processo.emailEnviadoSolicitante}"
                               th:action="@{/processos/{id}/oficio-upload(id=${processo.id})}" method="post"
                               enctype="multipart/form-data" class="row g-2 align-items-end mt-2"
-                              data-lock-submit="Enviando oficio...">
+                              data-lock-submit="Enviando ofício...">
                             <div class="col-md-8">
                                 <label class="form-label small" for="arquivo">
-                                    <span th:if="${oficioAnexo != null}">Substituir oficio (PDF)</span>
-                                    <span th:unless="${oficioAnexo != null}">Anexar oficio manualmente (PDF)</span>
+                                    <span th:if="${oficioAnexo != null}">Substituir ofício (PDF)</span>
+                                    <span th:unless="${oficioAnexo != null}">Anexar ofício manualmente (PDF)</span>
                                 </label>
                                 <input type="file" name="arquivo" class="form-control form-control-sm"
                                        accept=".pdf" th:required="${oficioAnexo == null}" id="arquivo">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <button class="btn btn-outline-danger btn-sm">
-                                    <i class="bi bi-upload"></i> Enviar oficio
+                                    <i class="bi bi-upload"></i> Enviar ofício
                                 </button>
                             </div>
                         </form>
@@ -970,8 +970,8 @@
                     <div th:if="${processo.status.name() == 'DEFERIDO'}" class="border rounded p-3 mb-3 bg-light">
                         <h6 class="mb-2"><i class="bi bi-clipboard2-check text-success"></i> Comprovante SNT</h6>
                         <p class="small text-muted mb-2">
-                            Anexe o comprovante de insercao da urgencia renal no
-                            Sistema Nacional de Transplantes (SNT). Obrigatorio para concluir o processo.
+                            Anexe o comprovante de inserção da urgência renal no
+                            Sistema Nacional de Transplantes (SNT). Obrigatório para concluir o processo.
                         </p>
                         <div th:if="${comprovanteSnT != null}" class="alert alert-success py-2 mb-2">
                             <span th:replace="~{layout :: status(true)}"></span>
@@ -982,7 +982,7 @@
                                   th:text="${#temporals.format(comprovanteSnT.dataUpload,'dd/MM/yyyy')}"></span>
                         </div>
                         <div th:unless="${comprovanteSnT != null}" class="alert alert-warning py-2 mb-2">
-                            <span th:replace="~{layout :: status(false)}"></span> Comprovante SNT ainda nao anexado.
+                            <span th:replace="~{layout :: status(false)}"></span> Comprovante SNT ainda não anexado.
                         </div>
                         <!-- Data em que a urgencia foi inserida/enviada ao SNT (nao a data
                              de upload do arquivo). Espelha as datas do oficio, do lado do
@@ -1053,17 +1053,17 @@
                             <div th:if="${processo.status.name() == 'DEFERIDO' and comprovanteSnT == null}"
                                  class="alert alert-warning py-2 mb-2">
                                 <span th:replace="~{layout :: status(false)}"></span>
-                                Anexe o comprovante de insercao no SNT acima antes de enviar a resposta.
+                                Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.
                             </div>
                             <div th:if="${processo.status.name() == 'INDEFERIDO' and oficioAnexo == null}"
                                  class="alert alert-warning py-2 mb-2">
                                 <span th:replace="~{layout :: status(false)}"></span>
-                                Anexe o oficio de indeferimento acima antes de enviar a resposta.
+                                Anexe o ofício de indeferimento acima antes de enviar a resposta.
                             </div>
 
                             <!-- Previa do e-mail -->
                             <div th:if="${emailRespostaPreview != null}" class="border rounded p-2 bg-white mb-2">
-                                <small class="text-muted fw-semibold">Previa do e-mail que sera enviado:</small>
+                                <small class="text-muted fw-semibold">Prévia do e-mail que será enviado:</small>
                                 <div class="small mt-1">
                                     <strong>Para:</strong> <span th:text="${processo.solicitanteEmail}"></span><br>
                                     <strong>Assunto:</strong> <span th:text="${emailRespostaPreview.assunto()}"></span>
@@ -1119,7 +1119,7 @@
                     <p class="text-muted small" th:if="${processo.anexos.isEmpty()}">Nenhum anexo ainda.</p>
 
                     <p class="text-muted small mb-0" th:if="${processo.status.finalizado}">
-                        <i class="bi bi-lock-fill"></i> Processo encerrado: nao e possivel
+                        <i class="bi bi-lock-fill"></i> Processo encerrado: não e possível
                         adicionar ou remover anexos.
                     </p>
 
@@ -1139,7 +1139,7 @@
                             <input type="file" name="arquivo" class="form-control form-control-sm" required id="arquivo">
                         </div>
                         <div class="col-md-2">
-                            <label class="form-label" for="descricao">Descricao</label>
+                            <label class="form-label" for="descricao">Descrição</label>
                             <input type="text" name="descricao" class="form-control form-control-sm" id="descricao">
                         </div>
                         <div class="col-md-2">
@@ -1188,7 +1188,7 @@
             </div>
             <div class="modal-body">
                 <p class="small text-muted mb-3" id="modalEmailIntro">
-                    Confira os destinatarios e o conteudo abaixo. O e-mail so sera
+                    Confira os destinatários e o conteúdo abaixo. O e-mail so será
                     enviado ao clicar em <strong>Confirmar envio</strong>.
                 </p>
                 <div id="modalEmailMensagens"></div>
