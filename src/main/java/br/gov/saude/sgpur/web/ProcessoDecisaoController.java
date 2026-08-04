@@ -416,7 +416,8 @@ public class ProcessoDecisaoController {
     @ResponseBody
     // Sem @Transactional: nao navega colecao LAZY (Parecer.membro e EAGER e
     // buscarParecer so le o id do processo do proxy, sem inicializa-lo) e as
-    // escritas (auditoria) ja rodam em transacao propria do repositorio.
+    // escritas (auditoria, registrarLembreteAvaliador) ja rodam em transacao
+    // propria do repositorio/servico.
     public AcaoResponse lembreteAvaliador(@PathVariable Long id, @RequestParam Long parecerId) {
         Processo p;
         try { p = processoService.buscar(id); }
@@ -438,6 +439,7 @@ public class ProcessoDecisaoController {
         EmailTemplate template = emailTemplateService.emailLembreteAvaliador(p, membro);
         boolean ok = emailSenderService.enviar(membro.getEmail(), template.assunto(), template.corpo());
         if (ok) {
+            processoService.registrarLembreteAvaliador(parecer.getId());
             auditoria.registrar("LEMBRETE_AVALIADOR_ENVIADO",
                 "Processo " + p.getNumero() + " - " + membro.getNome());
             return AcaoResponse.sucesso("Lembrete enviado para " + membro.getNome() + ".");
@@ -455,7 +457,8 @@ public class ProcessoDecisaoController {
     @ResponseBody
     // Sem @Transactional, mesmo motivo de lembreteAvaliador: a consulta
     // pareceresPendentesComEmail ja devolve os pareceres com o membro (EAGER)
-    // carregado, e a auditoria grava em transacao propria.
+    // carregado, e a auditoria/registrarLembreteAvaliador gravam em transacao
+    // propria.
     public AcaoResponse lembretePendentes(@PathVariable Long id) {
         Processo p;
         try { p = processoService.buscar(id); }
@@ -478,6 +481,7 @@ public class ProcessoDecisaoController {
             boolean ok = emailSenderService.enviar(membro.getEmail(), template.assunto(), template.corpo());
             if (ok) {
                 enviados++;
+                processoService.registrarLembreteAvaliador(parecer.getId());
                 auditoria.registrar("LEMBRETE_AVALIADOR_ENVIADO",
                     "Processo " + p.getNumero() + " - " + membro.getNome());
             } else {

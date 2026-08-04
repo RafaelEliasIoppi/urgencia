@@ -1328,3 +1328,87 @@ Solicitante. PR único aberto ao final contra `centraldetransplante-cyber/urgenc
 extensas em produção sem revisão visual humana, mesmo com toda a suíte e o
 E2E verdes.
 
+## Fase 11.2: registro do último lembrete enviado ao avaliador (2026-08-04)
+
+Item da "Fase 11 — Decisões de produto" do
+`docs/RELATORIO-UI-SOLICITANTE-AVALIADOR-2026-08.md` (que exigia aval
+explícito do usuário antes de implementar) — **aprovado explicitamente**
+nesta sessão. Os outros dois itens da Fase 11 (justificativa obrigatória
+para voto negativo, rascunho de solicitação) continuam pendentes de aval,
+não foram tocados.
+
+**O que foi implementado:** o card "Respostas dos Avaliadores" (detalhe do
+processo, `/processos/{id}`) agora mostra, por avaliador pendente, a
+data/hora do último lembrete manual enviado (`POST
+/processos/{id}/lembrete-avaliador`/`lembrete-pendentes`,
+`ProcessoDecisaoController`) — antes o operador não tinha nenhuma
+visibilidade de quando (ou se) já tinha lembrado cada médico.
+
+**Decisão de modelagem — campo novo em `Parecer` (opção "a" do enunciado),
+não consulta a `LogAuditoria` (opção "b"):** `Parecer` já guarda outros
+timestamps de ciclo de vida do próprio parecer (`dataEnvio`,
+`dataResposta`, `dataHoraVoto`, e o precedente direto
+`conviteEnviadoEm`, do convite automático ao Portal). Consultar
+`LogAuditoria` exigiria uma query textual sobre o campo `detalhe` (que hoje
+é só uma string livre, `"Processo NN/AAAA - Nome do Medico"`, sem
+`parecerId` estruturado) para achar "o log de lembrete mais recente deste
+parecer específico" — mais frágil e mais lento que ler um campo já
+indexado por PK. Seguiu o padrão já estabelecido, sem motivo concreto para
+desviar.
+
+**`Parecer.ultimoLembreteEm` (`LocalDateTime`, nullable) — nullable é
+seguro e não precisa de backfill:** distinto de `conviteEnviadoEm` (convite
+automático, uma vez, ao registrar o envio) — este campo acompanha os
+lembretes manuais repetidos que o operador pode disparar depois. Segue o
+mesmo padrão de pitfall documentado em "Convenções de código"
+(`ddl-auto: update` não faz backfill em coluna nova/obrigatória): como o
+campo é **nullable desde a criação** (nem todo parecer teve lembrete
+enviado ainda — `NULL` é o valor semanticamente correto de "nunca
+lembrado"), não há nenhuma linha antiga que fique num estado inválido e
+**nenhum backfill manual é necessário em produção** após o deploy — ao
+contrário de `Processo.versao`/`Usuario.versao`/`MembroUrgenciaRenal.versao`
+(`@Version`, tratados como obrigatórios), que exigiram
+`UPDATE ... SET versao = 0 WHERE versao IS NULL` na VM.
+
+**Onde a escrita acontece:** `ParecerRepository.registrarUltimoLembrete`
+(`@Modifying` de linha única, mesmo padrão de
+`reivindicarConviteSeElegivel`) + `ProcessoService.registrarLembreteAvaliador`
+(`@Transactional`, transação própria — o controller não é
+`@Transactional` de classe, ver javadoc de `ProcessoDecisaoController`).
+`ProcessoDecisaoController.lembreteAvaliador`/`lembretePendentes` chamam
+esse método **somente depois** de `emailSenderService.enviar(...)`
+confirmar sucesso — se o SMTP falhar, o timestamp **não avança** (coberto
+por teste; o operador não deve achar que já lembrou o avaliador se o
+e-mail nem saiu).
+
+**Template:** `processos/detalhe.html`, dentro da célula "Ação" da tabela
+de pareceres, mostra "Último lembrete: dd/MM/yyyy HH:mm"
+(`#temporals.format`, mesmo padrão já usado no resto da tela) quando
+`par.resultado == null and par.ultimoLembreteEm != null` — mesma condição
+de exibição do botão "Lembrar por e-mail" (só pendente, processo não
+finalizado).
+
+**Testes:** `LembreteAvaliadorTimestampIntegrationTest`
+(`src/test/java/br/gov/saude/sgpur/web/`) — `@SpringBootTest` com H2 real e
+`ProcessoDecisaoController`/`ProcessoService` reais (só `EmailSenderService`
+mockado), seguindo o modelo de `ConviteAvaliadorDuplicidadeIntegrationTest`:
+um `@WebMvcTest`/`@MockitoBean` do serviço inteiro não pegaria a escrita
+real via `@Modifying`. Cobre: lembrete individual com sucesso grava o
+timestamp (relido do banco); falha de envio NÃO grava; lembrete em lote
+grava para todos os enviados com sucesso; um segundo lembrete atualiza o
+timestamp para o momento mais recente.
+
+**Validação:** suíte completa 679 testes, 0 falhas (JDK 21). `.\e2e.ps1
+-Headless` falha neste ambiente local em `FluxoCompletoProcessoIT` no passo
+5 (confirmação da resposta final ao solicitante) — **pré-existente e não
+relacionado a esta mudança**: confirmado rodando o mesmo teste isolado
+contra o `main` sem nenhuma alteração desta sessão (`git stash` +
+`mvn verify -Pe2e -Dit.test=FluxoCompletoProcessoIT`), mesma falha. Causa
+raiz aparente: `SGPUR_MAIL_USER`/`SGPUR_MAIL_FROM` não configurados nesta
+máquina local, então `EmailSenderService` loga "remetente (from) nao
+configurado" e o e-mail de resposta ao solicitante (que `finalizarResposta`
+exige com sucesso) falha, travando o passo 5 do fluxo E2E. Não investigado
+a fundo nesta sessão (fora de escopo da Fase 11.2) — fica registrado aqui
+para quem for rodar o E2E localmente de novo não perder tempo achando que é
+regressão.
+
