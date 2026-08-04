@@ -73,6 +73,7 @@
                            th:attr="aria-invalid=${#fields.hasErrors('senha')} ? 'true' : null,
                                     aria-describedby=${#fields.hasErrors('senha')} ? 'senhaErro' : null">
                     <button class="btn btn-outline-secondary" type="button" id="olhoSenhaForm"
+                            data-alvo-senha="senhaForm"
                             title="Mostrar/ocultar senha" aria-label="Mostrar/ocultar senha">
                         <i class="bi bi-eye"></i>
                     </button>
@@ -112,20 +113,9 @@
 
     perfilSelect.addEventListener('change', atualizarMembro);
     atualizarMembro();
-
-    document.getElementById('olhoSenhaForm')?.addEventListener('click', function () {
-        var input = document.getElementById('senhaForm');
-        var icon = this.querySelector('i');
-        if (input.type === 'password') {
-            input.type = 'text';
-            icon.className = 'bi bi-eye-slash';
-        } else {
-            input.type = 'password';
-            icon.className = 'bi bi-eye';
-        }
-    });
 })();
 </script>
+<script th:src="@{/js/mostrar-senha.js}"></script>
 <div th:replace="~{layout :: footer}"></div>
 </body>
 </html>

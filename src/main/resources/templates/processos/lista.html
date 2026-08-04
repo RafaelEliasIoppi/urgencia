@@ -117,8 +117,13 @@
                     <i class="bi bi-chevron-left"></i> Anterior
                 </a>
             </li>
-            <li class="page-item active">
-                <span class="page-link fw-semibold" th:text="${paginaAtual + 1}">1</span>
+            <!-- "N / total", mesmo formato de /auditoria. Antes esta tela
+                 mostrava so o numero da pagina atual, sem dizer quantas
+                 existem - o operador nao sabia se faltava muito. -->
+            <li class="page-item disabled">
+                <span class="page-link fw-semibold">
+                    <span th:text="${paginaAtual + 1}">1</span> / <span th:text="${totalPaginas}">1</span>
+                </span>
             </li>
             <li class="page-item" th:classappend="${paginaAtual + 1 >= totalPaginas} ? 'disabled'">
                 <a class="page-link"

@@ -43,7 +43,8 @@
                         <input type="password" name="password" autocomplete="current-password"
                                class="form-control border-start-0 ps-0" id="senhaInput" required placeholder="Sua senha">
                         <button class="btn btn-light border" type="button" id="olhoSenha"
-                                title="Mostrar/ocultar senha" aria-label="Mostrar/ocultar senha">
+                                data-alvo-senha="senhaInput"
+                                title="Mostrar/ocultar senha" aria-label="Mostrar senha">
                             <i class="bi bi-eye"></i>
                         </button>
                     </div>
@@ -65,18 +66,6 @@
     <p class="text-center text-white-70 mt-1" style="font-size:.7rem;">Produzido por Rafael Elias Ioppi</p>
 </div>
 <script th:replace="~{layout :: scripts}"></script>
-<script>
-document.getElementById('olhoSenha')?.addEventListener('click', function () {
-    var input = document.getElementById('senhaInput');
-    var icon = this.querySelector('i');
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.className = 'bi bi-eye-slash';
-    } else {
-        input.type = 'password';
-        icon.className = 'bi bi-eye';
-    }
-});
-</script>
+<script th:src="@{/js/mostrar-senha.js}"></script>
 </body>
 </html>

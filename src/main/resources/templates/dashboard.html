@@ -55,74 +55,68 @@
     <div class="row row-cols-2 row-cols-sm-3 row-cols-lg-6 g-3 mb-4">
         <div class="col">
             <a th:href="@{/processos}"
-               class="stat-card text-decoration-none d-block stat-card-total"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-total">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${totalProcessos}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${totalProcessos}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-collection"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Total</div>
+                <div class="stat-label">Total</div>
             </a>
         </div>
         <div class="col">
             <a th:href="@{/processos}"
-               class="stat-card text-decoration-none d-block stat-card-andamento"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-andamento">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${emAndamento}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${emAndamento}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-hourglass-split"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Em andamento</div>
+                <div class="stat-label">Em andamento</div>
             </a>
         </div>
         <div class="col">
             <a th:href="@{/processos(status='DEFERIDO')}"
-               class="stat-card text-decoration-none d-block stat-card-deferido"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-deferido">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${deferidos}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${deferidos}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-check2-circle"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Deferidos</div>
+                <div class="stat-label">Deferidos</div>
             </a>
         </div>
         <div class="col">
             <a th:href="@{/processos(status='INDEFERIDO')}"
-               class="stat-card text-decoration-none d-block stat-card-indeferido"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-indeferido">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${indeferidos}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${indeferidos}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-x-octagon"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Indeferidos</div>
+                <div class="stat-label">Indeferidos</div>
             </a>
         </div>
         <div class="col">
             <a th:href="@{/processos(status='CANCELADO')}"
-               class="stat-card text-decoration-none d-block stat-card-cancelado"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-cancelado">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${cancelados}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${cancelados}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-slash-circle"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Cancelados</div>
+                <div class="stat-label">Cancelados</div>
             </a>
         </div>
         <div class="col">
             <a th:href="@{/membros}"
-               class="stat-card text-decoration-none d-block stat-card-membros"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-membros">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${membrosAtivos}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${membrosAtivos}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-people-fill"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Membros ativos</div>
+                <div class="stat-label">Membros ativos</div>
             </a>
         </div>
         <!-- Deferidos aguardando o comprovante SNT: enquanto o anexo nao existe,
@@ -130,31 +124,30 @@
              ha ao menos um, para nao poluir o painel com um zero permanente. -->
         <div class="col" th:if="${deferidosSemComprovanteSnt > 0}">
             <a th:href="@{/processos(filtro='snt-pendente')}"
-               class="stat-card text-decoration-none d-block stat-card-andamento"
+               class="stat-card stat-card-portal text-decoration-none d-block stat-card-andamento"
                title="Processos Deferidos sem o comprovante de insercao no SNT anexado (todos os anos). A resposta ao solicitante fica bloqueada ate o anexo existir."
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               >
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);"
+                    <span class="stat-number"
                           th:text="${deferidosSemComprovanteSnt}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-icon">
                         <i class="bi bi-clipboard2-x"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Sem comprovante SNT</div>
+                <div class="stat-label">Sem comprovante SNT</div>
             </a>
         </div>
         <!-- Tempo de resposta medio total dos avaliadores -->
         <div class="col">
             <a th:href="@{/membros}"
-               class="stat-card text-decoration-none d-block"
-               th:classappend="${tempoDentroPrazo} ? 'stat-card-deferido' : 'stat-card-indeferido'"
-               style="background:var(--stat-bg);border:1px solid var(--stat-border);border-radius:16px;box-shadow:var(--rs-shadow);">
+               class="stat-card stat-card-portal text-decoration-none d-block"
+               th:classappend="${tempoDentroPrazo} ? 'stat-card-deferido' : 'stat-card-indeferido'">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);"
+                    <span class="stat-number"
                           th:text="${mediaGeralTempoTexto}">—</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-icon">
                         <i class="bi bi-stopwatch"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);"
+                <div class="stat-label"
                      th:title="'Meta: ' + ${prazoDiasTempo} + ' dias corridos'">Tempo de resposta</div>
             </a>
         </div>

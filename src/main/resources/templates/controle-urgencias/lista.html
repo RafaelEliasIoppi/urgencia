@@ -15,38 +15,45 @@
         </a>
     </div>
 
-    <!-- Cards de resumo -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-3">
-            <div class="card border-primary h-100">
-                <div class="card-body text-center py-3">
-                    <span class="badge bg-primary fs-5 mb-1" th:text="${ativas}">0</span>
-                    <div class="small text-muted">Ativas</div>
+    <!-- Cards de resumo: mesmo componente .stat-card do Painel e do Portal do
+         Solicitante (unificado em 2026-08-04). Antes esta tela usava um padrao
+         proprio - card border-* com um badge fs-5 dentro -, e Membros usava um
+         terceiro; o sistema tinha 4 dialetos visuais para "cartao de numero". -->
+    <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
+        <div class="col">
+            <div class="stat-card stat-card-portal stat-card-membros h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${ativas}">0</span>
+                    <span class="stat-icon"><i class="bi bi-play-circle"></i></span>
                 </div>
+                <div class="stat-label">Ativas</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-success h-100">
-                <div class="card-body text-center py-3">
-                    <span class="badge bg-success fs-5 mb-1" th:text="${renovadas}">0</span>
-                    <div class="small text-muted">Renovadas</div>
+        <div class="col">
+            <div class="stat-card stat-card-portal stat-card-deferido h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${renovadas}">0</span>
+                    <span class="stat-icon"><i class="bi bi-arrow-clockwise"></i></span>
                 </div>
+                <div class="stat-label">Renovadas</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-warning h-100">
-                <div class="card-body text-center py-3">
-                    <span class="badge bg-warning text-dark fs-5 mb-1" th:text="${expiradas}">0</span>
-                    <div class="small text-muted">Expiradas</div>
+        <div class="col">
+            <div class="stat-card stat-card-portal stat-card-andamento h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${expiradas}">0</span>
+                    <span class="stat-icon"><i class="bi bi-hourglass-bottom"></i></span>
                 </div>
+                <div class="stat-label">Expiradas</div>
             </div>
         </div>
-        <div class="col-6 col-md-3">
-            <div class="card border-secondary h-100">
-                <div class="card-body text-center py-3">
-                    <span class="badge bg-secondary fs-5 mb-1" th:text="${canceladas}">0</span>
-                    <div class="small text-muted">Canceladas</div>
+        <div class="col">
+            <div class="stat-card stat-card-portal stat-card-cancelado h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${canceladas}">0</span>
+                    <span class="stat-icon"><i class="bi bi-slash-circle"></i></span>
                 </div>
+                <div class="stat-label">Canceladas</div>
             </div>
         </div>
     </div>
@@ -119,7 +126,8 @@
                     </tr>
                     <tr th:if="${registros.isEmpty()}">
                         <td colspan="8" class="text-center text-muted py-4">
-                            Nenhum registro de urgencia cadastrado.
+                            <i class="bi bi-inbox d-block mb-1" style="font-size:2rem;opacity:.5;"></i>
+                        Nenhum registro de urgencia cadastrado.
                         </td>
                     </tr>
                     </tbody>
