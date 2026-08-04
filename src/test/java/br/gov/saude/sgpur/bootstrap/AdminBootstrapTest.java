@@ -3,6 +3,8 @@ package br.gov.saude.sgpur.bootstrap;
 import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
+import br.gov.saude.sgpur.repository.RascunhoSolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.EmailSenderService;
 import br.gov.saude.sgpur.service.UsuarioService;
@@ -30,6 +32,10 @@ class AdminBootstrapTest {
     private PasswordEncoder encoder;
     @Mock
     private EmailSenderService emailSenderService;
+    @Mock
+    private SolicitacaoOnlineRepository solicitacaoRepository;
+    @Mock
+    private RascunhoSolicitacaoOnlineRepository rascunhoRepository;
 
     @Test
     void criaAdminQuandoBancoVazio() {
@@ -37,7 +43,8 @@ class AdminBootstrapTest {
         when(encoder.encode("Admin123!")).thenReturn("hash");
         when(usuarioRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
         UsuarioService usuarioService = new UsuarioService(usuarioRepository, encoder, membroRepository,
-            emailSenderService, new br.gov.saude.sgpur.service.PasswordResetAttemptService());
+            emailSenderService, new br.gov.saude.sgpur.service.PasswordResetAttemptService(),
+            solicitacaoRepository, rascunhoRepository);
         AdminBootstrap bootstrap = new AdminBootstrap(usuarioRepository, usuarioService, "admin", "Admin123!");
 
         bootstrap.run(null);
@@ -53,7 +60,8 @@ class AdminBootstrapTest {
     void naoCriaAdminQuandoJaExistemUsuarios() {
         when(usuarioRepository.count()).thenReturn(3L);
         UsuarioService usuarioService = new UsuarioService(usuarioRepository, encoder, membroRepository,
-            emailSenderService, new br.gov.saude.sgpur.service.PasswordResetAttemptService());
+            emailSenderService, new br.gov.saude.sgpur.service.PasswordResetAttemptService(),
+            solicitacaoRepository, rascunhoRepository);
         AdminBootstrap bootstrap = new AdminBootstrap(usuarioRepository, usuarioService, "admin", "admin123");
 
         bootstrap.run(null);

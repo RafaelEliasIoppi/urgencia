@@ -465,6 +465,25 @@ não fazia sentido manter "legado só leitura". Ver detalhe da remoção em
 - `UsuarioService.atualizar` precisa copiar `form.getEmail()` explicitamente
   (não é campo automático) — já corrigido, mas é fácil esquecer de novo se
   reescrever esse método.
+- **Solicitante com pedidos enviados NÃO pode ser excluído (2026-08-04).**
+  `UsuarioService.excluir` recusa com `IllegalStateException` (mensagem de
+  negócio na tela, apontando o "Inativar" que já existe ao lado) quando
+  `SolicitacaoOnlineRepository.countByUsuarioSolicitanteId > 0` — apagar o
+  usuário exigiria apagar junto as solicitações e, por tabela, mensagens,
+  anexos e até o `Processo` gerado. Um eventual **rascunho**
+  (`RascunhoSolicitacaoOnline`) é o oposto: dado de staging descartável, que
+  nunca chega à triagem, então é apagado **junto** com o usuário
+  (`rascunhoRepo.deleteByUsuarioSolicitanteId` antes do `delete`) — sem isso a
+  FK do rascunho bloquearia a exclusão de um solicitante que só abriu o
+  formulário uma vez. **Antes desta correção** o DELETE ia direto ao banco e a
+  FK `solicitacao_online.usuario_solicitante_id` (NOT NULL, sem cascade)
+  estourava `DataIntegrityViolationException`, exibida pelo
+  `GlobalExceptionHandler` como *"os dados informados violam uma regra do
+  banco (…) revise os campos e tente novamente"* — genérica e sem sentido numa
+  exclusão, onde não existe campo nenhum para revisar (bug real relatado em
+  produção). Coberto por `ExclusaoSolicitanteIntegrationTest`
+  (`@SpringBootTest` + H2 real: um teste com repositório mockado nunca
+  expressaria uma violação de FK).
 
 ## Indicador: tempo de resposta dos avaliadores
 - `TempoRespostaService.calcular()` — média de **dias corridos** entre

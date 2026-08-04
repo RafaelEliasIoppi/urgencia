@@ -58,6 +58,18 @@ public interface SolicitacaoOnlineRepository extends JpaRepository<SolicitacaoOn
     long countByStatus(StatusSolicitacaoOnline status);
 
     /**
+     * Quantas solicitacoes um usuario SOLICITANTE ja enviou. Usado por
+     * {@code UsuarioService#excluir} para RECUSAR a exclusao com uma mensagem
+     * de negocio antes de tentar o DELETE: {@code usuario_solicitante_id} e
+     * uma FK NOT NULL sem cascade, entao apagar o usuario com solicitacoes
+     * estoura {@code DataIntegrityViolationException}, que o
+     * {@code GlobalExceptionHandler} traduz para "revise os campos e tente
+     * novamente" - mensagem sem sentido numa exclusao (nao existe campo
+     * nenhum) e que nao diz o que realmente aconteceu.
+     */
+    long countByUsuarioSolicitanteId(Long usuarioSolicitanteId);
+
+    /**
      * Detecta se um {@link br.gov.saude.sgpur.domain.Processo} foi originado
      * do Portal do Solicitante (convertido a partir de uma
      * {@code SolicitacaoOnline}). Usado por {@code FluxoProcessoService} para

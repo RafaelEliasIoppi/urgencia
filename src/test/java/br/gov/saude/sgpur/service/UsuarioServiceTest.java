@@ -3,6 +3,8 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.Perfil;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
+import br.gov.saude.sgpur.repository.RascunhoSolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,8 @@ class UsuarioServiceTest {
     @Mock private PasswordEncoder encoder;
     @Mock private MembroUrgenciaRenalRepository membroRepo;
     @Mock private EmailSenderService emailSenderService;
+    @Mock private SolicitacaoOnlineRepository solicitacaoRepo;
+    @Mock private RascunhoSolicitacaoOnlineRepository rascunhoRepo;
 
     private PasswordResetAttemptService passwordResetAttemptService;
     private UsuarioService service;
@@ -40,7 +44,8 @@ class UsuarioServiceTest {
     @BeforeEach
     void setUp() {
         passwordResetAttemptService = new PasswordResetAttemptService();
-        service = new UsuarioService(repo, encoder, membroRepo, emailSenderService, passwordResetAttemptService);
+        service = new UsuarioService(repo, encoder, membroRepo, emailSenderService,
+            passwordResetAttemptService, solicitacaoRepo, rascunhoRepo);
     }
 
     private Usuario usuarioComEmail() {
