@@ -1783,6 +1783,20 @@ respeitadas na execução.
    ao subir a aplicação de verdade e pedir o arquivo. Lição: ao auto-hospedar
    qualquer recurso novo, conferir a lista de `permitAll` do `SecurityConfig`.
 
+**Ajuste posterior no mesmo dia (PR #13), a pedido do usuário:** o valor da
+coluna "Situação" de `/processos` não ficava centralizado. Em vez de corrigir
+só ali, varri TODAS as tabelas comparando o alinhamento de cada `<th>` com o
+`<td>` da mesma posição. Três achados: (a) Situação/Decisão em
+`processos/lista` e `arquivo/lista` — a célula pode ter até 3 badges que
+quebram em várias linhas, e à esquerda ficavam desencontrados do cabeçalho;
+(b) **regressão da própria Fase C** em `membros/lista` (ao reescrever a coluna
+"Processos" com rótulos, o `<td>` perdeu o `text-center` e o `<th>` manteve);
+(c) **6 telas com `<th></th>` vazio** na coluna de ação enquanto os botões
+ficavam à direita — agora `<th class="text-end">Ações</th>`, que também dá
+nome à coluna para leitor de tela. Varredura final: 0 `<th>` vazio, 0
+cabeçalho desalinhado do valor. A coluna Situação **nunca** esteve
+centralizada (`git log -L` confirma) — não era regressão.
+
 **Validação além da suíte:** aplicação subida de verdade (H2, porta 3011) e
 conferida por `curl` — as 7 telas do operador em 200, os filtros novos de
 auditoria filtrando de fato (termo impossível → estado vazio), acentuação e
