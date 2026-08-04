@@ -7,6 +7,12 @@
     <meta name="_csrf" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:content="${_csrf.headerName}">
     <title th:text="${titulo} ? ${titulo} + ' - SAUR' : 'SAUR'">SAUR</title>
+    <!--/* Icone da aba. Ate 2026-08-04 nao existia arquivo nenhum: toda pagina
+           gerava um 404 silencioso em /favicon.ico e o navegador mostrava o
+           icone generico - ruim numa VM que hospeda 4 sistemas e onde o
+           operador mantem abas fixadas. */-->
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
+    <link rel="apple-touch-icon" th:href="@{/favicon.svg}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
@@ -265,7 +271,10 @@
 
 <div th:fragment="footer" class="footer-sgpur mt-auto">
     <small>SAUR &mdash; Sistema de Avaliacao de Urgencia Renal &bull; Central de Transplantes do RS</small>
-    <small class="d-block text-muted" style="font-size:.7rem;opacity:.7;">Produzido por Rafael Elias Ioppi</small>
+    <!--/* Sem opacity:.7 aqui: empilhada sobre o cinza do rodape, derrubava o
+           contraste para 3.55:1 (WCAG AA exige 4.5:1). Sem ela fica 5.71:1,
+           com a mesma hierarquia visual - o texto ja e menor que o de cima. */-->
+    <small class="d-block text-muted" style="font-size:.7rem;">Produzido por Rafael Elias Ioppi</small>
 </div>
 
 <!-- Modal generico de confirmacao de acao destrutiva (excluir/reabrir/cancelar).

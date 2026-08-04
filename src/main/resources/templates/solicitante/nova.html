@@ -9,6 +9,20 @@
     <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
     <p class="small text-muted">* Campo obrigatório</p>
 
+    <!--/* Retorno com erro de validacao: o texto digitado volta preenchido (o
+           @ModelAttribute preserva), mas os ARQUIVOS nao - nenhum navegador
+           repopula <input type="file">, por seguranca. Sem este aviso o
+           solicitante reenviava achando que os documentos clinicos continuavam
+           anexados, e a solicitacao chegava sem eles. */-->
+    <div th:if="${erro}" class="alert alert-warning d-flex align-items-start gap-2 py-2" role="alert">
+        <i class="bi bi-paperclip mt-1"></i>
+        <div>
+            <strong>Reanexe os documentos clínicos.</strong>
+            Os campos de texto foram mantidos, mas por segurança o navegador não
+            guarda os arquivos selecionados — refaça a seleção antes de enviar.
+        </div>
+    </div>
+
     <div id="rascunhoAviso" class="alert alert-info d-flex justify-content-between align-items-center py-2"
          th:if="${rascunhoSalvoEm}">
         <span>

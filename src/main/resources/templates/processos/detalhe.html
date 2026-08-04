@@ -78,10 +78,13 @@
     </div>
 
     <div class="row g-4">
-        <!-- Coluna esquerda: timeline do processo (order-2/order-md-1: no celular
-             aparece depois do wizard; a partir de md volta pra esquerda, antes
-             do conteúdo — ver docs/AJUSTES-UI.md G2) -->
-        <div class="col-lg-3 order-2 order-md-1">
+        <!-- Coluna esquerda: timeline do processo. order-lg-* (nao order-md-*):
+             a grade so divide a tela a partir de lg (col-lg-3/col-lg-9), entao
+             promover esta coluna para primeira ja em md deixava a lateral
+             (Progresso, Atalhos, E-mails, Chat, Dados) ACIMA do wizard em toda
+             a faixa 768-991px - iPad em retrato -, obrigando a rolar por 5
+             cartoes antes de chegar ao passo 1. Ver docs/AJUSTES-UI.md G2. -->
+        <div class="col-lg-3 order-2 order-lg-1">
             <div class="card animate-fade-in">
                 <div class="card-header d-flex justify-content-between align-items-center bg-white border-bottom-0">
                     <span><i class="bi bi-list-check text-primary"></i> Progresso</span>
@@ -257,7 +260,7 @@
         </div>
 
         <!-- Coluna direita -->
-        <div class="col-lg-9 order-1 order-md-2">
+        <div class="col-lg-9 order-1 order-lg-2">
             <!-- Dados -->
             <div class="card mb-4">
                 <div class="card-header"><i class="bi bi-person-vcard"></i> Dados</div>
@@ -492,7 +495,8 @@
                         </p>
                         <form th:unless="${processo.status.finalizado}"
                               th:action="@{/processos/{id}/documento-clinico(id=${processo.id})}" method="post"
-                              enctype="multipart/form-data" class="row g-2 align-items-end">
+                              enctype="multipart/form-data" class="row g-2 align-items-end"
+                              data-lock-submit="Enviando documento...">
                             <div class="col-md-7">
                                 <label class="form-label small">Documento clinico anonimizado (PDF)</label>
                                 <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required>
@@ -587,6 +591,7 @@
                     <!-- Registrar o recebimento da resposta e retomar a analise -->
                     <form th:action="@{/processos/{id}/retomar-analise(id=${processo.id})}" method="post"
                           enctype="multipart/form-data" class="row g-2 align-items-end"
+                          data-lock-submit="Retomando analise..."
                           data-confirm-msg="Confirmar o recebimento da informacao e retomar a analise? Os pareceres marcados como Solicita informacao serao reabertos.">
                         <div class="col-md-8">
                             <label class="form-label small fw-semibold">Resposta com as informacoes complementares (opcional)</label>
@@ -926,7 +931,8 @@
                         <!-- Upload manual do oficio -->
                         <form th:unless="${processo.emailEnviadoSolicitante}"
                               th:action="@{/processos/{id}/oficio-upload(id=${processo.id})}" method="post"
-                              enctype="multipart/form-data" class="row g-2 align-items-end mt-2">
+                              enctype="multipart/form-data" class="row g-2 align-items-end mt-2"
+                              data-lock-submit="Enviando oficio...">
                             <div class="col-md-8">
                                 <label class="form-label small">
                                     <span th:if="${oficioAnexo != null}">Substituir oficio (PDF)</span>
@@ -986,7 +992,8 @@
                         </div>
                         <form th:unless="${processo.emailEnviadoSolicitante}"
                               th:action="@{/processos/{id}/comprovante-snt(id=${processo.id})}" method="post"
-                              enctype="multipart/form-data" class="row g-2 align-items-end">
+                              enctype="multipart/form-data" class="row g-2 align-items-end"
+                              data-lock-submit="Enviando comprovante...">
                             <div class="col-md-8">
                                 <label class="form-label small">
                                     <span th:if="${comprovanteSnT != null}">Substituir comprovante SNT</span>
@@ -1101,7 +1108,8 @@
 
                     <form th:unless="${processo.status.finalizado}"
                           th:action="@{/processos/{id}/anexos(id=${processo.id})}" method="post"
-                          enctype="multipart/form-data" class="row g-2 align-items-end">
+                          enctype="multipart/form-data" class="row g-2 align-items-end"
+                          data-lock-submit="Enviando anexo...">
                         <div class="col-md-4">
                             <label class="form-label">Tipo</label>
                             <select name="tipo" class="form-select form-select-sm">

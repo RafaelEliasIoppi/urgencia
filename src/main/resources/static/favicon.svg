@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <!-- Logo institucional do SAUR: gota (urgencia renal) + cruz (saude).
+       Mesmo desenho do brand na navbar/login (layout.html), extraido para
+       arquivo proprio para servir de icone da aba do navegador. As cores sao
+       literais aqui de proposito: um favicon e carregado fora do documento,
+       entao nao enxerga as variaveis --rs-* do app.css.
+         #f5a623 = --rs-gold  |  #0f3163 = --rs-blue-dark -->
+  <rect width="100" height="100" rx="18" fill="#0f3163"/>
+  <path d="M52 14C36 34 24 51 24 63c0 15 12 24 26 24s26-9 26-24C76 51 64 34 52 14z" fill="#f5a623"/>
+  <rect x="43" y="46" width="15" height="26" rx="3" fill="#0f3163"/>
+  <rect x="36" y="55" width="29" height="10" rx="3" fill="#0f3163"/>
+</svg>
