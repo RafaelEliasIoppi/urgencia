@@ -274,7 +274,11 @@
             </div>
 
             <!-- Wizard passo a passo -->
-            <div th:with="envioFeito=${!processo.pareceres.isEmpty() and processo.pareceres[0].dataEnvio != null}">
+            <!-- envioFeito vem do model (ProcessoDetalheController), calculado via
+                 FluxoProcessoService.envioRegistrado - fonte unica, evita recalcular
+                 aqui com um criterio abandonado (so olhar pareceres[0], que diverge
+                 quando so parte dos pareceres tem dataEnvio). -->
+            <div>
                 <div class="wizard-wrapper animate-fade-in" id="wizardWrapper">
                 <div class="wizard" id="fasesTab" role="tablist">
                     <!-- Passos derivados de FluxoProcessoService.montarPassosWizard: mesma

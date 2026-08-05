@@ -101,6 +101,17 @@ class ProcessoDetalheControllerTest {
         // de detalhe sobrescrevem quando precisarem simular um processo
         // legado sem esse vinculo.
         when(fluxoService.veioDoPortal(any())).thenReturn(true);
+        // envioFeito (B1, vistoria 2026-08-05): o controller agora chama
+        // fluxoService.envioRegistrado(p) para alimentar o model (antes o
+        // template recalculava com um criterio proprio). Como o service e
+        // mockado aqui, replica a mesma logica real (pareceres nao vazios e
+        // TODOS com dataEnvio) em vez de fixar true/false, para nao precisar
+        // sobrescrever esse stub em cada teste que monta pareceres.
+        when(fluxoService.envioRegistrado(any())).thenAnswer(inv -> {
+            Processo p = inv.getArgument(0);
+            return !p.getPareceres().isEmpty()
+                && p.getPareceres().stream().allMatch(par -> par.getDataEnvio() != null);
+        });
     }
 
     /** SolicitacaoOnline valida (status ENVIADA, ainda nao triada) para os testes de novo/salvar. */

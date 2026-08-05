@@ -589,6 +589,37 @@ class FluxoProcessoServiceTest {
         assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
     }
 
+    // ----------------------------------------------------------------
+    // M2 (vistoria 2026-08-05): CANCELADO antes do envio/pareceres nao pode
+    // mostrar uma pendencia acionavel impossivel de resolver (edicao ja
+    // travada por edicaoBloqueada nesse status). Os testes de CANCELADO
+    // acima so cobrem cancelamento a partir de processoProntoParaDecisao()
+    // (etapas 1-3 ja completas), que mascara o bug: so a partir dali a
+    // primeira etapa incompleta e "Resposta ao solicitante", ja coberta
+    // pela excecao. Estes cobrem cancelamento bem mais cedo no fluxo.
+    // ----------------------------------------------------------------
+
+    @Test
+    void canceladoAntesDoEnvioNaoTemPendenciaAberta() {
+        Processo p = processoComTresPareceres();
+        p.setStatus(StatusProcesso.CANCELADO);
+        // nenhum documento clinico, nenhum envio registrado
+
+        assertThat(fluxo().pendenciaAberta(p)).isEmpty();
+        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
+    }
+
+    @Test
+    void canceladoAntesDosPareceresNaoTemPendenciaAberta() {
+        Processo p = processoComTresPareceres();
+        registrarEnvioCompleto(p);
+        p.setStatus(StatusProcesso.CANCELADO);
+        // envio feito, mas nenhum parecer respondido ainda
+
+        assertThat(fluxo().pendenciaAberta(p)).isEmpty();
+        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
+    }
+
     @Test
     void resumoPendenciaApontaComprovanteSntQuandoDeferidoSemComprovante() {
         Processo p = processoProntoParaDecisao();
