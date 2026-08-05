@@ -104,11 +104,25 @@
                             </td>
                             <td class="small text-muted"
                                 th:text="${par.dataEnvio != null} ? ${#temporals.format(par.dataEnvio, 'dd/MM/yyyy')} : '-'">-</td>
-                            <td class="small">
-                                <th:block th:with="dias=${diasDesdeEnvio[par.processoId]}, textoDias=${dias} + (${dias == 1} ? ' dia' : ' dias'), textoPrazo=${prazoDias} + (${prazoDias == 1} ? ' dia' : ' dias')">
-                                    <span class="text-danger fw-semibold" th:title="'Acima do prazo-meta de ' + ${textoPrazo}">
+                            <td class="small"
+                                th:with="dias=${diasDesdeEnvio[par.processoId]}, mostrarPrazo=true">
+                                <!-- Fragmento LOCAL "aguardandoInfo": definido aqui (site real de uso)
+                                     e reutilizado via th:insert nos outros 3 lugares equivalentes
+                                     (tabela "Demais pendentes" + os 2 cards mobile) - antes o title
+                                     "Acima do prazo-meta de N dias" existia so aqui, e sumia no card
+                                     mobile (achado A1/S2 de vistoria de UI). -->
+                                <th:block th:fragment="aguardandoInfo(dias, prazoDias, mostrarPrazo)"
+                                          th:with="textoDias=${dias != null} ? (${dias} + (${dias == 1} ? ' dia' : ' dias')) : null,
+                                                   textoPrazo=${prazoDias} + (${prazoDias == 1} ? ' dia' : ' dias')">
+                                    <span th:if="${mostrarPrazo}" class="text-danger fw-semibold"
+                                          th:title="'Acima do prazo-meta de ' + ${textoPrazo}">
                                         <i class="bi bi-exclamation-triangle-fill"></i>
                                         <span th:text="${textoDias}">0 dias</span>
+                                        <span class="d-block small fw-normal">Fora do prazo-meta (<span th:text="${textoPrazo}">7 dias</span>)</span>
+                                    </span>
+                                    <span th:unless="${mostrarPrazo}" class="text-muted">
+                                        <span th:if="${dias != null}" th:text="${dias == 0} ? 'hoje' : ${textoDias}">0 dias</span>
+                                        <span th:if="${dias == null}">-</span>
                                     </span>
                                 </th:block>
                             </td>
@@ -147,11 +161,8 @@
                         Enviado em
                         <span th:text="${par.dataEnvio != null} ? ${#temporals.format(par.dataEnvio, 'dd/MM/yyyy')} : '-'">-</span>
                     </div>
-                    <th:block th:with="dias=${diasDesdeEnvio[par.processoId]}, textoDias=${dias} + (${dias == 1} ? ' dia' : ' dias')">
-                        <span class="badge bg-danger mb-2">
-                            <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${textoDias}">0 dias</span> de espera
-                        </span>
-                    </th:block>
+                    <div class="badge bg-danger mb-2 text-wrap text-start"
+                         th:insert="~{::aguardandoInfo(dias=${diasDesdeEnvio[par.processoId]}, prazoDias=${prazoDias}, mostrarPrazo=true)}"></div>
                     <div class="d-flex gap-2">
                         <th:block th:with="pdf=${pdfPorProcesso[par.processoId]}">
                             <a th:if="${pdf != null}"
@@ -204,14 +215,8 @@
                             </td>
                             <td class="small text-muted"
                                 th:text="${par.dataEnvio != null} ? ${#temporals.format(par.dataEnvio, 'dd/MM/yyyy')} : '-'">-</td>
-                            <td class="small">
-                                <!-- Informacao auxiliar: dias desde o envio (nao ha SLA no dominio). -->
-                                <th:block th:with="dias=${diasDesdeEnvio[par.processoId]}">
-                                    <span th:if="${dias != null}" class="text-muted"
-                                          th:text="${dias == 0} ? 'hoje' : (${dias} + (${dias == 1} ? ' dia' : ' dias'))">0 dias</span>
-                                    <span th:if="${dias == null}" class="text-muted">-</span>
-                                </th:block>
-                            </td>
+                            <td class="small"
+                                th:insert="~{::aguardandoInfo(dias=${diasDesdeEnvio[par.processoId]}, prazoDias=${prazoDias}, mostrarPrazo=false)}"></td>
                             <td>
                                 <!-- PDF anonimizado passado pelo controller via pdfPorProcesso -->
                                 <th:block th:with="pdf=${pdfPorProcesso[par.processoId]}">
@@ -244,11 +249,10 @@
                     <div class="small text-muted mb-2">
                         Enviado em
                         <span th:text="${par.dataEnvio != null} ? ${#temporals.format(par.dataEnvio, 'dd/MM/yyyy')} : '-'">-</span>
-                        <th:block th:with="dias=${diasDesdeEnvio[par.processoId]}">
-                            <span th:if="${dias != null}">
-                                &bull; <span th:text="${dias == 0} ? 'hoje' : (${dias} + (${dias == 1} ? ' dia' : ' dias'))">0 dias</span>
-                            </span>
-                        </th:block>
+                        <span th:if="${diasDesdeEnvio[par.processoId]} != null">
+                            &bull;
+                            <span th:insert="~{::aguardandoInfo(dias=${diasDesdeEnvio[par.processoId]}, prazoDias=${prazoDias}, mostrarPrazo=false)}"></span>
+                        </span>
                     </div>
                     <div class="d-flex gap-2">
                         <th:block th:with="pdf=${pdfPorProcesso[par.processoId]}">
@@ -369,21 +373,25 @@
     <h2 class="h5 mb-2"><i class="bi bi-bar-chart-line"></i> Minhas estatísticas</h2>
     <div class="row g-3 mb-4">
         <div class="col-6 col-md-4">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <i class="bi bi-check2-circle fs-3 text-success"></i>
-                    <div class="fs-3 fw-bold" th:text="${totalAvaliados}">0</div>
-                    <div class="small text-muted">Avaliados por mim</div>
+            <!-- Padrao unico .stat-card/.stat-number/.stat-icon (ja usado pelo
+                 Painel, Portal do Solicitante e Controle de Urgencias) - antes
+                 esta secao era um 4o dialeto visual proprio (card text-center +
+                 fs-3 fw-bold, achado A3 de vistoria de UI). -->
+            <div class="stat-card stat-card-portal stat-card-deferido h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${totalAvaliados}">0</span>
+                    <span class="stat-icon"><i class="bi bi-check2-circle"></i></span>
                 </div>
+                <div class="stat-label">Avaliados por mim</div>
             </div>
         </div>
         <div class="col-6 col-md-4">
-            <div class="card text-center h-100">
-                <div class="card-body py-3">
-                    <i class="bi bi-people fs-3 text-secondary"></i>
-                    <div class="fs-3 fw-bold" th:text="${totalAtribuidos}">0</div>
-                    <div class="small text-muted">Atribuídos a mim</div>
+            <div class="stat-card stat-card-portal stat-card-membros h-100">
+                <div class="d-flex align-items-center justify-content-between">
+                    <span class="stat-number" th:text="${totalAtribuidos}">0</span>
+                    <span class="stat-icon"><i class="bi bi-people"></i></span>
                 </div>
+                <div class="stat-label">Atribuídos a mim</div>
             </div>
         </div>
         <div class="col-12 col-md-4">
@@ -402,20 +410,24 @@
                         <div th:if="${solicitaInfo} > 0" th:style="'flex:' + ${solicitaInfo} + ';background:var(--rs-chart-blue);'"></div>
                     </div>
                     <div th:unless="${totalAvaliados} > 0" class="text-center text-muted small py-1">Sem votos ainda</div>
+                    <!-- title sozinho nao chega a leitor de tela nem a toque no celular
+                         (a maioria dos leitores de tela ignora o atributo title); o rotulo
+                         completo tambem fica disponivel via .visually-hidden, irmao do
+                         texto abreviado visivel (achado A5 de vistoria de UI). -->
                     <div class="d-flex justify-content-around small mt-2">
-                        <span title="Favorável">
+                        <span>
                             <i class="bi bi-hand-thumbs-up text-success"></i>
-                            <span class="text-muted">Fav.</span>
+                            <span class="text-muted"><span class="visually-hidden">Favorável</span><span aria-hidden="true">Fav.</span></span>
                             <span class="fw-bold" th:text="${favoraveis}">0</span>
                         </span>
-                        <span title="Não favorável">
+                        <span>
                             <i class="bi bi-hand-thumbs-down text-danger"></i>
-                            <span class="text-muted">Não fav.</span>
+                            <span class="text-muted"><span class="visually-hidden">Não favorável</span><span aria-hidden="true">Não fav.</span></span>
                             <span class="fw-bold" th:text="${naoFavoraveis}">0</span>
                         </span>
-                        <span title="Solicita informação">
+                        <span>
                             <i class="bi bi-question-circle text-primary"></i>
-                            <span class="text-muted">Info</span>
+                            <span class="text-muted"><span class="visually-hidden">Solicita informação</span><span aria-hidden="true">Info</span></span>
                             <span class="fw-bold" th:text="${solicitaInfo}">0</span>
                         </span>
                     </div>
@@ -425,7 +437,7 @@
     </div>
 </main>
 
-<script th:replace="~{layout :: scripts}"></script>
 <div th:replace="~{layout :: footer}"></div>
+<script th:replace="~{layout :: scripts}"></script>
 </body>
 </html>

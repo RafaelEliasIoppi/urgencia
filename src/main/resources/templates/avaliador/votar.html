@@ -26,7 +26,7 @@
     <div class="row g-4">
         <!-- Coluna esquerda: material para leitura (fica a vista o tempo todo,
              o avaliador nao precisa rolar pra cima/baixo entre ler e votar) -->
-        <div class="col-lg-7">
+        <div class="col-xl-7">
             <!-- Material clinico para analise -->
             <div class="card">
                 <div class="card-header">
@@ -95,7 +95,7 @@
         </div>
 
     <!-- Coluna direita: contexto + voto, sticky (acompanha a rolagem do PDF) -->
-    <div class="col-lg-5">
+    <div class="col-xl-5">
     <div class="sticky-lg-top" style="top: 1rem;">
 
     <!-- Identificacao do processo — SOMENTE iniciais, sem dados do solicitante -->
@@ -160,7 +160,10 @@
                                         <span th:case="*" th:text="${r.descricao}">Resultado</span>
                                     </span>
                                 </span>
-                                <span class="voto-opcao-consequencia small text-muted" th:switch="${r.name()}">
+                                <!-- .voto-opcao-consequencia nao existe em app.css (nunca teve efeito,
+                                     estilizava so por acidente via "small text-muted" - achado A4 de
+                                     vistoria de UI); classe removida, mantido so o que de fato estiliza. -->
+                                <span class="small text-muted" th:switch="${r.name()}">
                                     <span th:case="'FAVORAVEL'">Concordo com o reconhecimento da urgência.</span>
                                     <span th:case="'NAO_FAVORAVEL'">Não reconheço a urgência para este caso.</span>
                                     <span th:case="'SOLICITA_INFORMACAO'"><strong>Pausa o processo</strong> até o solicitante enviar mais dados.</span>
@@ -255,9 +258,9 @@
     </div>
 </div>
 
+<div th:replace="~{layout :: footer}"></div>
 <script th:replace="~{layout :: scripts}"></script>
 <script th:src="@{/js/avaliador-votar.js}"></script>
 <script th:src="@{/js/avaliador-pdf-fullscreen.js}"></script>
-<div th:replace="~{layout :: footer}"></div>
 </body>
 </html>
