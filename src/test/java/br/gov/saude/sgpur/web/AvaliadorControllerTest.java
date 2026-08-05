@@ -258,22 +258,24 @@ class AvaliadorControllerTest {
         // O repositorio ja filtra resultado nulo + dataEnvio nao nula; o filtro de
         // status (ENVIADO) acontece no controller/advice.
         // Duas consultas distintas fazem esse mesmo papel hoje: findPendentesComProcesso
-        // (fetch join, usada por lista() para a PROPRIA pagina) e o metodo original
-        // (usado por GlobalModelAdvice.pendentesAvaliador(), que gera o atributo
-        // "pendentesAvaliador" verificado abaixo - continua com seu proprio
-        // @Transactional e por isso nao precisa do fetch join). Ambas precisam de
-        // stub para este teste, que exercita as duas.
+        // (fetch join, usada por lista() para a PROPRIA pagina - continua carregando
+        // entidades, pois o template precisa delas) e a query de count() dedicada
+        // (usada por GlobalModelAdvice.pendentesAvaliador(), que gera o atributo
+        // "pendentesAvaliador" verificado abaixo - resolvida direto no banco, sem
+        // carregar nenhuma entidade Parecer/Processo). Cada uma precisa de seu
+        // proprio stub, refletindo o MESMO criterio (so o processo ENVIADO conta).
         when(parecerRepo.findPendentesComProcesso(10L))
             .thenReturn(List.of(pendenteAtivo, pendenteInativo));
-        when(parecerRepo.findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(10L))
-            .thenReturn(List.of(pendenteAtivo, pendenteInativo));
+        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
+                10L, StatusProcesso.ENVIADO))
+            .thenReturn(1L);
         when(anexoRepo.findByProcessoIdAndTipo(any(Long.class), any()))
             .thenReturn(List.of());
 
         // So 1 dos 2 deve ser contado (o do processo ativo)
         mvc.perform(get("/avaliador"))
             .andExpect(status().isOk())
-            .andExpect(model().attribute("pendentesAvaliador", 1));
+            .andExpect(model().attribute("pendentesAvaliador", 1L));
     }
 
     @Test

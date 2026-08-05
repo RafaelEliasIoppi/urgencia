@@ -59,7 +59,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * qualquer consulta do repositorio SEM fetch join, {@code Parecer.processo}
  * (LAZY) e {@code Usuario.membro} (LAZY) voltariam como proxies vazios: a
  * primeira navegacao fora de uma transacao (ex.: {@code par.getProcesso()
- * .getStatus()} em {@code AvaliadorController.pendentesDoMembro}) lancaria
+ * .getStatus()} em {@code AvaliadorController.pendenteAtivoParaVoto}) lancaria
  * {@code LazyInitializationException}, que o {@code GlobalExceptionHandler}
  * mapeia para HTTP 500 (fallback generico) — e e exatamente esse status que
  * os testes abaixo verificam NAO acontecer.</p>

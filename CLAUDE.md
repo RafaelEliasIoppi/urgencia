@@ -1931,6 +1931,35 @@ auditoria filtrando de fato (termo impossível → estado vazio), acentuação e
 **pré-existente** de SMTP no passo 5 (linha 225), confirmada idêntica no
 `main` sem as mudanças.
 
+## Contador de pendências do avaliador: N+1 corrigido com query de COUNT (2026-08-04)
+
+Item 2 do `docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md` (relatório de
+diagnóstico de interação avançada, referenciado pelo PR #19 ainda não
+mesclado). `GlobalModelAdvice.pendentesAvaliador()` — um `@ModelAttribute`
+de `@ControllerAdvice`, portanto executado em **toda** requisição de um
+usuário AVALIADOR — carregava as entidades `Parecer` inteiras
+(`ParecerRepository.findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull`)
+e filtrava em Java navegando `par.getProcesso().getStatus()` (LAZY), um N+1
+por render. Corrigido trocando por uma query de contagem direta no banco:
+`ParecerRepository.
+countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus`
+(derived query name, `count(...)`, sem carregar nenhuma entidade), com o
+MESMO critério de `AvaliadorController.pendenteAtivoParaVoto` (resultado
+nulo, `dataEnvio` preenchida, `processo.status == ENVIADO`). O método
+estático `AvaliadorController.pendentesDoMembro` (que fazia a versão antiga,
+usado só por `GlobalModelAdvice`) foi removido por ter ficado sem chamador;
+`pendenteAtivoParaVoto` continua vivo, reaproveitado pelas consultas com
+fetch join de `lista()`/`registrarVoto`. `pendentesAvaliador()` passou de
+`int` para `long` (o tipo natural de `count()`) — sem efeito visível no
+badge da navbar (`layout.html`), que já comparava com `> 0`. Coberto por
+`ParecerRepositoryPendentesCountIntegrationTest` (`@SpringBootTest` + H2
+real, compara a nova query com a lógica antiga reimplementada localmente
+para o teste, em 6 cenários: zero pendentes, N pendentes, pendente de outro
+avaliador, parecer já respondido, processo em status que não aceita votação,
+e uma mistura de todos). Esta correção é só o pré-requisito técnico citado
+pelo relatório para um possível *poll* futuro do contador (não implementado
+nesta sessão — fica para quando/se o item for aprovado explicitamente).
+
 ## Aviso ao sair sem salvar (`beforeunload`) — 2026-08-04
 
 Item 4 do `docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md` (§4.4): o sistema

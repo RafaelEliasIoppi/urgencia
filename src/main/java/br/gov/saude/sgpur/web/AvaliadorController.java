@@ -125,13 +125,14 @@ public class AvaliadorController {
         MembroUrgenciaRenal membro = resolverMembro(principal);
         Long membroId = membro.getId();
 
-        // Mesmo CRITERIO de "pendentes do avaliador" de pendentesDoMembro (reutilizado
-        // pelo badge global em GlobalModelAdvice), mas buscando com fetch join do
-        // Processo: pendentesDoMembro usa a consulta ORIGINAL (sem fetch join) porque
-        // GlobalModelAdvice.pendentesAvaliador() tem seu proprio @Transactional
-        // cobrindo a navegacao lazy - aqui em lista() nao ha mais transacao nenhuma
-        // no controller (removida em 2026-07-29), entao a mesma consulta devolveria
-        // Processo como proxy LAZY inutilizavel no loop abaixo.
+        // Mesmo CRITERIO de "pendente ativo para voto" (pendenteAtivoParaVoto),
+        // reaproveitado tambem pelo contador do badge global em
+        // GlobalModelAdvice (hoje resolvido por uma query de count() dedicada,
+        // sem carregar entidade nenhuma). Aqui em lista() precisamos das
+        // entidades de verdade para montar a tabela, entao usamos a consulta
+        // com fetch join do Processo: sem transacao de controller (removida em
+        // 2026-07-29), a consulta sem fetch join devolveria Processo como
+        // proxy LAZY inutilizavel no loop abaixo.
         List<Parecer> parecersFiltrados = parecerRepo.findPendentesComProcesso(membroId)
             .stream()
             .filter(AvaliadorController::pendenteAtivoParaVoto)
@@ -536,38 +537,26 @@ public class AvaliadorController {
     }
 
     // -------------------------------------------------------------------------
-    // Regra reutilizavel de pendencias (compartilhada com o badge global)
+    // Regra reutilizavel de pendencias
     // -------------------------------------------------------------------------
-
-    /**
-     * Pareceres pendentes de voto do membro: sem resultado, ja enviados e cujo
-     * processo esta em status ativo para votacao (ENVIADO).
-     *
-     * Regra UNICA — usada tanto pela lista do portal quanto pelo contador da
-     * navbar ({@code GlobalModelAdvice}) para nao duplicar o criterio.
-     */
-    static List<Parecer> pendentesDoMembro(ParecerRepository parecerRepo, Long membroId) {
-        // Mantido de proposito com a consulta ORIGINAL (sem fetch join): quem
-        // chama este metodo e GlobalModelAdvice.pendentesAvaliador(), que tem seu
-        // proprio @Transactional(readOnly = true) cobrindo par.getProcesso() -
-        // trocar a consulta aqui nao e necessario e so divergiria do
-        // comportamento ja validado por GlobalModelAdviceTest. AvaliadorController
-        // .lista() (sem transacao de controller) usa uma consulta com fetch join
-        // separada (ver dentro de lista()), com o MESMO criterio de filtro
-        // (pendenteAtivoParaVoto) para nao duplicar a regra de negocio.
-        return parecerRepo
-            .findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(membroId)
-            .stream()
-            .filter(AvaliadorController::pendenteAtivoParaVoto)
-            .toList();
-    }
 
     /**
      * Criterio de "pendente ativo para voto": parecer sem resultado, ja enviado,
      * cujo processo ainda esta em status que aceita votacao (ENVIADO).
-     * Extraido para ser reaproveitado tanto por {@link #pendentesDoMembro} (usado
-     * pelo badge global) quanto pela consulta com fetch join usada em
-     * {@link #lista()} - a MESMA regra de negocio, so a origem dos dados difere.
+     *
+     * Regra UNICA de negocio, reaproveitada pelas consultas com fetch join
+     * usadas em {@link #lista()}/{@link #registrarVoto} — mas nao mais pelo
+     * contador da navbar: desde a correcao do N+1 do badge (2026-08),
+     * {@code GlobalModelAdvice.pendentesAvaliador()} usa uma query de
+     * {@code count(...)} dedicada no repositorio
+     * ({@code ParecerRepository.
+     * countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus}),
+     * que expressa o MESMO criterio (resultado nulo + dataEnvio preenchida +
+     * processo.status = ENVIADO) diretamente no banco, sem carregar nenhuma
+     * entidade {@code Parecer}/{@code Processo}. O metodo estatico
+     * {@code pendentesDoMembro} que existia aqui antes (carregava as entidades
+     * e filtrava em Java navegando {@code par.getProcesso()}) foi removido por
+     * ter ficado sem nenhum chamador.
      */
     private static boolean pendenteAtivoParaVoto(Parecer par) {
         StatusProcesso s = par.getProcesso().getStatus();
