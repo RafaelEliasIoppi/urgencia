@@ -1106,7 +1106,8 @@
                             <!-- Botao unico de envio -->
                             <form th:if="${processo.status.finalizado}"
                                   th:action="@{/processos/{id}/finalizar(id=${processo.id})}" method="post"
-                                  data-lock-submit="Enviando resposta...">
+                                  data-lock-submit="Enviando resposta..."
+                                  data-confirm-msg="Confirma o envio da resposta final ao solicitante? Esta ação é irreversível e vai disparar o e-mail oficial de Deferido/Indeferido com os anexos correspondentes.">
                                 <button type="submit" class="btn btn-success"
                                         th:disabled="${(processo.status.name() == 'DEFERIDO' and comprovanteSnT == null)
                                             or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)
