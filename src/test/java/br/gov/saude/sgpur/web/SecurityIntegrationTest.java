@@ -81,11 +81,18 @@ class SecurityIntegrationTest {
     @WithMockUser(roles = "AVALIADOR")
     void avaliadorAcessaPortalProprio() throws Exception {
         // ROLE_AVALIADOR tem permissao na rota /avaliador (Spring Security nao bloqueia).
-        // O controller lanca ResponseStatusException(UNAUTHORIZED) ao nao encontrar o usuario
-        // no banco (MockMvc usa usuario ficticio "user" sem registro real), resultando em 401.
-        // O ponto testado e que a rota NAO retorna 403 (proibido por role).
+        // MockMvc usa um usuario ficticio ("user") sem registro real no banco - o mesmo
+        // cenario, na pratica, de uma sessao "orfa" (username sem Usuario correspondente).
+        // Ate 2026-08-04 o controller lancava ResponseStatusException(UNAUTHORIZED) direto,
+        // que o Spring devolvia como 401 cru. Bug real corrigido nessa data (usuario
+        // reportou 401 tecnico ao clicar no link de convite por e-mail apos o ADMIN trocar
+        // o username do avaliador com a sessao dele ainda ativa): agora o controller lanca
+        // SessaoInvalidaException, tratada por GlobalExceptionHandler.handleSessaoInvalida,
+        // que invalida a sessao e redireciona para /login com uma mensagem clara - o ponto
+        // testado aqui e que a rota NAO retorna 403 (proibido por role) nem um 401/500 cru.
         mvc.perform(get("/avaliador"))
-            .andExpect(status().is4xxClientError()); // 401 de logica (usuario nao no banco), nao 403 de role
+            .andExpect(status().is3xxRedirection())
+            .andExpect(redirectedUrl("/login?erro=sessao-invalida"));
     }
 
     @Test

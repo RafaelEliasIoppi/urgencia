@@ -570,10 +570,22 @@ public class AvaliadorController {
     /**
      * Resolve o membro vinculado ao usuario logado.
      * Lanca 403 se o usuario nao tiver membro vinculado (configuracao incorreta).
+     *
+     * <p><b>Sessao orfa (bug real corrigido):</b> se o usuario correspondente ao
+     * username gravado na sessao nao existir mais no banco (ex.: um ADMIN trocou
+     * o {@code username} desse avaliador em {@code /usuarios}, ou excluiu a
+     * conta, enquanto ele tinha sessao ativa — o Spring Security nao rele o
+     * {@code UserDetails} a cada requisicao), lanca {@link SessaoInvalidaException}
+     * em vez de {@code ResponseStatusException(UNAUTHORIZED)}. O
+     * {@code GlobalExceptionHandler} trata esse tipo invalidando a sessao e
+     * redirecionando para {@code /login} com mensagem clara, em vez do 401 cru
+     * que o navegador exibia antes (a excecao antiga era tratada direto pelo
+     * Spring, sem chance de o usuario simplesmente logar de novo).</p>
      */
     private MembroUrgenciaRenal resolverMembro(Principal principal) {
         Usuario usuario = usuarioRepo.findByUsername(principal.getName())
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+            .orElseThrow(() -> new SessaoInvalidaException(
+                "Usuario da sessao (" + principal.getName() + ") nao encontrado no banco."));
         MembroUrgenciaRenal vinculo = usuario.getMembro();
         if (vinculo == null) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
