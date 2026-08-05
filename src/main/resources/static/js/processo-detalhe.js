@@ -1,44 +1,10 @@
 // === SAUR - Processo Detalhe ===
 // Funcoes da tela de detalhe do processo (wizard, pareceres, IA, e-mail).
 
-// ===== Notificacao toast =====
-// Intencionalmente global (window.mostrarToast) - e a unica funcao deste
-// arquivo chamada de fora dele (ex.: outros scripts da tela poderiam querer
-// mostrar um toast). Todo o resto fica dentro da IIFE abaixo.
-window.mostrarToast = function (mensagem, tipo) {
-    tipo = tipo || 'info';
-    var container = document.getElementById('toastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toastContainer';
-        container.className = 'toast-container-sgpur';
-        container.setAttribute('role', 'status');
-        container.setAttribute('aria-live', 'polite');
-        document.body.appendChild(container);
-    }
-    var icones = {success: 'bi-check-circle-fill text-success', error: 'bi-exclamation-triangle-fill text-danger', info: 'bi-info-circle-fill text-primary'};
-    var toast = document.createElement('div');
-    toast.className = 'toast-sgpur toast-' + tipo;
-    var icone = document.createElement('i');
-    icone.className = 'bi toast-icon ' + (icones[tipo] || icones.info);
-    var corpo = document.createElement('div');
-    corpo.className = 'toast-body';
-    corpo.textContent = mensagem;
-    var fechar = document.createElement('button');
-    fechar.className = 'toast-close';
-    fechar.setAttribute('aria-label', 'Fechar');
-    fechar.textContent = '×';
-    fechar.addEventListener('click', function () { toast.remove(); });
-    toast.appendChild(icone);
-    toast.appendChild(corpo);
-    toast.appendChild(fechar);
-    container.appendChild(toast);
-    setTimeout(function () {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity .3s';
-        setTimeout(function () { toast.remove(); }, 300);
-    }, 5000);
-};
+// mostrarToast() NAO e mais definida aqui (era uma segunda implementacao
+// divergente da de layout.html - unificadas em /js/toast.js, carregado por
+// layout.html/navbar em toda tela, inclusive esta - ver CLAUDE.md). Este
+// arquivo continua usando window.mostrarToast livremente, só nao a declara.
 
 (function () {
     // Mostra/oculta o motivo conforme a decisao
@@ -163,12 +129,29 @@ window.mostrarToast = function (mensagem, tipo) {
                 body: body
             }, function (texto) {
                 corpoEl.value = texto;
+                // Atribuicao programatica de .value nao dispara 'input' -
+                // sem isto o aviso de saida sem salvar (aviso-sair-sem-
+                // salvar.js) nao percebia que o texto revisado pela IA
+                // ainda nao foi enviado.
+                corpoEl.dispatchEvent(new Event('input', {bubbles: true}));
             });
         });
     });
 
+    // ===== Aviso ao sair com um e-mail pronto editado e nao enviado =====
+    // Cada textarea "corpo" do accordion de e-mails prontos e independente:
+    // so o que foi de fato enviado (ou nunca editado) deixa de contar.
+    var avisoEmailPronto = (typeof window.iniciarAvisoSairSemSalvar === 'function')
+        ? window.iniciarAvisoSairSemSalvar({
+            campos: Array.prototype.slice.call(document.querySelectorAll('#accEmails textarea[id^="corpo"]'))
+        })
+        : null;
+
     // ===== Envio real de e-mail (SMTP) - sempre disparo manual =====
-    function chamarAcao(btn, url, options, mensagemEspera) {
+    // onSucesso (opcional): chamada so quando data.ok e verdadeiro - usado
+    // pelo envio do e-mail pronto (6) para desarmar o aviso de saida sem
+    // salvar so daquele textarea especifico, sem mexer nos outros.
+    function chamarAcao(btn, url, options, mensagemEspera, onSucesso) {
         chamarComEspera(btn, mensagemEspera, url, options, function (data) {
             // Usa o campo "ok" que o backend ja calcula (AcaoResponse) em vez de
             // adivinhar pela presenca da palavra "erro" no texto - a heuristica
@@ -178,6 +161,9 @@ window.mostrarToast = function (mensagem, tipo) {
             // operador achar que um lembrete/e-mail foi enviado quando na verdade
             // a acao foi bloqueada.
             mostrarToast(data.mensagem, data.ok ? 'success' : 'error');
+            if (data.ok && typeof onSucesso === 'function') {
+                onSucesso();
+            }
         }, 'Falha de comunicacao ao enviar o e-mail. Tente novamente.');
     }
 
@@ -289,8 +275,9 @@ window.mostrarToast = function (mensagem, tipo) {
     document.querySelectorAll('.btn-enviar-email').forEach(function (btn) {
         btn.addEventListener('click', function () {
             var chave = this.getAttribute('data-chave');
+            var corpoEl = document.getElementById(this.getAttribute('data-corpo-id'));
             var assunto = document.getElementById(this.getAttribute('data-assunto-id')).value;
-            var corpo = document.getElementById(this.getAttribute('data-corpo-id')).value;
+            var corpo = corpoEl.value;
             abrirPreviewEmail(this, {tipo: 'pronto', chave: chave, assunto: assunto, corpo: corpo}, function (b) {
                 var processoId = b.getAttribute('data-processo-id');
                 var body = new URLSearchParams({chave: chave, assunto: assunto, corpo: corpo});
@@ -298,7 +285,9 @@ window.mostrarToast = function (mensagem, tipo) {
                     method: 'POST',
                     headers: {'Content-Type': 'application/x-www-form-urlencoded'},
                     body: body
-                }, 'Enviando...');
+                }, 'Enviando...', function () {
+                    if (avisoEmailPronto) avisoEmailPronto.limpar(corpoEl);
+                });
             });
         });
     });

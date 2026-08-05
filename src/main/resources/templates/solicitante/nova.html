@@ -136,6 +136,14 @@
 </main>
 
 <script th:replace="~{layout :: scripts}"></script>
+<!--/* confirmarAcaoScript nao estava incluida nesta tela - os data-confirm-msg
+       de "Cancelar" e "Descartar rascunho" abaixo nao tinham nenhum efeito
+       (o navegador ignora um atributo data-* desconhecido). Corrigido aqui,
+       de graca, ao ligar o aviso de saida sem salvar - ver
+       aviso-sair-sem-salvar.js, que precisa do evento disparado por
+       confirmar-acao.js para nao duplicar o aviso ao usuario. */-->
+<script th:replace="~{layout :: confirmarAcaoScript}"></script>
+<script th:replace="~{layout :: avisoSairScript}"></script>
 <script th:src="@{/js/solicitante-nova.js}"></script>
 <div th:replace="~{layout :: footer}"></div>
 </body>

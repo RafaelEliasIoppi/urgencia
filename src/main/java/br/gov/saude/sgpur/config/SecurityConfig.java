@@ -67,16 +67,20 @@ public class SecurityConfig {
 
     /**
      * Content-Security-Policy de producao. Restringe as origens ao proprio
-     * host + Google Fonts (a fonte Inter e carregada de fonts.googleapis/
-     * gstatic no layout). Mantem 'unsafe-inline' para script/style porque os
-     * templates usam scripts e estilos inline; como nao ha nenhum th:utext no
-     * projeto, a superficie de XSS refletido e minima.
+     * host. A fonte Inter e auto-hospedada desde 2026-08-04 (@font-face em
+     * app.css, arquivos em /fonts) - ate essa correcao a CSP ainda liberava
+     * fonts.googleapis.com/fonts.gstatic.com por heranca do tempo em que a
+     * fonte vinha do Google Fonts, mesmo sem nenhum uso restante dessas
+     * origens (conferido: nenhum outro CSS/JS do projeto referencia essas
+     * URLs). Mantem 'unsafe-inline' para script/style porque os templates
+     * usam scripts e estilos inline; como nao ha nenhum th:utext no projeto,
+     * a superficie de XSS refletido e minima.
      */
     private static final String CSP_PROD = String.join("; ",
         "default-src 'self'",
         "img-src 'self' data:",
-        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-        "font-src 'self' https://fonts.gstatic.com",
+        "style-src 'self' 'unsafe-inline'",
+        "font-src 'self'",
         "script-src 'self' 'unsafe-inline'",
         "base-uri 'self'",
         "form-action 'self'",

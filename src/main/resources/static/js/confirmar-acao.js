@@ -73,6 +73,12 @@
                 window.confirmarAcao(mensagem).then(function (confirmado) {
                     if (!confirmado) return;
                     el.dataset.confirmed = 'true';
+                    // Avisa quem estiver ouvindo (ver aviso-sair-sem-salvar.js)
+                    // que o usuario ja confirmou explicitamente que quer sair/
+                    // prosseguir - evita um SEGUNDO aviso (o alerta nativo do
+                    // navegador) logo em seguida, quando a navegacao/submit
+                    // real acontecer.
+                    document.dispatchEvent(new CustomEvent('saur:acao-confirmada'));
                     if (el.tagName === 'FORM') {
                         el.submit();
                     } else {
