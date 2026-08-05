@@ -495,15 +495,10 @@ tr.linha-inativa > td:first-child {
 .animate-fade-in-d1 { animation: fadeInUp .4s ease .1s both; }
 .animate-fade-in-d2 { animation: fadeInUp .4s ease .2s both; }
 .animate-fade-in-d3 { animation: fadeInUp .4s ease .3s both; }
-.animate-fade-in-d4 { animation: fadeInUp .4s ease .4s both; }
-.animate-fade-in-d5 { animation: fadeInUp .4s ease .5s both; }
-
-@keyframes countUp {
-    from { opacity: 0; transform: scale(.5); }
-    to { opacity: 1; transform: scale(1); }
-}
-
-.count-animate { animation: countUp .5s ease both; }
+/* .animate-fade-in-d4/-d5 e .count-animate/countUp existiam aqui e nunca
+   foram referenciadas por nenhum template/JS do projeto (confirmado por
+   grep em src/ inteiro antes de remover, 2026-08-05) - removidas como
+   classes/keyframe fantasma. .animate-fade-in-d1..d3 continuam em uso. */
 
 /* === Link com hover na cor institucional (ex.: "Esqueci minha senha") === */
 .link-hover-primary:hover { color: var(--rs-blue) !important; }
@@ -807,6 +802,21 @@ tr.linha-inativa > td:first-child {
     outline-offset: 1px;
 }
 
+/* Cartao de numero SEM acao nenhuma (nao e link, nao filtra, nao clica pra
+   nada) - ex.: os 4 resumos de /controle-urgencias e o cartao de tempo medio
+   de /membros, que sao <div> puros. Sem esta classe, .stat-card sozinho
+   promete uma acao (cursor:pointer + hover que "levanta" o cartao) que nao
+   existe - a mao do mouse mentindo pro operador. NAO aplicar em cartoes que
+   ja sao link/botao de verdade (.stat-card-portal do Painel/Portal do
+   Solicitante, .stat-card-filtro) - so nos que sao puramente informativos. */
+.stat-card.stat-card-estatico {
+    cursor: default;
+}
+.stat-card.stat-card-estatico:hover {
+    transform: none;
+    box-shadow: var(--rs-shadow);
+}
+
 /* Tabela do dashboard: scroll vertical so em desktop (evita cortar conteudo em mobile) */
 @media (min-width: 768px) {
     .dashboard-tabela-scroll { max-height: 70vh; overflow-y: auto; }
@@ -985,8 +995,11 @@ tr.linha-inativa > td:first-child {
     font-weight: 600;
 }
 
-/* === Responsivo: celulares pequenos (< 576px) === */
-@media (max-width: 576px) {
+/* === Responsivo: celulares pequenos (< 576px) ===
+   575.98px, nao 576px: mesma convencao do resto do arquivo (ver 767.98px e
+   991.98px acima) - com "max-width: 576px" esta regra valeria ao mesmo tempo
+   que qualquer "@media (min-width: 576px)" existente, exatamente em 576px. */
+@media (max-width: 575.98px) {
     /* Reduz tamanho dos stat-cards no dashboard */
     .stat-card .stat-number { font-size: 1.25rem; }
     .stat-card .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
@@ -1048,9 +1061,6 @@ tr.linha-inativa > td:first-child {
     .animate-fade-in-d1,
     .animate-fade-in-d2,
     .animate-fade-in-d3,
-    .animate-fade-in-d4,
-    .animate-fade-in-d5,
-    .count-animate,
     .wizard-content {
         animation-duration: .01ms;
         animation-iteration-count: 1;

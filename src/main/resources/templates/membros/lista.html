@@ -40,7 +40,7 @@
             <!-- Icone no mesmo tamanho/raio do .stat-icon do design system
                  (44px, radius 12px), em vez de um circulo com medidas soltas
                  inline - era o 4o dialeto visual de "cartao de numero". -->
-            <div class="d-flex align-items-center gap-2 stat-card stat-card-membros p-0">
+            <div class="d-flex align-items-center gap-2 stat-card stat-card-membros stat-card-estatico p-0">
                 <span class="stat-icon"><i class="bi bi-stopwatch"></i></span>
                 <div>
                     <div class="small text-muted">Tempo médio de resposta (geral)</div>
@@ -116,7 +116,7 @@
                 <td class="text-end">
                     <a th:href="@{/membros/{id}/editar(id=${m.id})}" class="btn btn-sm btn-outline-secondary">Editar</a>
                     <form th:action="@{/membros/{id}/alternar-ativo(id=${m.id})}" method="post" class="d-inline"
-                          th:attr="data-confirm-msg=${m.ativo} ? ('Inativar o membro &quot;' + ${m.nome} + '&quot;? Ele deixara de poder ser designado a novos processos.') : ('Reativar o membro &quot;' + ${m.nome} + '&quot;?')">
+                          th:attr="data-confirm-msg=${m.ativo} ? ('Inativar o membro &quot;' + ${m.nome} + '&quot;? Ele deixará de poder ser designado a novos processos.') : ('Reativar o membro &quot;' + ${m.nome} + '&quot;?')">
                         <button class="btn btn-sm btn-outline-warning"
                                 th:text="${m.ativo} ? 'Inativar' : 'Ativar'">Inativar</button>
                     </form>

@@ -34,6 +34,31 @@
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
+<!-- Marca (logo+nome) do topo da navbar: identica nos 3 perfis, so muda o
+     destino do link conforme quem esta logado. Fragment parametrizado desde
+     2026-08-05 (antes, o mesmo bloco de ~15 linhas estava copiado 3x dentro
+     do fragment "navbar" - ja divergiu uma vez, na troca do logo, e so foi
+     corrigido a mao nos 3 lugares). Definido FORA do th:block "navbar"
+     (nao aninhado dentro dele) de proposito: um th:fragment aninhado dentro
+     de outro th:fragment tambem seria renderizado ao vivo quando o pai
+     inteiro e incluido (com ${href} indefinido/nulo), alem de ser
+     renderizado de novo via cada chamada explicita de "layout :: marca(...)"
+     - seria a mesma marca duplicada 2x, o problema oposto do que motivou a
+     extracao. -->
+<a th:fragment="marca(href)" class="navbar-brand fw-bold d-flex align-items-start gap-2" th:href="${href}">
+    <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:0.05rem;">
+        <path d="M52 10C34 32 20 52 20 66c0 18 14 28 30 28s30-10 30-28C80 52 66 32 52 10z" fill="var(--rs-gold)" opacity=".9"/>
+        <rect x="40" y="44" width="18" height="30" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
+        <rect x="32" y="54" width="34" height="12" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
+    </svg>
+    <div class="d-flex flex-column lh-1">
+        <div class="d-flex align-items-center gap-2">
+            <span>SAUR</span>
+            <span class="badge rounded-pill bg-warning text-dark" style="font-size:.6rem;opacity:.8;">UR</span>
+        </div>
+        <small style="font-size:.55rem;font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
+    </div>
+</a>
 <th:block th:fragment="navbar">
 <!-- Skip-link: primeiro elemento focavel da pagina, invisivel ate receber
      foco por teclado (.visually-hidden-focusable, utilitario do proprio
@@ -45,66 +70,59 @@
 <a href="#conteudo" class="visually-hidden-focusable">Pular para o conteúdo</a>
 <nav class="navbar navbar-expand-md navbar-dark navbar-sgpur">
     <div class="container-fluid">
-        <a class="navbar-brand fw-bold d-flex align-items-start gap-2" sec:authorize="hasRole('AVALIADOR')"
-           th:href="@{/avaliador}">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:0.05rem;">
-                <path d="M52 10C34 32 20 52 20 66c0 18 14 28 30 28s30-10 30-28C80 52 66 32 52 10z" fill="var(--rs-gold)" opacity=".9"/>
-                <rect x="40" y="44" width="18" height="30" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-                <rect x="32" y="54" width="34" height="12" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-            </svg>
-            <div class="d-flex flex-column lh-1">
-                <div class="d-flex align-items-center gap-2">
-                    <span>SAUR</span>
-                    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.6rem;opacity:.8;">UR</span>
-                </div>
-                <small style="font-size:.55rem;font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
-            </div>
-        </a>
-        <a class="navbar-brand fw-bold d-flex align-items-start gap-2" sec:authorize="hasRole('SOLICITANTE')"
-           th:href="@{/solicitante}">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:0.05rem;">
-                <path d="M52 10C34 32 20 52 20 66c0 18 14 28 30 28s30-10 30-28C80 52 66 32 52 10z" fill="var(--rs-gold)" opacity=".9"/>
-                <rect x="40" y="44" width="18" height="30" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-                <rect x="32" y="54" width="34" height="12" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-            </svg>
-            <div class="d-flex flex-column lh-1">
-                <div class="d-flex align-items-center gap-2">
-                    <span>SAUR</span>
-                    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.6rem;opacity:.8;">UR</span>
-                </div>
-                <small style="font-size:.55rem;font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
-            </div>
-        </a>
-        <a class="navbar-brand fw-bold d-flex align-items-start gap-2" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"
-           th:href="@{/}">
-            <svg width="28" height="28" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0;margin-top:0.05rem;">
-                <path d="M52 10C34 32 20 52 20 66c0 18 14 28 30 28s30-10 30-28C80 52 66 32 52 10z" fill="var(--rs-gold)" opacity=".9"/>
-                <rect x="40" y="44" width="18" height="30" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-                <rect x="32" y="54" width="34" height="12" rx="3" fill="var(--rs-blue-dark)" opacity=".85"/>
-            </svg>
-            <div class="d-flex flex-column lh-1">
-                <div class="d-flex align-items-center gap-2">
-                    <span>SAUR</span>
-                    <span class="badge rounded-pill bg-warning text-dark" style="font-size:.6rem;opacity:.8;">UR</span>
-                </div>
-                <small style="font-size:.55rem;font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
-            </div>
-        </a>
+        <!-- sec:authorize fica no wrapper, nao na mesma tag do th:replace: as duas
+             sao processadores estruturais e misturar os dois no mesmo elemento
+             arrisca uma ordem de precedencia inesperada entre eles (o replace
+             substitui o proprio no antes do sec:authorize ter chance de agir).
+             Wrapper garante que a autorizacao e checada primeiro, sempre. -->
+        <span sec:authorize="hasRole('AVALIADOR')"><span th:replace="~{layout :: marca(@{/avaliador})}"></span></span>
+        <span sec:authorize="hasRole('SOLICITANTE')"><span th:replace="~{layout :: marca(@{/solicitante})}"></span></span>
+        <span sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><span th:replace="~{layout :: marca(@{/})}"></span></span>
         <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse"
-                data-bs-target="#nav" aria-controls="nav" aria-expanded="false">
+                data-bs-target="#nav" aria-controls="nav" aria-expanded="false" aria-label="Abrir menu">
             <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="nav">
-            <ul class="navbar-nav me-auto flex-wrap">
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/}"><i class="bi bi-grid-1x2-fill me-1"></i>Painel</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/processos}">Processos</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/arquivo}"><i class="bi bi-archive me-1"></i>Arquivo</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/controle-urgencias}">
-                    <i class="bi bi-clock-history me-1"></i>Urgências</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/membros}">Membros</a></li>
-                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"><a class="nav-link" th:href="@{/relatorios/anual}">Relatório anual</a></li>
+            <!-- Destaque da secao atual (S13): compara a URL da requisicao com o
+                 destino de cada link, via prefixo (nao igualdade exata) para que
+                 "/processos/123" ainda destaque "Processos". "Solicitacoes online"
+                 mora dentro de "/processos/**" mas tem link/destaque proprios -
+                 excluido explicitamente do prefixo de Processos para os dois nao
+                 acenderem juntos. app.css :: .nav-link.active ja estilizava isso
+                 (sublinhado dourado) desde antes, mas nenhum link aplicava a classe.
+                 uriAtual (ja relativo ao context-path) vem de
+                 GlobalModelAdvice.uriAtual - NAO usar #httpServletRequest do
+                 Thymeleaf aqui: quebra a maioria dos testes deste projeto (o
+                 IWebContext que ele exige nao fica disponivel em todo cenario de
+                 @WebMvcTest/@SpringBootTest daqui), ver javadoc do metodo.
+                 "?: ''" abaixo: uriAtual fica null quando error.html e
+                 renderizado pelo caminho de @ExceptionHandler
+                 (GlobalExceptionHandler retorna a view "error" direto via
+                 Model, sem passar pelo ModelFactory que popula os
+                 @ModelAttribute de @ControllerAdvice) - sem o fallback,
+                 uriAtual.startsWith(...) quebraria a propria pagina de erro. -->
+            <ul class="navbar-nav me-auto flex-wrap" th:with="uri=${uriAtual} ?: ''">
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri == '/'} ? 'active'" th:href="@{/}"><i class="bi bi-grid-1x2-fill me-1"></i>Painel</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri.startsWith('/processos') and !uri.startsWith('/processos/solicitacoes-online')} ? 'active'" th:href="@{/processos}"><i class="bi bi-folder2-open me-1"></i>Processos</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri.startsWith('/arquivo')} ? 'active'" th:href="@{/arquivo}"><i class="bi bi-archive me-1"></i>Arquivo</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri.startsWith('/controle-urgencias')} ? 'active'" th:href="@{/controle-urgencias}">
+                        <i class="bi bi-clock-history me-1"></i>Urgências</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri.startsWith('/membros')} ? 'active'" th:href="@{/membros}"><i class="bi bi-people me-1"></i>Membros</a>
+                </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link" th:classappend="${uri.startsWith('/relatorios')} ? 'active'" th:href="@{/relatorios/anual}"><i class="bi bi-bar-chart me-1"></i>Relatório anual</a>
+                </li>
                 <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')" th:if="${solicitanteHabilitado}">
-                    <a class="nav-link d-inline-flex align-items-center gap-1" th:href="@{/processos/solicitacoes-online}">
+                    <a class="nav-link d-inline-flex align-items-center gap-1" th:classappend="${uri.startsWith('/processos/solicitacoes-online')} ? 'active'" th:href="@{/processos/solicitacoes-online}">
                         <i class="bi bi-inbox-fill"></i> Solicitações online
                         <span th:if="${pendentesTriagemOnline > 0}"
                               class="badge rounded-pill bg-danger"
@@ -117,10 +135,10 @@
                     </a>
                 </li>
                 <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                    <a class="nav-link" th:href="@{/usuarios}">Usuários</a>
+                    <a class="nav-link" th:classappend="${uri.startsWith('/usuarios')} ? 'active'" th:href="@{/usuarios}"><i class="bi bi-person-badge me-1"></i>Usuários</a>
                 </li>
                 <li class="nav-item" sec:authorize="hasRole('ADMIN')">
-                    <a class="nav-link" th:href="@{/auditoria}">Auditoria</a>
+                    <a class="nav-link" th:classappend="${uri.startsWith('/auditoria')} ? 'active'" th:href="@{/auditoria}"><i class="bi bi-journal-text me-1"></i>Auditoria</a>
                 </li>
             </ul>
             <ul class="navbar-nav">
@@ -277,10 +295,14 @@
 </div>
 
 <!-- ============================================================
-     Padrao de status do sistema (design-system). Use SEMPRE estes
-     fragments para indicar estado, para o padrao ficar consistente
-     em todas as telas. Icone + cor + TEXTO VISIVEL (nunca cor sozinha,
-     nunca so o icone) por acessibilidade e clareza.
+     Padrao de status do sistema (design-system). RECOMENDADO para telas
+     NOVAS que precisem indicar estado - mantem o padrao consistente sem
+     reinventar icone/cor a cada tela. Icone + cor + TEXTO VISIVEL (nunca
+     cor sozinha, nunca so o icone) por acessibilidade e clareza.
+     (Nota honesta, 2026-08-05: hoje so 2 das 25 telas do sistema usam estes
+     fragments - a maioria nasceu antes deles ou resolve status com o proprio
+     badge/th:switch. Nao ha retrofit planejado das telas existentes; isto e
+     recomendacao para o que vier depois, nao descricao do uso atual.)
        - status(ok):        ok=true  -> visto verde "Concluido"
                             ok=false -> X vermelho SOLTO "Pendente" [obrigatorio]
        - statusRotulo(ok,r): igual ao status(ok), mas com rotulo customizado
