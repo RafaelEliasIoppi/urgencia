@@ -403,6 +403,43 @@ class ProcessoDetalheControllerTest {
             .andExpect(model().attribute("liberadoDecisao", true));
     }
 
+    /**
+     * Relatorio de clareza (2026-08-05), item 4.7: o placar (favoraveis/nao
+     * favoraveis/pendentes + fraseMaioria) e a resposta a unica pergunta que
+     * o operador faz ao abrir a aba Respostas - "ja da para decidir?" - entao
+     * o botao "Ir à Decisão" sobe para o TOPO do card, ao lado do placar,
+     * quando a maioria ja se formou. Antes ele so aparecia num alerta verde
+     * no FIM do card, depois da tabela inteira (abaixo da dobra). Renderiza
+     * o template de verdade e trava que o botao aparece no placar promovido,
+     * nao mais no rodape.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaRespostasMostraIrADecisaoNoPlacarPromovidoQuandoMaioriaFormada() throws Exception {
+        MembroUrgenciaRenal m1 = membro(1L, "HCPA", "Ana");
+        MembroUrgenciaRenal m2 = membro(2L, "HCC", "Bruno");
+        MembroUrgenciaRenal m3 = membro(3L, "HSL", "Carla");
+        processo.addParecer(parecer(processo, m1, ResultadoParecer.FAVORAVEL,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        processo.addParecer(parecer(processo, m2, ResultadoParecer.FAVORAVEL,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        processo.addParecer(parecer(processo, m3, null, LocalDate.now(), null));
+        when(processoService.sugerirDecisao(processo)).thenReturn(Optional.of(StatusProcesso.DEFERIDO));
+        when(processoService.contarRespondidos(processo)).thenReturn(2L);
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, true, true, false));
+
+        String html = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        String cardBody = html.substring(html.indexOf("id=\"respostas\""),
+            html.indexOf("Como funciona a maioria simples"));
+        org.assertj.core.api.Assertions.assertThat(cardBody).contains("Ir à Decisão");
+        org.assertj.core.api.Assertions.assertThat(cardBody).doesNotContain("Respostas concluídas");
+        org.assertj.core.api.Assertions.assertThat(cardBody).doesNotContain("Avançar para Decisão");
+    }
+
     @Test
     @WithMockUser(roles = "OPERADOR")
     void detalheBloqueiaDecisaoQuandoAguardandoInformacaoComplementar() throws Exception {

@@ -671,29 +671,44 @@
                         <span th:text="${pendentesVoto > 0} ? ('Lembrar ' + ${pendentesVoto} + ' pendente(s)') : 'Lembrar pendentes'">Lembrar pendentes</span>
                     </button>
                 </div>
-                <!-- Placar de 3 posicoes: antes so o numero de favoraveis aparecia,
-                     obrigando o operador a ler a tabela linha a linha para saber se
-                     falta 1 voto para fechar maioria (Fase 4 do relatorio de UI). -->
+                <!-- Placar promovido (relatorio de clareza, 2026-08-05, item 4.7): e a
+                     resposta a unica pergunta que o operador faz ao abrir esta aba -
+                     "ja da para decidir?" - entao sobe para o topo do card, com o
+                     botao de avancar ao lado quando a maioria ja se formou. Antes esse
+                     botao so aparecia num alerta verde no FIM do card, depois da
+                     tabela inteira - abaixo da dobra em qualquer processo com 3
+                     avaliadores e justificativas. -->
                 <div class="card-body py-2 border-bottom bg-light-subtle">
-                    <div class="d-flex flex-wrap align-items-center gap-3">
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-1">
                         <span class="badge bg-success"><i class="bi bi-hand-thumbs-up"></i>
                             <span th:text="${favoraveis}">0</span> favorável(is)</span>
                         <span class="badge bg-danger"><i class="bi bi-hand-thumbs-down"></i>
                             <span th:text="${naoFavoraveis}">0</span> não favorável(is)</span>
                         <span class="badge bg-secondary"><i class="bi bi-hourglass-split"></i>
                             <span th:text="${pendentesVoto}">0</span> pendente(s)</span>
-                        <span class="fw-semibold text-muted small" th:text="${fraseMaioria}">Faltam N votos</span>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                        <span class="fw-semibold fs-6" th:text="${fraseMaioria}">Faltam N votos</span>
+                        <button type="button" class="btn btn-success btn-sm"
+                                th:if="${liberadoDecisao and !processo.status.finalizado}"
+                                data-goto-pane="pane-decisao">
+                            <i class="bi bi-arrow-right"></i> Ir à Decisão
+                        </button>
                     </div>
                 </div>
                 <div class="card-body">
-                    <p class="small text-muted mb-3">
-                        O parecer de cada médico e registrado por ele mesmo, autenticado no
-                        <strong>Portal do Avaliador</strong>. Aqui o operador so acompanha o
-                        resultado de cada avaliador e pode enviar um lembrete por e-mail para
-                        quem ainda não votou.
-                        A decisão ocorre por <strong>maioria simples</strong> (2 de 3):
-                        &ge;2 favoráveis = Deferido, &ge;2 desfavoráveis = Indeferido.
+                    <p class="small text-muted mb-2">
+                        Os médicos votam no Portal do Avaliador. Aqui você acompanha e lembra quem falta.
                     </p>
+                    <details class="small text-muted mb-3">
+                        <summary>Como funciona a maioria simples</summary>
+                        <p class="mb-0 mt-1">
+                            A decisão ocorre por <strong>maioria simples</strong> (2 de 3):
+                            &ge;2 favoráveis = Deferido, &ge;2 desfavoráveis = Indeferido. O voto
+                            favorável do <strong>coordenador da CET-RS</strong> defere sozinho, com
+                            um voto só.
+                        </p>
+                    </details>
                     <!-- Formulario unificado: resultado + upload por medico -->
                     <div class="table-responsive">
                         <table class="table align-middle table-hover mb-0 tabela-pareceres">
@@ -800,20 +815,6 @@
                         Sugestão automática: <strong th:text="${sugestao.descricao}"></strong>
                         (maioria simples de 2 em 3 votos, tanto para deferir quanto para
                         indeferir; o voto favorável do coordenador da CET-RS defere sozinho).
-                    </div>
-
-                    <!-- Finalizacao explicita da etapa -->
-                    <div th:if="${liberadoDecisao and !processo.status.finalizado}"
-                         class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0 mt-2">
-                        <div>
-                            <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                            <strong>Respostas concluídas!</strong>
-                            <span class="text-muted small ms-2">Todos os pareceres recebidos.</span>
-                        </div>
-                        <button type="button" class="btn btn-success btn-sm"
-                                data-goto-pane="pane-decisao">
-                            <i class="bi bi-arrow-right"></i> Avançar para Decisão
-                        </button>
                     </div>
                 </div>
             </div>
