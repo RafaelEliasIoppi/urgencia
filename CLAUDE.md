@@ -2180,3 +2180,32 @@ falha vista foi a flakiness de precisão de timestamp já documentada acima
 falha continua sendo a ausência de SMTP local, e não o modal novo (o clique
 em `#btnConfirmarAcaoFinal` completa sem timeout).
 
+## Lista de documentos selecionados (Portal do Solicitante) — corte visual e pouca proeminência (2026-08-04)
+
+Usuário relatou dois problemas na tela `solicitante/nova.html` ao selecionar
+documentos clínicos: a lista de arquivos escolhidos (`<ul
+id="documentosSelecionados">`, preenchida por `static/js/solicitante-nova.js`)
+era pouco visível, e o nome do arquivo aparecia **cortado**.
+
+**Causa raiz do corte:** o `<span>` do nome do arquivo usava a classe
+utilitária `text-truncate` do Bootstrap (`white-space: nowrap` +
+`overflow: hidden` + `text-overflow: ellipsis`) — para nomes de arquivo
+longos (comum em anexo clínico, ex. `Exame_Creatinina_Ultrassom_Renal_
+Paciente_2026.pdf`), o nome era cortado com reticências, sem forma de
+confirmar visualmente qual arquivo foi de fato selecionado. Não havia
+`overflow`/altura fixa em nenhum container pai (`.card`, `.card-body`,
+`.container-narrow`) — o corte era só desse `text-truncate` no nome.
+Corrigido trocando para a utilitária `text-break` (quebra de linha em vez de
+reticências), o mesmo tratamento já usado no projeto para nomes de anexo
+longos em `#pane-envio .list-group-item` (`app.css`).
+
+**Proeminência visual:** `solicitante-nova.js` (`atualizarResumo`) passou a
+manter um aviso `#documentosResumo` (`alert-success`, ícone
+`bi-check-circle-fill`) acima da lista, com "N documento(s) selecionado(s)" —
+escondido (`d-none`) quando `input.files.length === 0`, atualizado a cada
+evento `change` do `<input id="documentos">`. Cada item da lista ganhou um
+ícone `bi-file-earmark-text-fill` antes do nome, para reforçar visualmente
+que a linha é um arquivo anexado. Nenhum `id`/`name` de campo mudou (o
+`PortalSolicitantePage.java` do E2E localiza `#documentos` pelo mesmo
+seletor de sempre, sem referência aos elementos internos da lista).
+
