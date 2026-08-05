@@ -115,7 +115,7 @@
                 <div class="card-body pt-0">
                     <div class="d-grid gap-2">
                         <a th:href="@{/processos/{id}/relatorio(id=${processo.id})}" target="_blank"
-                           class="btn btn-outline-secondary btn-sm text-start">
+                           class="btn btn-outline-danger btn-sm text-start">
                             <i class="bi bi-file-earmark-pdf me-2"></i> Relatório Final (PDF)
                         </a>
                         <!-- So aparece depois de anexado de fato (nao gera um PDF novo na
@@ -123,21 +123,21 @@
                              inclusive se o operador tiver substituido por upload manual). -->
                         <a th:if="${processo.status.name() == 'INDEFERIDO' and oficioAnexo != null}"
                            th:href="@{/processos/anexos/{id}/download(id=${oficioAnexo.id})}" target="_blank"
-                           class="btn btn-outline-secondary btn-sm text-start">
+                           class="btn btn-outline-warning btn-sm text-start">
                             <i class="bi bi-file-earmark-text me-2"></i> Ofício de Indeferimento
                         </a>
                         <a th:if="${processo.status.name() == 'DEFERIDO' and comprovanteSnT != null}"
                            th:href="@{/processos/anexos/{id}/download(id=${comprovanteSnT.id})}" target="_blank"
-                           class="btn btn-outline-secondary btn-sm text-start">
+                           class="btn btn-outline-warning btn-sm text-start">
                             <i class="bi bi-clipboard2-check me-2"></i> Comprovante SNT
                         </a>
                         <a th:href="@{/processos/{id}/exportar(id=${processo.id})}"
-                           class="btn btn-outline-secondary btn-sm text-start"
+                           class="btn btn-outline-success btn-sm text-start"
                            th:title="'Ao descompactar, cria a pasta ' + ${nomePastaExportacao} + ' com o relatório final, o resumo da movimentação e todos os anexos.'">
                             <i class="bi bi-file-earmark-zip me-2"></i> Baixar processo completo (ZIP)
                         </a>
                         <a th:href="@{/processos/{id}/editar(id=${processo.id})}"
-                           class="btn btn-outline-secondary btn-sm text-start">
+                           class="btn btn-outline-primary btn-sm text-start">
                             <i class="bi bi-pencil me-2"></i> Editar processo
                         </a>
                         <hr class="my-2" sec:authorize="hasRole('ADMIN')">
