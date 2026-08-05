@@ -15,7 +15,11 @@ set -euo pipefail
 
 # Re-executa a si mesmo sob flock. -n = nao espera: se ja ha um backup rodando,
 # sai avisando em vez de enfileirar mais um pg_dump.
-LOCK="/tmp/sgpur-backup.lock"
+# Lock dentro de BACKUP_DIR (dono postgres), NAO em /tmp: /tmp e compartilhado
+# com as outras 3 aplicacoes desta VM (world-writable) - um arquivo de lock ali
+# e alvo facil de colisao de nome ou remocao por outro processo/limpeza de tmp.
+LOCK="/opt/sgpur/backups/.backup.lock"
+mkdir -p "$(dirname "${LOCK}")"   # precisa existir ANTES do flock; BACKUP_DIR so e definido mais abaixo
 if [ "${SGPUR_BACKUP_LOCKED:-}" != "1" ]; then
     export SGPUR_BACKUP_LOCKED=1
     # -E 99: codigo de saida proprio para "nao consegui o lock", que separa
@@ -72,6 +76,19 @@ alertar() {
     fi
     return 0
 }
+
+# Alerta de falha "pega-tudo": com pipefail, qualquer comando que falhe daqui
+# pra baixo (pg_dump fora do ar, disco cheio, mv, etc.) aborta o script na
+# hora via "set -e" - sem este trap, o unico caminho que de fato mandava
+# e-mail de alerta era o dump vazio/truncado (mais abaixo), que com pipefail
+# e quase impossivel de ocorrer sozinho (a falha real ja aborta antes de
+# chegar la). Confirmado experimentalmente que "exit N" explicito (usado
+# pelos blocos de alerta abaixo, que ja chamam alertar() e saem por conta
+# propria) NAO dispara este trap - o ERR trap so reage a comando que falha
+# "organicamente" -, entao nao ha risco de alerta duplicado.
+trap 'alertar "[SAUR] FALHA no backup do banco" \
+"O script de backup falhou em $(hostname) em $(date +%F\ %T), na linha ${LINENO}.
+Verifique o log em /var/log/sgpur-backup.log."' ERR
 
 mkdir -p "${BACKUP_DIR}"
 cd "${BACKUP_DIR}"   # cwd previsivel: evita erro de permissao quando chamado de outro diretorio

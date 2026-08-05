@@ -55,6 +55,13 @@ public class RascunhoSolicitacaoOnline {
     @Column(name = "data_situacao_especial")
     private LocalDate dataSituacaoEspecial;
 
+    // Nota: a entidade "de verdade" (SolicitacaoOnline.justificativaClinica)
+    // tambem nao tem @Size hoje - so @NotBlank, sem limite de tamanho. Sem um
+    // valor real para espelhar, usa-se aqui um teto generoso (4000
+    // caracteres, bem alem de qualquer justificativa clinica razoavel) so
+    // para cumprir o que o javadoc da classe promete ("nenhum campo de texto
+    // sem limite, mesmo no rascunho") e evitar um TEXT ilimitado.
+    @Size(max = 4000, message = "Justificativa clinica muito longa (maximo 4000 caracteres).")
     @Column(name = "justificativa_clinica", columnDefinition = "TEXT")
     private String justificativaClinica;
 
