@@ -57,6 +57,10 @@ public class ProcessoListaController {
             model.addAttribute("paginaAtual", pagina.getNumber());
             model.addAttribute("totalPaginas", pagina.getTotalPages());
         }
+        // Evita N+1 no calculo de pendencia por linha logo abaixo (que navega
+        // pareceres/membro/anexos processo a processo): carrega as duas
+        // colecoes num lote so, dentro da mesma transacao (readOnly acima).
+        processoService.inicializarPareceresEAnexos(processos);
         model.addAttribute("processos", processos);
         model.addAttribute("q", q);
         model.addAttribute("statusSelecionado", status);
