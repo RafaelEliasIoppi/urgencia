@@ -1157,6 +1157,77 @@ tem os 7 valores atuais do enum (`ANEXO_AVALIADOR`, `COMPROVANTE_SNT`,
 Nenhum valor removido está presente em nenhuma linha real. Trata-se de um
 risco **encerrado**, não mais um item "a confirmar".
 
+## Backup e conta Oracle — vistoria e correções de 2026-08-05
+
+Motivada por uma pergunta do usuário: *"minha VM vai perder muitas coisas
+quando acabar o período grátis?"*. Tudo abaixo foi verificado por SSH na VM
+real, não presumido.
+
+### A VM é Always Free — não deve ser perdida
+`shape = VM.Standard.E2.1.Micro` (1 OCPU, 1 GB RAM, `sa-saopaulo-1`, criada
+2026-07-06 por `rafaelioppi@gmail.com`), lido do metadata service
+(`curl -H "Authorization: Bearer Oracle" http://169.254.169.254/opc/v2/instance/`).
+Esse é exatamente o shape do **Always Free** da Oracle (a conta tem direito a
+2), e o boot volume de 45 GB cabe no limite de 200 GB. Quando os créditos do
+trial de 30 dias acabam, recursos Always Free **continuam**; só o que excede
+é recuperado. **O que não dá para ver de dentro da VM** (exige o console
+Oracle): estado de cobrança da conta e existência de outros recursos criados
+no trial. O `oci` CLI **não** está instalado na VM.
+
+### Correções aplicadas na VM (2026-08-05)
+1. **Cron duplicado removido.** `backup-db.sh` estava agendado em DOIS lugares
+   às 03:00 — crontab do usuário `postgres` **e** `/etc/cron.d/sgpur-backup`.
+   Os dois processos calculavam quase o mesmo `TIMESTAMP`, disputavam o mesmo
+   `.tmp`, um vencia e o outro abortava com `mv: cannot stat` (erro diário no
+   log desde 04/08, mascarando falhas de verdade), além de dois `pg_dump`
+   simultâneos numa VM de 1 GB. Ficou só o `/etc/cron.d/`, que é o que
+   redireciona para o log.
+2. **`flock` no script**, para o problema não voltar por um cron novo ou
+   execução manual sobreposta. Usa `flock -n -E 99` e **não** `exec`: com
+   `exec` o processo é substituído e o tratamento nunca roda (a execução
+   ignorada saía com 1 e **sem mensagem** — o silêncio que o script tenta
+   eliminar). O `|| rc=$?` também é obrigatório: com `set -e`, o retorno != 0
+   derrubaria o script antes de avaliar `rc=$?`. Ambos foram bugs reais
+   cometidos e corrigidos durante esta sessão, com teste de execução
+   concorrente de verdade.
+3. **Falha de backup offsite deixou de ser silenciosa.** O script confirma
+   que o dump **chegou** ao Drive (`rclone lsf`, em vez de confiar no exit
+   code do `rclone copy`), loga `ERRO: ... Backup offsite FALHOU.`, termina o
+   resumo com `offsite=0`, sai != 0, e mantém
+   `/opt/sgpur/backups/.ultimo-offsite-ok` com a data da última cópia
+   confirmada (alerta no log se passar de 3 dias). Também recusa dump menor
+   que 1 KB (pg_dump truncado deixava de ser reportado como sucesso).
+   Validado simulando um `rclone` quebrado no PATH.
+4. **`cd "${BACKUP_DIR}"`** no início: rodado à mão de `/home/ubuntu`, o
+   `find` falhava com "Failed to restore initial working directory".
+5. **`/etc/logrotate.d/sgpur-backup` criado.** O `logrotate.d/sgpur` existente
+   cobre só `/opt/sgpur/logs/*.log`, então `/var/log/sgpur-backup.log` crescia
+   sem rotação desde julho. Precisa de `su root syslog` — `/var/log` é
+   `root:syslog` com `g+w` e o logrotate recusa rotacionar sem isso.
+6. **Os scripts passaram a existir no repositório** (`deploy/backup-db.sh`,
+   `deploy/rotacionar-backups-jar.sh`, `deploy/cron/`). Antes viviam **só na
+   VM** — perder a VM perdia junto a própria rotina de recuperação.
+   `deploy/backup-anexos.sh` foi **removido**: nunca esteve agendado em cron
+   nenhum e o `backup-db.sh` já sincroniza os anexos; manter os dois só
+   convidava a rodar o errado.
+
+### Estado dos backups (verificado)
+Dumps diários íntegros de 2026-07-29 a 2026-08-05 no Drive, **incluindo 04 e
+05/08** (os erros `mv` eram da execução duplicada que abortava, não do backup
+em si). Anexos: 36 arquivos na VM, 34 no Drive (a diferença são anexos de
+hoje, posteriores ao sync das 03:00). O banco inteiro comprimido tem ~12 KB.
+
+### Pendências que EXIGEM o usuário (não dá por SSH)
+- **`client_id` próprio do rclone** (https://rclone.org/drive/#making-your-own-client-id):
+  o compartilhado será desativado durante 2026 e o backup offsite para. Exige
+  navegador (Google Cloud Console) + `rclone config`.
+- **Reservar o IP público** no console Oracle: se for efêmero, parar a
+  instância troca o IP e derruba DuckDNS/certbot.
+- **Alerta por e-mail da falha de backup**: o usuário `postgres` não lê
+  `/opt/sgpur/sgpur.env` (600, dono `sgpur`) e não há MTA na VM. Mandar
+  e-mail exigiria duplicar a senha SMTP institucional num arquivo legível por
+  `postgres` — **não feito de propósito**, é decisão do usuário.
+
 ## Vistoria de 2026-08-03 (inspeção SSH real na VM de produção)
 
 Levantamento feito diretamente na VM (`ubuntu@163.176.163.213`) via SSH, não
