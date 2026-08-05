@@ -52,7 +52,7 @@
          class="alert alert-warning border d-flex align-items-center gap-2 mb-4" role="alert">
         <i class="bi bi-exclamation-triangle-fill fs-5"></i>
         <div>
-            <strong>Decisão registrada, mas o processo ainda não esta concluido.</strong>
+            <strong>Decisão registrada, mas o processo ainda não está concluído.</strong>
             A edição das etapas 1-4 (recebimento, envio, pareceres) foi bloqueada, porém
             ainda faltam etapas de conclusão na <a href="#finalizacao">aba Finalização</a>
             (anexar o ofício/comprovante e enviar a resposta ao solicitante).
@@ -90,7 +90,7 @@
                              th:style="'width:' + ${progresso} + '%'"
                              th:aria-valuenow="${progresso}" aria-valuemin="0" aria-valuemax="100"></div>
                     </div>
-                    <div class="text-end small text-muted mb-3" th:text="${progresso} + '% concluido'">0%</div>
+                    <div class="text-end small text-muted mb-3" th:text="${progresso} + '% concluído'">0%</div>
 
                     <!-- Timeline visual -->
                     <div class="timeline">
@@ -330,29 +330,26 @@
                             <!-- Todo processo nasce de uma solicitacao enviada pelo Portal do
                                  Solicitante (ajuste de 2026-07-27: nao ha mais cadastro manual
                                  "do zero") - recebimento automatico, sem e-mail/PDF original para
-                                 anexar e sem acao manual do operador. -->
-                            <p class="small text-muted mb-0">
-                                <i class="bi bi-check-circle-fill text-success"></i>
-                                Esta solicitação foi enviada diretamente pelo <strong>Portal do
-                                Solicitante</strong> — recebimento automático, sem necessidade de
-                                confirmação manual.
-                                <a th:if="${solicitacaoOnlineOrigemId != null}"
-                                   th:href="@{/processos/solicitacoes-online/{id}(id=${solicitacaoOnlineOrigemId})}">
-                                    Ver solicitação original
-                                </a>
-                            </p>
+                                 anexar e sem acao manual do operador. So o rodape verde abaixo
+                                 comunica isso (2026-08-05: a frase estava duplicada aqui em cima
+                                 tambem, dizendo a mesma coisa duas vezes numa aba sem nenhuma
+                                 acao - relatorio de clareza, item 4.9). -->
                         </div>
 
                         <!-- Finalizacao explicita da etapa (sempre automatica) -->
                         <div th:if="${liberadoEnvio}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
                             <div>
                                 <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                                <strong>Recebimento concluido!</strong>
-                                <span class="text-muted small ms-2">Recebimento automático (solicitação enviada pelo Portal do Solicitante).</span>
+                                <strong>Recebimento concluído!</strong>
+                                <span class="text-muted small ms-2">Solicitação enviada pelo Portal do Solicitante.</span>
+                                <a th:if="${solicitacaoOnlineOrigemId != null}" class="small ms-2"
+                                   th:href="@{/processos/solicitacoes-online/{id}(id=${solicitacaoOnlineOrigemId})}">
+                                    Ver solicitação original
+                                </a>
                             </div>
                             <button type="button" class="btn btn-success btn-sm"
                                     data-goto-pane="pane-envio">
-                                <i class="bi bi-arrow-right"></i> Avancar para Envio
+                                <i class="bi bi-arrow-right"></i> Avançar para Envio
                             </button>
                         </div>
                     </div>
@@ -595,12 +592,12 @@
                     <div th:if="${envioFeito}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
                         <div>
                             <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                            <strong>Envio concluido!</strong>
+                            <strong>Envio concluído!</strong>
                             <span class="text-muted small ms-2">Documentos enviados aos 3 avaliadores.</span>
                         </div>
                         <button type="button" class="btn btn-success btn-sm"
                                 data-goto-pane="pane-respostas">
-                            <i class="bi bi-arrow-right"></i> Avancar para Respostas
+                            <i class="bi bi-arrow-right"></i> Avançar para Respostas
                         </button>
                     </div>
                 </div>
@@ -613,7 +610,8 @@
             <!-- Aviso quando o envio ainda nao foi registrado -->
             <div th:unless="${envioFeito}" class="alert alert-warning">
                 <i class="bi bi-hourglass-split"></i>
-                Registre o envio aos avaliadores (aba <strong>1. Envio</strong>) antes de lançar as respostas.
+                Registre o envio aos avaliadores (passo <strong>2. Envio</strong>) para que os médicos
+                possam votar no Portal do Avaliador.
             </div>
 
             <!-- PAUSA: avaliador pediu informacao complementar ao solicitante -->
@@ -812,12 +810,12 @@
                          class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0 mt-2">
                         <div>
                             <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                            <strong>Respostas concluidas!</strong>
+                            <strong>Respostas concluídas!</strong>
                             <span class="text-muted small ms-2">Todos os pareceres recebidos.</span>
                         </div>
                         <button type="button" class="btn btn-success btn-sm"
                                 data-goto-pane="pane-decisao">
-                            <i class="bi bi-arrow-right"></i> Avancar para Decisão
+                            <i class="bi bi-arrow-right"></i> Avançar para Decisão
                         </button>
                     </div>
                 </div>
@@ -836,28 +834,20 @@
                          decisao" ficar exibido ao lado da confirmacao, dando a falsa impressao
                          de que falta uma acao quando a decisao ja esta valendo. -->
                     <div th:unless="${processo.status.finalizado}">
-                        <p class="small text-muted mb-3">
-                            <strong>O sistema decide sozinho</strong> assim que os votos formam
-                            <strong>maioria simples (2 de 3)</strong>, nos dois sentidos: 2
-                            favoráveis deferem, 2 desfavoráveis indeferem. O voto
-                            <strong>favorável do coordenador da CET-RS defere sozinho</strong>,
-                            com um voto so. No indeferimento automático o motivo gravado e um
-                            texto institucional padrão — para substitui-lo, o ADMIN reabre o
-                            processo e redecide por aqui.
-                            <br>
-                            Use o formulario abaixo para <strong>Cancelado</strong> (que nunca e
-                            automático), para redecidir após uma reabertura, ou se a maioria já
-                            existe e o processo continua em análise.
-                            <strong>Deferido</strong> — exige &ge;2 pareceres favoráveis (ou o
-                            coordenador favorável). <strong>Indeferido</strong> — exige &ge;2
-                            pareceres desfavoráveis e o motivo preenchido.
-                            <br>
-                            Deferir/Indeferir fica bloqueado — aqui e no automático — enquanto
-                            houver parecer antigo (registrado por e-mail) sem o anexo
-                            comprobatório, ou o processo estiver pausado aguardando informação
-                            complementar (salvo o voto favorável do coordenador, que defere
-                            mesmo assim). Resolva a pendência na aba <strong>3. Respostas</strong>.
+                        <p class="small text-muted mb-2">
+                            <strong>O sistema decide sozinho</strong> ao formar maioria simples (2
+                            de 3): 2 favoráveis deferem, 2 desfavoráveis indeferem. O voto
+                            favorável do <strong>coordenador da CET-RS</strong> defere sozinho.
                         </p>
+                        <details class="small text-muted mb-3">
+                            <summary>Quando usar o formulário abaixo</summary>
+                            <ul class="mb-0 mt-1 ps-3">
+                                <li><strong>Cancelado</strong> — nunca é automático.</li>
+                                <li><strong>Redecidir</strong> após uma reabertura pelo administrador.</li>
+                                <li>No indeferimento automático o motivo gravado é um texto institucional padrão; para substituí-lo, o administrador reabre e redecide aqui.</li>
+                                <li>Deferir e Indeferir ficam bloqueados enquanto o processo estiver <strong>pausado</strong> aguardando informação complementar (exceto o voto favorável do coordenador, que defere mesmo assim).</li>
+                            </ul>
+                        </details>
                         <form th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post"
                               data-lock-submit="Registrando decisão...">
                             <div class="row g-2 align-items-end">
@@ -899,7 +889,7 @@
                         </div>
                         <button type="button" class="btn btn-success btn-sm"
                                 data-goto-pane="pane-finalizacao">
-                            <i class="bi bi-arrow-right"></i> Avancar para Finalização
+                            <i class="bi bi-arrow-right"></i> Avançar para Finalização
                         </button>
                     </div>
                 </div>
@@ -913,16 +903,12 @@
             <div class="card mb-4" id="finalizacao">
                 <div class="card-header"><i class="bi bi-flag"></i> Finalização</div>
                 <div class="card-body">
-                    <p class="small text-muted mb-3">
-                        Conclua o processo preenchendo os campos abaixo. As etapas obrigatórias
-                        variam conforme a decisão:
-                        <span th:if="${processo.status.name() == 'INDEFERIDO'}">
-                            <strong>Indeferido:</strong> anexe o ofício de indeferimento e registre as datas.
-                        </span>
-                        <span th:if="${processo.status.name() == 'DEFERIDO'}">
-                            <strong>Deferido:</strong> anexe o comprovante de inserção no SNT.
-                        </span>
-                        Em ambos os casos, registre o envio da resposta ao solicitante.
+                    <p class="small text-muted mb-3" th:switch="${processo.status.name()}">
+                        <span th:case="'INDEFERIDO'">Anexe o <strong>ofício de indeferimento</strong> e
+                            envie a resposta ao solicitante. As datas são registradas pelo sistema.</span>
+                        <span th:case="'DEFERIDO'">Anexe o <strong>comprovante de inserção no SNT</strong> e
+                            envie a resposta ao solicitante. As datas são registradas pelo sistema.</span>
+                        <span th:case="*">Processo cancelado: não há resposta formal a enviar.</span>
                     </p>
 
                     <!-- Oficio de Indeferimento (apenas INDEFERIDO) -->

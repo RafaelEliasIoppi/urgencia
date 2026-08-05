@@ -752,7 +752,11 @@ class ProcessoDetalheControllerTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "texto institucional padrão")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "<strong>Cancelado</strong> (que nunca e")));
+                "<strong>Cancelado</strong> — nunca é")))
+            // Texto obsoleto (regra do "anexo comprobatorio" removida do codigo em
+            // 2026-07-29) nao pode mais aparecer - relatorio de 2026-08-05, item 4.4.
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("comprobatório"))));
     }
 
     // ----- aba Finalizacao: avisos do oficio e data de envio ao SNT -----

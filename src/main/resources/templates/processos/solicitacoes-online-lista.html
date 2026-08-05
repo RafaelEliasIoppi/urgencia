@@ -7,10 +7,6 @@
 
 <main id="conteudo" class="container my-4">
     <h1 class="h3 mb-3"><i class="bi bi-inbox-fill"></i> Solicitações online — triagem</h1>
-    <p class="small text-muted">
-        Pedidos enviados diretamente pela equipe solicitante. Ao converter, você revisa os dados
-        no formulario normal de cadastro e escolhe os 3 médicos avaliadores.
-    </p>
 
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item">
@@ -88,7 +84,8 @@
                                 <i class="bi bi-chat-dots-fill"></i>
                             </span>
                             <a th:href="@{/processos/solicitacoes-online/{id}(id=${s.id})}"
-                               class="btn btn-sm btn-outline-primary">
+                               class="btn btn-sm btn-outline-primary"
+                               title="Revisar os dados e escolher os 3 médicos avaliadores">
                                 <i class="bi bi-eye"></i> Ver
                             </a>
                         </td>
