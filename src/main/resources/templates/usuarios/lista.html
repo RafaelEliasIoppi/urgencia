@@ -60,7 +60,7 @@
                 <td class="text-end">
                     <a th:href="@{/usuarios/{id}/editar(id=${u.id})}" class="btn btn-sm btn-outline-secondary">Editar</a>
                     <form th:action="@{/usuarios/{id}/alternar-ativo(id=${u.id})}" method="post" class="d-inline"
-                          th:attr="data-confirm-msg=${u.ativo} ? ('Inativar o usuário &quot;' + ${u.username} + '&quot;? Ele perdera o acesso ao sistema.') : ('Reativar o usuário &quot;' + ${u.username} + '&quot;?')">
+                          th:attr="data-confirm-msg=${u.ativo} ? ('Inativar o usuário &quot;' + ${u.username} + '&quot;? Ele perderá o acesso ao sistema.') : ('Reativar o usuário &quot;' + ${u.username} + '&quot;?')">
                         <button class="btn btn-sm btn-outline-warning"
                                 th:text="${u.ativo} ? 'Inativar' : 'Ativar'">Inativar</button>
                     </form>
@@ -68,6 +68,16 @@
                           th:attr="data-confirm-msg='Excluir usuário &quot;' + ${u.username} + '&quot;? Esta ação não pode ser desfeita.'">
                         <button class="btn btn-sm btn-outline-danger">Excluir</button>
                     </form>
+                </td>
+            </tr>
+            <tr th:if="${usuarios.isEmpty()}">
+                <td colspan="6" class="text-center text-muted py-5">
+                    <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                    <span th:if="${q != null and !q.isBlank()}">
+                        Nenhum usuário encontrado para "<span th:text="${q}"></span>".
+                        <a th:href="@{/usuarios}">Limpar filtro</a>
+                    </span>
+                    <span th:unless="${q != null and !q.isBlank()}">Nenhum usuário cadastrado.</span>
                 </td>
             </tr>
             </tbody>

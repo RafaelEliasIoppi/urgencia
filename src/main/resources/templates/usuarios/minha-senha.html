@@ -17,7 +17,7 @@
                 <div class="input-group">
                     <input type="password" name="senhaAtual" class="form-control" id="senhaAtual"
                            required autofocus autocomplete="current-password">
-                    <button class="btn btn-outline-secondary olho" type="button" data-alvo="senhaAtual"
+                    <button class="btn btn-outline-secondary" type="button" data-alvo-senha="senhaAtual"
                             title="Mostrar/ocultar senha atual" aria-label="Mostrar/ocultar senha atual">
                         <i class="bi bi-eye"></i>
                     </button>
@@ -28,19 +28,19 @@
                 <div class="input-group">
                     <input type="password" name="novaSenha" class="form-control" id="novaSenha"
                            required minlength="8" autocomplete="new-password">
-                    <button class="btn btn-outline-secondary olho" type="button" data-alvo="novaSenha"
+                    <button class="btn btn-outline-secondary" type="button" data-alvo-senha="novaSenha"
                             title="Mostrar/ocultar nova senha" aria-label="Mostrar/ocultar nova senha">
                         <i class="bi bi-eye"></i>
                     </button>
                 </div>
-                <div class="form-text text-muted">Mínimo 8 caracteres, com maiuscula, minuscula, número e caractere especial.</div>
+                <div class="form-text text-muted">Mínimo 8 caracteres, com maiúscula, minúscula, número e caractere especial.</div>
             </div>
             <div class="mb-3">
                 <label class="form-label" for="confirmacao">Confirmar nova senha *</label>
                 <div class="input-group">
                     <input type="password" name="confirmacao" class="form-control" id="confirmacao"
                            required minlength="8" autocomplete="new-password">
-                    <button class="btn btn-outline-secondary olho" type="button" data-alvo="confirmacao"
+                    <button class="btn btn-outline-secondary" type="button" data-alvo-senha="confirmacao"
                             title="Mostrar/ocultar confirmação da nova senha" aria-label="Mostrar/ocultar confirmação da nova senha">
                         <i class="bi bi-eye"></i>
                     </button>
@@ -51,29 +51,16 @@
             </div>
         </div>
         <div class="card-footer text-end">
-            <a th:href="@{/}" class="btn btn-outline-secondary">Voltar</a>
+            <a th:href="@{${inicioDoPerfil}}" class="btn btn-outline-secondary">Voltar</a>
             <button type="submit" class="btn btn-primary">Salvar nova senha</button>
         </div>
     </form>
 </main>
 
 <script th:replace="~{layout :: scripts}"></script>
+<script th:src="@{/js/mostrar-senha.js}"></script>
 <script>
 (function () {
-    document.querySelectorAll('.olho').forEach(function (btn) {
-        btn.addEventListener('click', function () {
-            var input = document.getElementById(this.dataset.alvo);
-            var icon = this.querySelector('i');
-            if (input.type === 'password') {
-                input.type = 'text';
-                icon.className = 'bi bi-eye-slash';
-            } else {
-                input.type = 'password';
-                icon.className = 'bi bi-eye';
-            }
-        });
-    });
-
     var nova = document.getElementById('novaSenha');
     var conf = document.getElementById('confirmacao');
     var msg = document.getElementById('msgConfere');
