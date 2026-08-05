@@ -2156,3 +2156,65 @@ nesta máquina), confirmando que a falha é pré-existente e não relacionada.
 Nenhuma regra de negócio, entidade ou endpoint mudou nesta sessão — só
 JS/CSS/CSP.
 
+## Visualização do PDF na tela de voto do avaliador em celular (2026-08-05)
+
+Investigação pontual pedida pelo usuário sobre como `avaliador/votar.html`
+(`GET /avaliador/{processoId}`) se comporta em celular ao exibir o documento
+clínico anonimizado (`TipoAnexo.SOLICITACAO_AVALIADOR`).
+
+**O que já existia (de fases anteriores da UI do Portal do Avaliador) e
+continua correto, não foi tocado:**
+- Cada PDF é exibido num `<iframe>` (`.pdf-avaliador-frame`) com um link
+  "Abrir em nova aba" (`btn-outline-secondary btn-sm`) e um botão de tela
+  cheia (`btn-tela-cheia`, `avaliador-pdf-fullscreen.js`) já sempre visíveis
+  ao lado do nome do arquivo, acima do iframe — não são um fallback
+  escondido, sempre renderizados.
+- `.pdf-avaliador-frame` já tinha uma regra `@media (max-width: 991.98px)`
+  reduzindo a altura de `calc(100vh - 220px)` (só faz sentido no layout
+  split-pane `col-lg-7/col-lg-5`) para `60vh`, e um atalho "Ir para o voto"
+  (`d-lg-none`) para não deixar o formulário de voto soterrado abaixo do PDF
+  em telas empilhadas.
+
+**O que estava faltando (achado real, verificado pela leitura do HTML/CSS,
+não por suposição genérica):** o link "Abrir em nova aba" e o botão de tela
+cheia ficam lado a lado no cabeçalho de cada PDF, com o mesmo tamanho
+discreto (`btn-sm`) usado no desktop — em celular, onde o `<iframe>` de PDF é
+historicamente pouco confiável (Safari iOS e Chrome Android variam muito na
+renderização inline entre versões, às vezes mostrando em branco ou exigindo
+um visualizador externo), não havia nenhum destaque visual maior para a
+alternativa "abrir de verdade" nessa faixa de tela — ela competia por espaço
+com o botão de tela cheia e o nome do arquivo truncado, do mesmo jeito que no
+desktop, onde o iframe costuma funcionar bem.
+
+**Correção aplicada (só apresentação — nenhuma URL, permissão ou lógica de
+anexo exibido mudou):**
+- `avaliador/votar.html`: cada PDF ganhou um botão `btn-primary w-100
+  d-lg-none` ("Abrir PDF em nova aba (recomendado no celular)"), com `id`
+  estável `btnAbrirPdfMobile{index}`, posicionado logo ACIMA do `<iframe>`
+  correspondente, visível só abaixo do breakpoint `lg` do Bootstrap (992px) —
+  em desktop nada muda, o iframe splitado com o botão pequeno de sempre
+  continua a experiência principal, porque lá ele funciona bem.
+- `app.css`: nova regra `@media (max-width: 575.98px)` reduz a altura do
+  iframe de `60vh` para `45vh` só em telas de celular (não tablets/iPad, que
+  já caem em `991.98px`), dando mais prioridade visual ao botão novo acima
+  dele.
+- Não mudou `AvaliadorController` (mesmo endpoint `GET /avaliador/{id}/pdf/
+  {pdfId}`, mesma checagem de posse/imparcialidade), nem o critério de quais
+  anexos aparecem (`TipoAnexo.SOLICITACAO_AVALIADOR`, iniciais do paciente).
+
+**Validação:** suíte completa **773 testes, 0 falhas** (JDK 21) — a suíte
+completa via `mvn test` isolado passou de primeira; as duas rodadas
+subsequentes via `.\e2e.ps1 -Headless` reproduziram a MESMA flakiness de
+timing já documentada acima (`ComprovanteSntPendenteQueriesIntegrationTest`/
+`LembreteAvaliadorTimestampIntegrationTest`, precisão de nanossegundos do
+H2), confirmando que não é regressão desta mudança. Rodando
+`mvn verify -Pe2e -Dmaven.test.failure.ignore=true` (só para deixar o estágio
+Failsafe/Playwright rodar apesar do flake do Surefire) o
+`FluxoCompletoProcessoIT` passou pelo Passo 3 (avaliador votando, que
+exercita exatamente a tela alterada) sem problema e falhou na mesma linha 228
+já documentada (confirmação de resposta por e-mail, SMTP local não
+configurado) — mesma falha pré-existente, não relacionada a esta mudança.
+`AvaliadorPage.materialInline()` localiza o iframe por `title` (não por
+`id`/classe do botão novo), então o seletor do E2E não foi afetado pelo botão
+adicionado.
+
