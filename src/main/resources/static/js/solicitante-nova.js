@@ -19,6 +19,24 @@ document.addEventListener('DOMContentLoaded', function () {
         campoData.max = iso;
     }
 
+    // Aviso ao sair com a solicitacao preenchida e nao enviada (ver
+    // aviso-sair-sem-salvar.js). Adicional ao botao manual "Salvar
+    // rascunho" - o rascunho so guarda os 4 campos de texto abaixo, nunca os
+    // arquivos selecionados, entao mesmo quem ja salvou um rascunho ainda
+    // pode perder os documentos anexados ao fechar a aba sem enviar de
+    // verdade. Por isso "Salvar rascunho" NAO desarma este aviso.
+    if (typeof window.iniciarAvisoSairSemSalvar === 'function') {
+        window.iniciarAvisoSairSemSalvar({
+            campos: [
+                document.getElementById('pacienteNome'),
+                document.getElementById('pacienteRgct'),
+                document.getElementById('dataSituacaoEspecial'),
+                document.getElementById('justificativaClinica'),
+                document.getElementById('documentos')
+            ]
+        });
+    }
+
     var LIMITE_ATENCAO = 80; // abaixo disso, sinal visual de "provavelmente incompleto"
 
     var textarea = document.getElementById('justificativaClinica');

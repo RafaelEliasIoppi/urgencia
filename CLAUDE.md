@@ -1931,6 +1931,86 @@ auditoria filtrando de fato (termo impossível → estado vazio), acentuação e
 **pré-existente** de SMTP no passo 5 (linha 225), confirmada idêntica no
 `main` sem as mudanças.
 
+## Aviso ao sair sem salvar (`beforeunload`) — 2026-08-04
+
+Item 4 do `docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md` (§4.4): o sistema
+não tinha **nenhuma** ocorrência de `beforeunload` até esta sessão. Dois
+cenários reais de perda silenciosa de dado:
+1. Solicitante preenchendo a justificativa clínica em `solicitante/nova.html`
+   e fechando a aba sem enviar (o rascunho manual — ver seção "Rascunho de
+   solicitação" acima — exige um clique explícito em "Salvar rascunho" e, de
+   qualquer forma, **nunca salva os arquivos anexados**, só os 4 campos de
+   texto).
+2. Operador editando o corpo de um e-mail pronto em `processos/detalhe.html`
+   (`<textarea>` do accordion "Textos de e-mail prontos") e navegando para
+   outra aba do wizard ou saindo sem enviar.
+
+**Utilitário novo e reutilizável:** `static/js/aviso-sair-sem-salvar.js`,
+expõe `window.iniciarAvisoSairSemSalvar({campos: [elemento, ...]})`. Cada
+campo listado vira "sujo" no primeiro `input`/`change`; o `beforeunload`
+nativo do navegador só dispara se **algum** campo estiver sujo (o texto da
+mensagem é sempre o padrão do navegador — customizar `returnValue` é
+ignorado por todos os navegadores modernos, documentado no próprio arquivo).
+Novo fragment `layout :: avisoSairScript` (ao lado de `confirmarAcaoScript`/
+`lockSubmitScript`) inclui o script.
+
+**Nunca dispara no submit normal** — cada campo, se estiver dentro de um
+`<form>`, desarma **só a si mesmo** no evento `submit` desse form
+(`solicitante/nova.html`: os 5 campos do formulário de nova solicitação,
+incluindo o `<input type="file">`).
+
+**Nunca duplica o aviso quando já existe uma confirmação própria
+(`data-confirm-msg`, ver `confirmar-acao.js`).** `confirmar-acao.js` passou a
+disparar `document.dispatchEvent(new CustomEvent('saur:acao-confirmada'))`
+logo antes de seguir com a navegação/submit já confirmados pelo usuário no
+modal — sem isso, clicar "Cancelar" ou "Descartar rascunho" em
+`solicitante/nova.html` mostraria DOIS avisos em sequência (o modal
+customizado e, na sequência, o alerta nativo do navegador). O listener do
+evento desarma o guard **globalmente** na página (não por campo) — como o
+estado do guard é sempre recriado a cada carregamento de página, não há risco
+de vazamento entre páginas diferentes; dentro da mesma página, um clique em
+qualquer outro `data-confirm-msg` não relacionado (ex.: excluir um anexo em
+`processos/detalhe.html`) também desarma o aviso do e-mail em edição — aceito
+como limitação de baixo risco (o cenário é raro e o pior caso é só a ausência
+do aviso extra, não perda de dado silenciosa nova).
+
+**Achado e corrigido de graça:** `solicitante/nova.html` **não incluía**
+`layout :: confirmarAcaoScript`, então os `data-confirm-msg` de "Cancelar" e
+"Descartar rascunho" (que já existiam na tela) nunca tiveram efeito nenhum —
+o navegador ignora um atributo `data-*` desconhecido sem o JS que o lê.
+Corrigido incluindo o fragment junto com o `avisoSairScript` novo.
+
+**Múltiplos campos independentes em `processos/detalhe.html`:** cada
+`<textarea>` "corpo" do accordion de e-mails prontos é um campo independente
+(`#accEmails textarea[id^="corpo"]`, pode haver vários e-mails prontos ao
+mesmo tempo). `chamarAcao` (função genérica de `processo-detalhe.js`) ganhou
+um parâmetro `onSucesso` opcional, chamado só quando `data.ok` é verdadeiro —
+o handler de "Enviar agora por e-mail" o usa para limpar (`avisoEmailPronto
+.limpar(corpoEl)`) só o campo que foi de fato enviado, sem afetar outros
+textareas ainda editados/não enviados na mesma tela. O botão "Revisar com IA"
+atribui `corpoEl.value` programaticamente (não dispara `input` sozinho) —
+corrigido disparando manualmente `corpoEl.dispatchEvent(new Event('input',
+{bubbles: true}))` depois, senão o texto revisado pela IA não contava como
+"sujo" para o aviso.
+
+**Sem teste automatizado direto — verificado manualmente e por leitura de
+código.** `beforeunload` é um evento nativo do navegador que o Playwright não
+dispara de forma confiável em teste automatizado (fechar a aba de verdade
+sai do controle do driver); `@WebMvcTest`/`MockMvc` não roda JS nenhum. A
+verificação foi: (1) leitura cuidadosa do fluxo de eventos (`input`→sujo,
+`submit`/`saur:acao-confirmada`→desarma, `onSucesso`→limpa campo específico)
+confirmando que não há caminho em que o submit normal dispara o aviso; (2)
+suíte completa (`mvn test`, JDK 21) sem regressão — só a falha isolada e não
+relacionada de `ComprovanteSntPendenteQueriesIntegrationTest` (comparação de
+`LocalDateTime` com precisão de nanossegundos, flake de timing pré-existente,
+reproduzida também isolada e depois passando; nada a ver com JS/beforeunload).
+Verificação manual recomendada para quem revisar o PR: abrir
+`/solicitante/nova`, digitar na justificativa, tentar fechar a aba (o
+navegador deve avisar); abrir o detalhe de um processo com e-mails prontos,
+editar um corpo de e-mail, tentar navegar para outra aba do wizard (deve
+avisar) e depois confirmar que enviar o e-mail normalmente **não** dispara
+nenhum aviso extra.
+
 ## Poll global pausado em background + toast unificado + CSP sem Google Fonts (2026-08-04)
 
 3 itens do `docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md` (PR #19, ainda
