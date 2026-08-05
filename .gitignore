@@ -47,6 +47,10 @@ id_rsa*
 saur_oracle*
 *_ed25519*
 /.chaves-local/
+# Credencial OAuth do Google Cloud (client_id/client_secret do rclone) - baixada
+# manualmente para dentro do repo durante a configuracao do backup offsite
+# (2026-08-05). Nao e chave SSH, mas e igualmente um segredo real.
+client_secret_*.json
 
 ### Pacote distribuivel (gerado) ###
 /dist/
