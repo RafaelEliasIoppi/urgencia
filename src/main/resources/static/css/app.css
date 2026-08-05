@@ -934,6 +934,17 @@ tr.linha-inativa > td:first-child {
         min-height: 320px;
     }
 }
+/* Celular (<576px): iframe de PDF embutido e o ponto mais fragil da tela em
+   mobile (Safari iOS/Chrome Android variam muito na renderizacao inline) -
+   reduz um pouco a altura do iframe para dar mais destaque visual ao botao
+   "Abrir PDF em nova aba" (btn-primary, w-100, ver votar.html) que fica logo
+   acima dele. */
+@media (max-width: 575.98px) {
+    .pdf-avaliador-frame {
+        height: 45vh;
+        min-height: 280px;
+    }
+}
 
 /* Cartao selecionavel do voto do avaliador (votar.html): alvo de toque
    ~16px (so o circulo do radio) virou o cartao inteiro, minimo 44px de

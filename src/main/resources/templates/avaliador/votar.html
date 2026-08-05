@@ -64,6 +64,17 @@
                                     </a>
                                 </div>
                             </div>
+                            <!-- So em celular: a visualizacao embutida de PDF (iframe) e pouco
+                                 confiavel em navegadores mobile (Safari iOS/Chrome Android
+                                 costumam renderizar sem controles de zoom decentes, ou nem
+                                 abrir o PDF inline, dependendo da versao). Este botao fica
+                                 SEMPRE visivel acima do iframe em telas pequenas - nao e um
+                                 fallback escondido, e o caminho recomendado no celular. -->
+                            <a th:id="'btnAbrirPdfMobile' + ${iterStat.index}"
+                               th:href="@{/avaliador/{id}/pdf/{pdfId}(id=${processo.id},pdfId=${pdf.id})}"
+                               class="btn btn-primary w-100 d-lg-none mb-2" target="_blank">
+                                <i class="bi bi-box-arrow-up-right"></i> Abrir PDF em nova aba (recomendado no celular)
+                            </a>
                             <iframe th:id="'pdfFrame' + ${iterStat.index}"
                                     th:src="@{/avaliador/{id}/pdf/{pdfId}(id=${processo.id},pdfId=${pdf.id})}"
                                     class="w-100 rounded border pdf-avaliador-frame" loading="lazy"
