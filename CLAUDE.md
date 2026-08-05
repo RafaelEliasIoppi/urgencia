@@ -1217,16 +1217,39 @@ Dumps diários íntegros de 2026-07-29 a 2026-08-05 no Drive, **incluindo 04 e
 em si). Anexos: 36 arquivos na VM, 34 no Drive (a diferença são anexos de
 hoje, posteriores ao sync das 03:00). O banco inteiro comprimido tem ~12 KB.
 
-### Pendências que EXIGEM o usuário (não dá por SSH)
+### Alerta por e-mail da falha de backup (escrito, PENDENTE DE INSTALAR)
+Aprovado pelo usuário depois da vistoria. **Sem duplicar a senha SMTP**: o
+backup roda como `postgres`, que não lê `/opt/sgpur/sgpur.env` (600, dono
+`sgpur`); em vez de copiar a credencial para um segundo arquivo, uma regra
+pontual em `/etc/sudoers.d/sgpur-backup-alerta` deixa o `postgres`
+**executar** `deploy/notificar-falha-backup.sh` como `sgpur` — e nada além
+disso. A credencial continua num arquivo só.
+
+O alerta é **best-effort por design**: notificador ausente, sudo negado ou
+SMTP fora do ar viram uma linha de aviso no log e o backup segue (o oposto
+seria o backup parar porque o Gmail recusou conexão). Os três caminhos
+(notificador ok / ausente / quebrado) foram testados localmente com
+simuladores de `pg_dump`/`rclone`/`sudo`.
+
+**Ainda não está instalado na VM:** o envio de arquivos novos para a máquina
+de produção foi bloqueado pelo classificador de segurança do harness nesta
+sessão. Os arquivos estão versionados (`deploy/notificar-falha-backup.sh`,
+`deploy/cron/sudoers-sgpur-backup-alerta`, e a função `alertar()` já dentro
+de `deploy/backup-db.sh`) e o passo a passo de instalação + teste está em
+`deploy/README-deploy.md`. **O `backup-db.sh` que roda na VM hoje é a versão
+SEM a função `alertar()`** — reinstalar o do repositório é parte da mesma
+tarefa.
+
+### Pendências que EXIGEM o usuário no navegador (não dá por SSH)
+Passo a passo completo de ambas em `deploy/README-deploy.md`.
 - **`client_id` próprio do rclone** (https://rclone.org/drive/#making-your-own-client-id):
   o compartilhado será desativado durante 2026 e o backup offsite para. Exige
-  navegador (Google Cloud Console) + `rclone config`.
-- **Reservar o IP público** no console Oracle: se for efêmero, parar a
-  instância troca o IP e derruba DuckDNS/certbot.
-- **Alerta por e-mail da falha de backup**: o usuário `postgres` não lê
-  `/opt/sgpur/sgpur.env` (600, dono `sgpur`) e não há MTA na VM. Mandar
-  e-mail exigiria duplicar a senha SMTP institucional num arquivo legível por
-  `postgres` — **não feito de propósito**, é decisão do usuário.
+  Google Cloud Console (habilitar Drive API, tela de consentimento OAuth,
+  criar ID de cliente tipo "App para computador") + `rclone config` na VM.
+- **Reservar o IP público** no console Oracle (Compute → Instances → VNIC →
+  IPv4 Addresses → Edit → Reserved): se for efêmero, parar a instância troca
+  o IP e derruba DuckDNS/certbot. IP reservado continua dentro do Always Free.
+  O `oci` CLI **não** está instalado na VM, então não dá para fazer por SSH.
 
 ## Vistoria de 2026-08-03 (inspeção SSH real na VM de produção)
 
