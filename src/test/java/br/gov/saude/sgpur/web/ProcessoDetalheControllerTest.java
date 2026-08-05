@@ -669,16 +669,49 @@ class ProcessoDetalheControllerTest {
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
-            // As 3 acoes do botao, incluindo a que nao estava escrita em lugar nenhum.
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "O convite será enviado para")))
+            // As acoes do botao agora vivem no modal de confirmacao (Fase 4 do
+            // relatorio de clareza, 2026-08-05), nao mais numa <ol> sempre visivel.
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
-                "Portal do Avaliador</strong> por e-mail")))
+                "data-confirm-msg")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "Portal do Avaliador por e-mail")))
             // Nome + e-mail de cada destinatario.
             .andExpect(content().string(org.hamcrest.Matchers.containsString("HCPA - Ana")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("ana@ex.com")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("HSL - Carla")))
             .andExpect(content().string(org.hamcrest.Matchers.containsString("carla@ex.com")));
+    }
+
+    /**
+     * "Registrar envio" dispara e-mail real e irreversivel (Fase 4 do
+     * relatorio de clareza de 2026-08-05, item 4.3) - precisa do mesmo
+     * data-confirm-msg + modal que "Enviar Resposta ao Solicitante" ja tem.
+     * O texto das 3 consequencias, antes numa <ol> sempre visivel na pagina,
+     * agora vive na mensagem do modal (lida no momento da decisao).
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void registrarEnvioExigeConfirmacaoNoModalComAsConsequenciasDoClique() throws Exception {
+        processo.addParecer(parecer(processo, membro(1L, "HCPA", "Ana"), null, null, null));
+        processo.addParecer(parecer(processo, membro(2L, "HCC", "Bruno"), null, null, null));
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+
+        String html = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        String form = html.substring(html.indexOf("PASSO 2: Registrar envio"),
+            html.indexOf("Finalizacao explicita da etapa", html.indexOf("PASSO 2: Registrar envio")));
+        org.assertj.core.api.Assertions.assertThat(form).contains("data-confirm-msg");
+        org.assertj.core.api.Assertions.assertThat(form).contains("PDF único carimbado");
+        org.assertj.core.api.Assertions.assertThat(form).contains("marcar o processo como Enviado");
+        org.assertj.core.api.Assertions.assertThat(form).contains("2 médico(s)");
+        // A <ol> antiga (3 itens sempre visiveis na pagina) nao existe mais -
+        // as consequencias so aparecem no modal, no momento da decisao.
+        org.assertj.core.api.Assertions.assertThat(form).doesNotContain("<ol");
     }
 
     /**

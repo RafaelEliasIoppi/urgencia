@@ -40,10 +40,18 @@ public class ProcessoDetalhePage {
         return this;
     }
 
+    /**
+     * "Registrar envio" ganhou confirmacao por modal na Fase 4 do relatorio
+     * de clareza (2026-08-05, item 4.3): dispara e-mail real e irreversivel
+     * aos avaliadores, mesma protecao ja usada em
+     * {@link #passo5_confirmarRespostaAoSolicitante()}. O texto do botao nao
+     * mudou - so o clique precisa passar pelo modal antes de seguir.
+     */
     public ProcessoDetalhePage passo2_registrarEnvio() {
         narrar("Passo 2/5 - Envio: registrando o envio aos 3 avaliadores...");
         clicarPasso("pane-envio");
         page.locator("#pane-envio button:has-text('Registrar envio')").click();
+        page.locator("#btnConfirmarAcaoFinal").click();
         page.waitForLoadState();
         return this;
     }
