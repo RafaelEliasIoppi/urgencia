@@ -40,6 +40,39 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Sessao HTTP autenticada, mas sem {@code Usuario} correspondente no banco
+     * (username trocado/conta excluida enquanto a sessao estava ativa — o
+     * Spring Security nao rele o {@code UserDetails} a cada requisicao). Bug
+     * real reportado pelo usuario: acessar {@code /avaliador} pelo link do
+     * e-mail de convite as vezes devolvia um 401 cru (pagina de erro tecnica
+     * do navegador) em vez de cair na tela de login normal.
+     *
+     * <p>Diferente de {@link ResponseStatusException} (tratada acima, deixada
+     * para o Spring propagar o status original), este tipo e tratado aqui de
+     * proposito: a sessao orfa e invalidada de verdade (via
+     * {@code SecurityContextLogoutHandler}, que limpa tanto a
+     * {@code HttpSession} quanto o {@code SecurityContext}) e o usuario e
+     * redirecionado para {@code /login} com uma mensagem clara, em vez de
+     * travar numa pagina de erro sem saida. Usuario realmente deslogado
+     * continua caindo no fluxo padrao do Spring Security (302 direto para
+     * {@code /login}, via {@code LoginUrlAuthenticationEntryPoint}) — este
+     * handler so cobre o caso da sessao "autenticada mas orfa".</p>
+     */
+    @ExceptionHandler(SessaoInvalidaException.class)
+    public String handleSessaoInvalida(SessaoInvalidaException ex,
+                                        HttpServletRequest request,
+                                        HttpServletResponse response) {
+        log.warn("Sessao autenticada sem usuario correspondente no banco (username alterado/conta "
+            + "excluida) — invalidando sessao. metodo={} uri={}: {}",
+            request.getMethod(), request.getRequestURI(), ex.getMessage());
+        org.springframework.security.core.Authentication auth = org.springframework.security.core.context
+            .SecurityContextHolder.getContext().getAuthentication();
+        new org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler()
+            .logout(request, response, auth);
+        return "redirect:/login?erro=sessao-invalida";
+    }
+
+    /**
      * Rota "segura" de volta para o usuario apos um erro, baseada na URI da
      * requisicao que falhou. ROLE_SOLICITANTE nao acessa {@code /processos/**}
      * (403) - redirecionar sempre para la produziria um 403 confuso em cima do

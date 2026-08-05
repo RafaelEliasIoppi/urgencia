@@ -2156,3 +2156,71 @@ nesta máquina), confirmando que a falha é pré-existente e não relacionada.
 Nenhuma regra de negócio, entidade ou endpoint mudou nesta sessão — só
 JS/CSS/CSP.
 
+## Fix: 401 cru no Portal do Avaliador com sessão órfã (2026-08-04)
+
+**Bug real reportado pelo usuário:** acessar `/avaliador` pelo link do
+e-mail de convite às vezes devolvia um 401 cru (página de erro técnica do
+navegador) em vez de cair na tela de login normal do SAUR.
+
+**Causa raiz:** o Spring Security não relê o `UserDetails` a cada
+requisição — ele fica fixo na `HttpSession` desde o login. Se o ADMIN troca
+o `username` de um avaliador em `/usuarios` (ou exclui a conta) enquanto
+ele tem sessão ativa, a sessão continua "autenticada" com o username antigo,
+mas `AvaliadorController.resolverMembro` (via
+`UsuarioRepository.findByUsername`) não encontra mais ninguém. Até esta
+correção, o método lançava `ResponseStatusException(HttpStatus.
+UNAUTHORIZED)` direto — o `GlobalExceptionHandler` deixa esse tipo de
+exceção passar para o Spring tratar sozinho (preserva o status HTTP
+original), então o resultado era um 401 técnico sem nenhuma chance de o
+usuário simplesmente logar de novo. Diferente do fluxo normal de usuário
+deslogado (que sempre cai em 302 para `/login` via
+`LoginUrlAuthenticationEntryPoint`, não alterado).
+
+**Correção:** `resolverMembro` agora lança `SessaoInvalidaException`
+(`web/SessaoInvalidaException.java`, tipo próprio) em vez do
+`ResponseStatusException` cru — cobre tanto `GET /avaliador` (ponto de
+entrada do link do e-mail) quanto qualquer outra ação do portal que chame
+`resolverMembro` (votar, baixar PDF etc.), já que é o único ponto de
+resolução do membro logado, sem duplicar a lógica. As demais
+`ResponseStatusException(FORBIDDEN)` do controller (usuário sem membro
+vinculado, não é avaliador do processo, parecer já emitido, processo fora
+de status ativo) **não mudaram** — são erros de autorização de um usuário
+genuinamente autenticado e válido, cenário diferente do desta correção.
+
+`GlobalExceptionHandler` ganhou `handleSessaoInvalida` (`@ExceptionHandler
+(SessaoInvalidaException.class)`): invalida a sessão de verdade via
+`SecurityContextLogoutHandler` (limpa `HttpSession` **e**
+`SecurityContext` — mais robusto que só `session.invalidate()` manual) e
+redireciona para `/login?erro=sessao-invalida`. `login.html` ganhou um
+alerta amarelo para esse parâmetro ("Sua sessão não é mais válida... Faça
+login novamente"), no mesmo padrão dos alertas já existentes para
+`param.error`/`param.logout`/`${msg}`/`${erro}`.
+
+**Por que não foi tratado como caso geral do `UsuarioRepository.
+findByUsername` em todos os controllers:** o mesmo padrão
+(`findByUsername(...).orElseThrow(() -> new ResponseStatusException
+(UNAUTHORIZED))`) existe também em `SolicitanteController`,
+`SolicitacaoOnlineTriagemController` e `ProcessoDetalheController` — não
+foram tocados nesta correção (escopo pedido foi só o Portal do Avaliador,
+onde o bug foi reportado e reproduzido). Se o mesmo sintoma aparecer nesses
+outros portais, o mesmo padrão (`SessaoInvalidaException` +
+`GlobalExceptionHandler.handleSessaoInvalida`, que já é genérico e reusável
+por estar no `@ControllerAdvice` global) resolve sem duplicar código.
+
+**Teste de regressão** (`AvaliadorSessaoOrfaIntegrationTest`, `@SpringBootTest`
++ H2 real, **sessão HTTP de verdade via login por formulário — não
+`@WithMockUser`**, porque o bug é sobre o estado da `HttpSession` entre
+duas requisições, algo que `@WithMockUser` recria do zero a cada método e
+nunca reproduz): loga de verdade via `POST /login`, captura a
+`MockHttpSession` resultante, renomeia o `username` do `Usuario` no banco
+"por baixo" da sessão ativa (mesmo efeito prático de uma conta excluída), e
+reusa exatamente essa sessão numa nova requisição a `/avaliador` —
+confirma redirect 302 para `/login?erro=sessao-invalida` (nunca 401/500
+cru), que a própria sessão fica `isInvalid()==true` depois (prova que foi
+de fato invalidada, não só ignorada), e que uma requisição seguinte sem
+essa sessão continua exigindo login (nunca reaproveita nada). Também
+ajustado `SecurityIntegrationTest.avaliadorAcessaPortalProprio`, que usava
+`@WithMockUser` com um usuário fictício sem registro no banco (o mesmo
+cenário de sessão "órfã" na prática) e esperava 401 — passou a esperar o
+redirect gracioso.
+
