@@ -1,0 +1,2 @@
+# Backup diario do banco sgpur, 03:00 horario local da VM.
+0 3 * * * postgres /bin/bash /opt/sgpur/backup-db.sh >> /var/log/sgpur-backup.log 2>&1

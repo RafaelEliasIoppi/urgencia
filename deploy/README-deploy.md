@@ -140,89 +140,58 @@ ssh ubuntu@<IP> 'sudo mv /tmp/sgpur.jar /opt/sgpur/sgpur.jar && sudo chown sgpur
   backup perde os dados.
 - O `sgpur.env` contém segredos: está no `.gitignore` e tem permissão `600`.
 
-## Backup dos anexos (cron)
+## Backup (banco + anexos) — o que realmente roda na VM
 
-Os anexos (documentos clínicos, ofícios, comprovantes SNT) só existem no disco
-da VM — perder o disco é perder esses arquivos, mesmo com o banco intacto no
-Neon. Use `deploy/backup-anexos.sh` para copiá-los periodicamente:
+O backup de produção é **um script só**, `deploy/backup-db.sh`, que cobre o
+banco **e** os anexos:
+
+1. `pg_dump` do banco `sgpur` comprimido em `/opt/sgpur/backups/`
+   (retenção local de 14 dias);
+2. cópia **offsite** do dump para o Google Drive via `rclone`
+   (`gdrive:sgpur-backups/`);
+3. `rclone sync` dos anexos (`/opt/sgpur/data/anexos`) para o mesmo destino,
+   com versionamento em `anexos-archive/<timestamp>/`.
+
+Instalação na VM (é assim que está hoje):
 
 ```bash
-sudo cp /caminho/backup-anexos.sh /opt/sgpur/backup-anexos.sh
-sudo chown sgpur:sgpur /opt/sgpur/backup-anexos.sh
-sudo chmod 700 /opt/sgpur/backup-anexos.sh
+sudo install -o postgres -g postgres -m 750 deploy/backup-db.sh /opt/sgpur/backup-db.sh
+sudo cp deploy/cron/sgpur-backup.cron        /etc/cron.d/sgpur-backup
+sudo cp deploy/cron/logrotate-sgpur-backup   /etc/logrotate.d/sgpur-backup
 ```
 
-Teste manualmente antes de agendar (local, ex. outro disco/ponto de montagem
-ou volume de object storage montado na VM):
+**Agende em UM lugar só.** Até 2026-08-05 existiam duas entradas para o mesmo
+script (o crontab do usuário `postgres` **e** `/etc/cron.d/sgpur-backup`),
+ambas às 03:00: os dois processos disputavam o mesmo arquivo `.tmp` e um
+abortava com `mv: cannot stat`, todo dia, numa VM de 1 GB de RAM rodando dois
+`pg_dump` ao mesmo tempo. A entrada duplicada foi removida e o script agora se
+protege sozinho com `flock` — uma segunda execução simultânea registra
+`AVISO: outro backup ja esta em execucao` e sai com 0, sem tocar em nada.
+
+### Como saber que o backup offsite parou
+
+Esta é a falha que mais importa: o backup **local** continua funcionando e a
+cópia remota morre em silêncio. O script foi endurecido para isso:
+
+- confirma que o arquivo **realmente chegou** ao Drive (`rclone lsf`), em vez
+  de confiar no código de saída do `rclone copy`;
+- em caso de falha, loga `ERRO: ... Backup offsite FALHOU.`, termina o resumo
+  com `offsite=0` e **sai com código diferente de zero**;
+- grava a data da última cópia confirmada em
+  `/opt/sgpur/backups/.ultimo-offsite-ok` e, se ela passar de 3 dias, loga
+  `ALERTA: ultimo backup offsite confirmado foi ha N dias`.
+
+Verificação rápida a qualquer momento:
 ```bash
-sudo -u sgpur BACKUP_DEST=/mnt/backup/sgpur /opt/sgpur/backup-anexos.sh
-```
-Ou para um destino remoto via SSH (rsync incremental, sem tar):
-```bash
-sudo -u sgpur BACKUP_DEST=usuario@host:/backup/sgpur /opt/sgpur/backup-anexos.sh
+sudo cat /opt/sgpur/backups/.ultimo-offsite-ok     # deve ser a data de hoje
+sudo tail -5 /var/log/sgpur-backup.log             # deve terminar em offsite=1
 ```
 
-Agende via `crontab -u sgpur -e` (backup diário às 3h, log em `backup.log`):
-```
-0 3 * * * BACKUP_DEST=/mnt/backup/sgpur /opt/sgpur/backup-anexos.sh >> /opt/sgpur/backup.log 2>&1
-```
+> **Pendência conhecida (prazo: durante 2026):** o `rclone` desta VM usa o
+> `client_id` compartilhado do projeto rclone, que **será desativado**. O
+> aviso aparece em toda execução no log. Quando isso acontecer, o backup
+> offsite passa a falhar — hoje de forma barulhenta, graças às checagens
+> acima. Correção: criar um `client_id` próprio no Google Cloud Console
+> (https://rclone.org/drive/#making-your-own-client-id) e informá-lo em
+> `rclone config` (exige navegador, não dá para fazer por SSH).
 
-Ajuste `BACKUP_DEST` (obrigatório) e opcionalmente `ANEXOS_DIR` e
-`RETENCAO_DIAS` (dias de retenção de backups locais em `.tar.gz`; default 14).
-Ver comentários no topo do script para detalhes.
-
-> **Desatualizado:** este lembrete assumia o banco no Neon (com backup/PITR
-> gerido no console deles). **Desde 2026-07-25 o Postgres roda localmente na
-> VM** — não há mais um Neon a conferir. Este script cobre só os anexos em
-> disco; o banco precisa do próprio backup (`pg_dump` + rotina de retenção,
-> já rodando na VM via crontab do usuário `postgres` conforme a sessão de
-> 2026-07-28 do `CLAUDE.md` — o script correspondente não está neste
-> repositório, foi criado direto na VM).
-
-## Se a rede bloquear SSH (proxy corporativo)
-
-Se `ssh ubuntu@<IP>` falhar de uma rede corporativa (proxy bloqueando a
-porta 22), use o **Oracle Cloud Shell** (terminal no navegador, no console
-da OCI, ícone `>_` no topo) — ele roda na rede da própria Oracle, sem passar
-pelo proxy. A chave privada (arquivo `ssh-key-AAAA-MM-DD.key`, baixado na
-criação da VM) precisa estar no Cloud Shell:
-```bash
-find ~ -maxdepth 2 -iname "*.key" 2>/dev/null   # confere se a chave ja esta la
-chmod 600 ~/ssh-key-AAAA-MM-DD.key
-ssh -i ~/ssh-key-AAAA-MM-DD.key ubuntu@<IP>
-```
-Pra enviar um JAR novo por esse caminho: baixa o jar da sua máquina/IDE,
-sobe pro Cloud Shell (botão de upload), depois `scp -i ~/ssh-key-...key
-saur-0.0.1-SNAPSHOT.jar ubuntu@<IP>:/tmp/` e segue o passo "Atualizar a
-aplicação" acima já dentro da sessão SSH.
-
-## Troubleshooting: SMTP "Authentication failed" / "535 Bad Credentials"
-
-Se o envio de e-mail falhar mesmo com host/porta/usuário certos:
-
-1. **Confirme a senha realmente em uso pelo processo** (não confie só no
-   arquivo — ele pode ter sido editado depois do último restart):
-   ```bash
-   sudo systemctl status sgpur | grep "Main PID"
-   sudo cat /proc/<PID>/environ | tr '\0' '\n' | grep MAIL_PASS
-   ```
-2. Se precisar ver o diálogo SMTP exato (o que o Java realmente manda pro
-   Gmail), ative debug temporariamente no `sgpur.env`:
-   ```
-   SPRING_MAIL_PROPERTIES_MAIL_DEBUG=true
-   SPRING_MAIL_PROPERTIES_MAIL_DEBUG_AUTH=true
-   ```
-   Reinicia o serviço, tenta enviar um e-mail, e procura a linha `AUTH
-   PLAIN <base64>` no `journalctl -u sgpur`. Decodifica com
-   `echo '<base64>' | base64 -d` — o formato é
-   `\0<usuario>\0<senha>`. Se a senha decodificada for diferente da senha
-   de app que você gerou no Google, o arquivo `sgpur.env` está com um valor
-   errado (já aconteceu: uma segunda senha de app foi digitada por engano
-   no lugar da testada). **Remova as duas variáveis de debug depois de
-   resolver** — não deixar debug ligado em produção.
-3. Teste a credencial isolada, sem depender do Java, com
-   `deploy/testar-smtp.py` (usa `getpass`, a senha nunca aparece na tela).
-4. Já eliminados como causa em incidentes anteriores (não reabrir): espaço
-   na senha de app, mecanismo `AUTH LOGIN` vs `PLAIN`, bloqueio de porta 587
-   pela Oracle (só a porta 25 é bloqueada por padrão), variável
-   `SPRING_MAIL_*` sobrescrevendo via env.

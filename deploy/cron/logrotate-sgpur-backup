@@ -1,0 +1,14 @@
+# Log do backup diario (/etc/cron.d/sgpur-backup). O logrotate.d/sgpur cobre
+# apenas /opt/sgpur/logs/*.log, entao este arquivo crescia sem limite desde
+# julho/2026 - agora com o mesmo criterio dos demais logs do SAUR.
+/var/log/sgpur-backup.log {
+    weekly
+    rotate 8
+    compress
+    delaycompress
+    missingok
+    notifempty
+    create 0640 postgres postgres
+    # /var/log e root:syslog (g+w); sem o su o logrotate recusa rotacionar.
+    su root syslog
+}
