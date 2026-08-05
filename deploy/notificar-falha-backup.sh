@@ -28,8 +28,30 @@ if [ ! -r "${ENV_FILE}" ]; then
     exit 1
 fi
 
-# shellcheck disable=SC1090
-set -a; . "${ENV_FILE}"; set +a
+# LE o sgpur.env, NUNCA faz "source" dele. O arquivo e um EnvironmentFile de
+# systemd, nao um script shell: o systemd trata cada linha como KEY=valor
+# literal, entao valores com espaco (a senha de app do Gmail vem em 4 grupos
+# separados por espaco) sao perfeitamente validos ali - mas quebram no shell.
+# Com ". ${ENV_FILE}", o bash lia SGPUR_MAIL_PASS=abcd e tentava EXECUTAR os
+# grupos seguintes como comandos ("qlnr: command not found" em producao,
+# 2026-08-05). Alem disso, sourcing executaria qualquer coisa que estivesse no
+# arquivo - risco desnecessario num script que roda como o dono da credencial.
+ler_env() {
+    local valor
+    valor=$(sed -n "s/^$1=//p" "${ENV_FILE}" | tail -1)
+    valor="${valor%$'\r'}"          # tolera arquivo salvo com CRLF
+    valor="${valor%\"}"; valor="${valor#\"}"   # tira aspas opcionais
+    valor="${valor%\'}"; valor="${valor#\'}"
+    printf '%s' "${valor}"
+}
+
+SGPUR_MAIL_HOST=$(ler_env SGPUR_MAIL_HOST)
+SGPUR_MAIL_PORT=$(ler_env SGPUR_MAIL_PORT)
+SGPUR_MAIL_USER=$(ler_env SGPUR_MAIL_USER)
+SGPUR_MAIL_PASS=$(ler_env SGPUR_MAIL_PASS)
+SGPUR_MAIL_FROM=$(ler_env SGPUR_MAIL_FROM)
+SGPUR_BACKUP_ALERTA_EMAIL=$(ler_env SGPUR_BACKUP_ALERTA_EMAIL)
+export SGPUR_MAIL_HOST SGPUR_MAIL_PORT SGPUR_MAIL_USER SGPUR_MAIL_PASS SGPUR_MAIL_FROM
 
 DESTINO="${SGPUR_BACKUP_ALERTA_EMAIL:-${SGPUR_MAIL_FROM:-}}"
 if [ -z "${DESTINO}" ] || [ -z "${SGPUR_MAIL_USER:-}" ] || [ -z "${SGPUR_MAIL_PASS:-}" ]; then
