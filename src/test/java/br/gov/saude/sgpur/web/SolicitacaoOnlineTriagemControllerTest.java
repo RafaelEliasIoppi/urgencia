@@ -69,20 +69,21 @@ class SolicitacaoOnlineTriagemControllerTest {
     @Test
     @WithMockUser(roles = "OPERADOR")
     void listaExibeSolicitacoesPendentesDeTriagem() throws Exception {
-        when(service.listarPendentesTriagem()).thenReturn(List.of(solicitacao));
+        when(service.listarPendentesTriagem(null)).thenReturn(List.of(solicitacao));
         when(service.diasEspera(solicitacao)).thenReturn(new SolicitacaoOnlineService.DiasEspera(2, "bg-secondary"));
 
         mvc.perform(get("/processos/solicitacoes-online"))
             .andExpect(status().isOk())
             .andExpect(view().name("processos/solicitacoes-online-lista"))
             .andExpect(model().attribute("solicitacoes", List.of(solicitacao)))
-            .andExpect(model().attribute("filtro", "pendentes"));
+            .andExpect(model().attribute("filtro", "pendentes"))
+            .andExpect(model().attribute("q", (Object) null));
     }
 
     @Test
     @WithMockUser(roles = "OPERADOR")
     void listaComFiltroTodasExibeTodasAsSolicitacoes() throws Exception {
-        when(service.listarTodas()).thenReturn(List.of(solicitacao));
+        when(service.listarTodas(null)).thenReturn(List.of(solicitacao));
         when(service.diasEspera(solicitacao)).thenReturn(new SolicitacaoOnlineService.DiasEspera(2, "bg-secondary"));
 
         mvc.perform(get("/processos/solicitacoes-online").param("filtro", "todas"))
@@ -91,7 +92,28 @@ class SolicitacaoOnlineTriagemControllerTest {
             .andExpect(model().attribute("solicitacoes", List.of(solicitacao)))
             .andExpect(model().attribute("filtro", "todas"));
 
-        verify(service, never()).listarPendentesTriagem();
+        verify(service, never()).listarPendentesTriagem(any());
+    }
+
+    /**
+     * A busca (item 5 do docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md) e
+     * resolvida no banco (SolicitacaoOnlineRepository.buscarPorStatus/
+     * buscarTodas) - aqui so confirmamos que o termo digitado chega ao
+     * servico certo conforme a aba (pendentes vs todas) e volta ao model.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void listaComTermoDeBuscaRepassaAoServicoCorretoConformeAAba() throws Exception {
+        when(service.listarPendentesTriagem("fulano")).thenReturn(List.of(solicitacao));
+        when(service.diasEspera(solicitacao)).thenReturn(new SolicitacaoOnlineService.DiasEspera(2, "bg-secondary"));
+
+        mvc.perform(get("/processos/solicitacoes-online").param("q", "fulano"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("solicitacoes", List.of(solicitacao)))
+            .andExpect(model().attribute("q", "fulano"));
+
+        verify(service, never()).listarPendentesTriagem((String) null);
+        verify(service, never()).listarTodas(any());
     }
 
     @Test

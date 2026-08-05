@@ -1931,3 +1931,62 @@ auditoria filtrando de fato (termo impossível → estado vazio), acentuação e
 **pré-existente** de SMTP no passo 5 (linha 225), confirmada idêntica no
 `main` sem as mudanças.
 
+## Busca no banco + atalho de teclado nas listas do operador (2026-08-04, item 5 do RELATORIO-UI-INTERACAO-AVANCADA)
+
+Antes desta sessão, busca existia em só 3 das telas de lista do operador
+(`processos/lista`, `arquivo/lista`, `auditoria/lista`). Adicionada busca
+resolvida **no banco** (JPQL `like`/`lower`, mesmo padrão de
+`ProcessoRepository.buscar`) em mais 4: **Membros**
+(`MembroUrgenciaRenalRepository.buscar` — nome/instituição/e-mail),
+**Usuários** (`UsuarioRepository.buscar` — login/nome), **Controle de
+Urgências** (`ControleUrgenciaRepository.buscarAtivas` — paciente/RGCT/
+equipe, restrito aos ativos como a listagem já era) e **Solicitações online/
+triagem** (`SolicitacaoOnlineRepository.buscarPorStatus`/`buscarTodas` —
+paciente/RGCT/equipe solicitante, respeitando a aba Pendentes×Todas). Sem
+paginação nova nesses 4 (volume pequeno, diferente de Processo/Arquivo — se
+crescer, seguir o padrão de `ArquivoController`/`ProcessoListaController`).
+`solicitante/lista.html` **não foi tocada** (filtro client-side em JS,
+decisão de escopo do relatório — volume de uma lista pessoal do próprio
+solicitante é sempre pequeno).
+
+**O termo de busca (`q`) NUNCA é gravado em log de auditoria nem em log de
+aplicação.** É dado sensível — nome de paciente digitado por quem busca. Os 4
+métodos `listar`/`lista` desses controllers não chamam `AuditoriaService`
+nenhuma (só as ações de escrita da mesma classe chamam, sem tocar em `q`), e
+o projeto não tem nenhum filtro de log de request/query-string (`grep` por
+`CommonsRequestLoggingFilter`/`getQueryString` no código: vazio). Motivo:
+duas recaídas anteriores exatas desse padrão de vazamento (nome completo de
+paciente em `/auditoria`) já foram corrigidas em 2026-07-28
+(`PROCESSO_CADASTRADO`) e 2026-08-03 (exportação de dossiê) — ver seção
+"Regras de negócio" e "Vistoria de bugs de 2026-08-03" acima. **Se algum dia
+alguém adicionar uma chamada de auditoria a um desses 4 `listar`/`lista`,
+nunca incluir `q` na mensagem.**
+
+A busca continua **restrita a ADMIN/OPERADOR** em duas camadas independentes
+(nenhuma delas nova — já existiam antes desta sessão, só confirmadas): rota
+por `SecurityConfig.requestMatchers` (`/membros/**`, `/usuarios/**`,
+`/controle-urgencias/**`, `/processos/**` — todas `hasRole`/`hasAnyRole`
+ADMIN/OPERADOR) e menu por `sec:authorize` na navbar. AVALIADOR/SOLICITANTE
+nunca alcançam essas URLs, então nunca veem nome completo de paciente por
+esse caminho.
+
+**Atalho de teclado `/` foca a busca da tela atual** (padrão GitHub/Gmail),
+`static/js/busca-atalho.js`, incluído em `layout.html` dentro do fragment
+`navbar` com `sec:authorize="hasAnyRole('ADMIN','OPERADOR')"` (defesa em
+profundidade — o script só age se existir `[data-busca-atalho]` na página, e
+essa marcação só existe nas 7 telas do operador). Escopo deliberadamente
+mínimo, conforme o relatório: **não** é uma command palette (sem navegação
+entre telas, sem busca cross-entidade), **não** intercepta a tecla enquanto o
+foco está em `input`/`textarea`/`select`/`contenteditable` (o operador digita
+motivo de indeferimento, corpo de e-mail etc. — `/` faz parte do texto
+normal), e **nenhum atalho para voto ou ação destrutiva** (fora de escopo por
+design, mesma decisão do relatório).
+
+Testado com integração real contra H2
+(`BuscaListasIntegrationTest` — as 4 queries JPQL novas, incluindo termo
+nulo/vazio não filtrando e termo sem match devolvendo vazio) e testes de
+controller (`MembroControllerTest`/`UsuarioControllerTest`/
+`ControleUrgenciaControllerTest`/`SolicitacaoOnlineTriagemControllerTest` —
+o termo chega ao serviço certo e volta ao model, sem cair no caminho
+"sem filtro" por engano).
+

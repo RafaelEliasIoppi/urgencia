@@ -36,8 +36,9 @@ public class UsuarioController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public String listar(Model model) {
-        model.addAttribute("usuarios", service.listar());
+    public String listar(@RequestParam(required = false) String q, Model model) {
+        model.addAttribute("usuarios", service.listar(q));
+        model.addAttribute("q", q);
         return "usuarios/lista";
     }
 

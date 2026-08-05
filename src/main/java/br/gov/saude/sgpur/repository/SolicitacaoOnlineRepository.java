@@ -55,6 +55,38 @@ public interface SolicitacaoOnlineRepository extends JpaRepository<SolicitacaoOn
 
     List<SolicitacaoOnline> findAllByOrderByDataEnvioDesc();
 
+    /**
+     * Mesma lista de {@link #findByStatusOrderByDataEnvioAsc}, com busca por
+     * paciente, RGCT ou equipe solicitante resolvida no banco (mesmo padrao
+     * de {@code ProcessoRepository.buscar}). {@code q} nulo/vazio devolve
+     * todas as solicitacoes do status informado.
+     */
+    @Query("""
+        select s from SolicitacaoOnline s
+        where s.status = :status
+          and (:q is null or :q = ''
+               or lower(s.pacienteNome) like lower(concat('%', :q, '%'))
+               or lower(s.pacienteRgct) like lower(concat('%', :q, '%'))
+               or lower(s.solicitanteEquipe) like lower(concat('%', :q, '%')))
+        order by s.dataEnvio asc
+        """)
+    List<SolicitacaoOnline> buscarPorStatus(@Param("status") StatusSolicitacaoOnline status, @Param("q") String q);
+
+    /**
+     * Mesma lista de {@link #findAllByOrderByDataEnvioDesc}, com a mesma
+     * busca de {@link #buscarPorStatus}, sem restringir o status (aba
+     * "Todas" da triagem).
+     */
+    @Query("""
+        select s from SolicitacaoOnline s
+        where (:q is null or :q = ''
+               or lower(s.pacienteNome) like lower(concat('%', :q, '%'))
+               or lower(s.pacienteRgct) like lower(concat('%', :q, '%'))
+               or lower(s.solicitanteEquipe) like lower(concat('%', :q, '%')))
+        order by s.dataEnvio desc
+        """)
+    List<SolicitacaoOnline> buscarTodas(@Param("q") String q);
+
     long countByStatus(StatusSolicitacaoOnline status);
 
     /**

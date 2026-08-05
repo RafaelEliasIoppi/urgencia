@@ -227,6 +227,14 @@
         setInterval(poll, 20000);
     })();
 </script>
+
+<!-- Atalho de teclado "/" para focar a busca da tela atual (docs/
+     RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md, item 5.1). Restrito a
+     ADMIN/OPERADOR pelo mesmo motivo da busca em si: o resultado carrega
+     nome completo de paciente, e o script so tem efeito em telas que
+     marcam um campo com [data-busca-atalho] (nenhuma tela de
+     AVALIADOR/SOLICITANTE marca esse atributo). -->
+<script th:src="@{/js/busca-atalho.js}" sec:authorize="hasAnyRole('ADMIN','OPERADOR')"></script>
 </nav>
 </th:block>
 

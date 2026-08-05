@@ -70,9 +70,10 @@ public class SolicitacaoOnlineTriagemController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public String lista(@RequestParam(required = false, defaultValue = "pendentes") String filtro, Model model) {
+    public String lista(@RequestParam(required = false, defaultValue = "pendentes") String filtro,
+                        @RequestParam(required = false) String q, Model model) {
         boolean todas = "todas".equals(filtro);
-        List<SolicitacaoOnline> solicitacoes = todas ? service.listarTodas() : service.listarPendentesTriagem();
+        List<SolicitacaoOnline> solicitacoes = todas ? service.listarTodas(q) : service.listarPendentesTriagem(q);
         Map<Long, SolicitacaoOnlineService.DiasEspera> diasEspera = new LinkedHashMap<>();
         for (SolicitacaoOnline s : solicitacoes) {
             diasEspera.put(s.getId(), service.diasEspera(s));
@@ -80,6 +81,7 @@ public class SolicitacaoOnlineTriagemController {
         model.addAttribute("solicitacoes", solicitacoes);
         model.addAttribute("diasEspera", diasEspera);
         model.addAttribute("filtro", todas ? "todas" : "pendentes");
+        model.addAttribute("q", q);
         Set<Long> idsComMsgNaoLidaSolicitante = mensagemService.idsSolicitacoesComMsgNaoLidaSolicitante();
         model.addAttribute("idsComMsgNaoLidaSolicitante", idsComMsgNaoLidaSolicitante);
         return "processos/solicitacoes-online-lista";

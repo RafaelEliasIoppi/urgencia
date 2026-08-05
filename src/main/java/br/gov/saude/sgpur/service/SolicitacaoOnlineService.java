@@ -170,6 +170,16 @@ public class SolicitacaoOnlineService {
         return repository.findByStatusOrderByDataEnvioAsc(StatusSolicitacaoOnline.ENVIADA);
     }
 
+    /**
+     * Mesma lista de {@link #listarPendentesTriagem()}, com busca por
+     * paciente, RGCT ou equipe solicitante resolvida no banco
+     * ({@code SolicitacaoOnlineRepository.buscarPorStatus}). {@code q}
+     * nulo/vazio devolve todas as pendentes.
+     */
+    public List<SolicitacaoOnline> listarPendentesTriagem(String q) {
+        return repository.buscarPorStatus(StatusSolicitacaoOnline.ENVIADA, q);
+    }
+
     /** Contagem de pendentes de triagem, para o badge da navbar - evita carregar a lista inteira. */
     public long contarPendentesTriagem() {
         return repository.countByStatus(StatusSolicitacaoOnline.ENVIADA);
@@ -178,6 +188,15 @@ public class SolicitacaoOnlineService {
     /** Todas as solicitacoes, qualquer status, mais recentes primeiro (aba "Todas" da triagem). */
     public List<SolicitacaoOnline> listarTodas() {
         return repository.findAllByOrderByDataEnvioDesc();
+    }
+
+    /**
+     * Mesma lista de {@link #listarTodas()}, com a mesma busca de
+     * {@link #listarPendentesTriagem(String)}. {@code q} nulo/vazio devolve
+     * todas as solicitacoes.
+     */
+    public List<SolicitacaoOnline> listarTodas(String q) {
+        return repository.buscarTodas(q);
     }
 
     /**

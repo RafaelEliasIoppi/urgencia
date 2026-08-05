@@ -45,7 +45,7 @@ class ControleUrgenciaControllerTest {
     @WithMockUser(roles = "OPERADOR")
     void listaExpoeRegistrosEContadoresPorSituacao() throws Exception {
         ControleUrgencia c = new ControleUrgencia("Maria", "RGCT1", "Equipe A", "O+", SituacaoUrgencia.ATIVA, null);
-        when(service.listarAtivas()).thenReturn(java.util.List.of(c));
+        when(service.listarAtivas(null)).thenReturn(java.util.List.of(c));
         when(service.contarPorSituacao(SituacaoUrgencia.ATIVA)).thenReturn(3L);
         when(service.contarPorSituacao(SituacaoUrgencia.RENOVADA)).thenReturn(2L);
         when(service.contarPorSituacao(SituacaoUrgencia.EXPIRADA)).thenReturn(1L);
@@ -58,7 +58,29 @@ class ControleUrgenciaControllerTest {
             .andExpect(model().attribute("ativas", 3L))
             .andExpect(model().attribute("renovadas", 2L))
             .andExpect(model().attribute("expiradas", 1L))
-            .andExpect(model().attribute("canceladas", 0L));
+            .andExpect(model().attribute("canceladas", 0L))
+            .andExpect(model().attribute("q", (Object) null));
+    }
+
+    /**
+     * A busca (item 5 do docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md) e
+     * resolvida no banco (ControleUrgenciaRepository.buscarAtivas) - aqui so
+     * confirmamos que o termo digitado chega ao servico e volta ao model.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void listaComTermoDeBuscaRepassaAoServicoEAoModel() throws Exception {
+        ControleUrgencia c = new ControleUrgencia("Maria", "RGCT1", "Equipe A", "O+", SituacaoUrgencia.ATIVA, null);
+        when(service.listarAtivas("maria")).thenReturn(java.util.List.of(c));
+        when(service.contarPorSituacao(any())).thenReturn(0L);
+
+        mvc.perform(get("/controle-urgencias").param("q", "maria"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("controle-urgencias/lista"))
+            .andExpect(model().attribute("registros", java.util.List.of(c)))
+            .andExpect(model().attribute("q", "maria"));
+
+        verify(service, never()).listarAtivas();
     }
 
     @Test
