@@ -682,6 +682,52 @@ class ProcessoDetalheControllerTest {
     }
 
     /**
+     * Raiz da queixa do relatorio de clareza de 2026-08-05: a cor do
+     * sub-passo tinha que refletir o ESTADO real (pendente/concluido), nao a
+     * POSICAO na tela - antes, o sub-passo 2 aparecia sempre verde mesmo
+     * "Pendente". Renderiza o template de verdade nos dois estados do
+     * sub-passo 1 (sem documento e com documento) e confere que a classe
+     * subpasso-atual/subpasso-ok segue o estado, nunca fixa por posicao.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void corDoSubPassoDaAbaEnvioSegueOEstadoRealNaoAPosicao() throws Exception {
+        processo.addParecer(parecer(processo, membro(1L, "HCPA", "Ana"), null, null, null));
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+
+        // Sem documento clinico: sub-passo 1 "atual" (azul), sub-passo 2 "bloqueado" (cinza).
+        // Marcadores sao os comentarios HTML literais do proprio template (Thymeleaf
+        // preserva <!-- --> comum no HTML de saida) - mais robusto que contar caracteres.
+        String semDocumento = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        String secao1SemDoc = semDocumento.substring(
+            semDocumento.indexOf("PASSO 1: Documentos"),
+            semDocumento.indexOf("PASSO 2: Registrar envio"));
+        org.assertj.core.api.Assertions.assertThat(secao1SemDoc).contains("subpasso-atual");
+        org.assertj.core.api.Assertions.assertThat(secao1SemDoc).doesNotContain("subpasso-ok");
+
+        // Com documento clinico anexado: sub-passo 1 vira "ok" (verde) - NUNCA
+        // fixo por posicao, sempre pelo estado real de documentosClinicos.
+        Anexo doc = new Anexo();
+        doc.setId(50L);
+        doc.setTipo(TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR);
+        doc.setNomeArquivo("exame.pdf");
+        doc.setContentType("application/pdf");
+        processo.addAnexo(doc);
+
+        String comDocumento = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+        String secao1ComDoc = comDocumento.substring(
+            comDocumento.indexOf("PASSO 1: Documentos"),
+            comDocumento.indexOf("PASSO 2: Registrar envio"));
+        org.assertj.core.api.Assertions.assertThat(secao1ComDoc).contains("subpasso-ok");
+        org.assertj.core.api.Assertions.assertThat(secao1ComDoc).doesNotContain("subpasso-atual");
+    }
+
+    /**
      * Quem ja votou NAO recebe convite de novo ({@code
      * ProcessoService.pareceresPendentesComEmail} filtra por resultado nulo),
      * e um avaliador sem e-mail cadastrado simplesmente fica de fora - as

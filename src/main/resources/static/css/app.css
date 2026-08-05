@@ -1058,6 +1058,50 @@ tr.linha-inativa > td:first-child {
     * { transition-duration: .01ms !important; }
 }
 
+/* === Sub-passo de etapa (aba Envio e aba Finalizacao) ===
+   Relatorio de clareza (2026-08-05), item 4.1: os sub-passos usavam borda
+   lateral FIXA por posicao (1o sempre azul, 2o sempre verde),
+   independentemente de estarem concluidos ou pendentes - o operador podia
+   ver "verde" num passo que ainda nao tinha feito. Aqui a cor e SEMPRE
+   funcao do estado (.subpasso-atual/.subpasso-ok/.subpasso-bloqueado),
+   nunca da posicao. Reusa as variaveis --rs-* e o fragment
+   layout :: status(ok) ja existentes - sem Bootstrap novo, sem JS. */
+.subpasso            { border-left: 3px solid var(--rs-gray-300);
+                       padding: .25rem 0 .25rem 1rem; margin-bottom: 1.5rem; }
+.subpasso-atual      { border-left-color: var(--rs-blue); }
+.subpasso-ok         { border-left-color: var(--rs-green); }
+.subpasso-bloqueado  { border-left-color: var(--rs-gray-200); opacity: .65; }
+
+.subpasso-head       { display: flex; align-items: center; gap: .5rem;
+                       margin-bottom: .5rem; }
+.subpasso-num        { width: 1.6rem; height: 1.6rem; border-radius: 50%;
+                       display: inline-flex; align-items: center;
+                       justify-content: center; font-weight: 700;
+                       font-size: .8rem; background: var(--rs-gray-200);
+                       color: var(--rs-gray-700); flex-shrink: 0; }
+.subpasso-atual .subpasso-num { background: var(--rs-blue);  color: #fff; }
+.subpasso-ok    .subpasso-num { background: var(--rs-green); color: #fff; }
+.subpasso-head .status-mark   { margin-left: auto; }
+
+/* Regra de seguranca dentro de um sub-passo: precisa de destaque proprio,
+   distinto do alert generico (nao e um aviso qualquer, e a informacao mais
+   importante do bloco - relatorio item 4.2/P5: "seguranca encurta e sobe,
+   nunca sai"). */
+.subpasso-regra {
+    background: var(--rs-red-light);
+    border-left: 3px solid var(--rs-red);
+    color: var(--rs-red-dark);
+    padding: .5rem .75rem;
+    border-radius: .25rem;
+    margin-bottom: .5rem;
+}
+
+/* <details>/<summary> nativo para o contexto secundario dentro de um
+   sub-passo (item 4.2/P5: "o porque e o como o sistema funciona descem
+   para um <details> expansivel"). Nativo = acessivel por padrao, sem JS. */
+.subpasso-ajuda summary { cursor: pointer; color: var(--rs-blue); }
+.subpasso-ajuda summary:hover { text-decoration: underline; }
+
 /* === Impressao ===
    Fluxo de trabalho com oficio e protocolo: imprimir a tela de um processo e
    comum. Ate 2026-08-04 nao havia nenhuma regra de impressao, entao saia tudo -
@@ -1104,6 +1148,12 @@ tr.linha-inativa > td:first-child {
         color: #000 !important;
         background: none !important;
     }
+
+    /* <details> fechado por padrao (item 4.2/4.4 do relatorio de clareza,
+       2026-08-05): no papel nao ha como clicar em <summary>, entao o
+       conteudo precisa aparecer sempre, mesmo colapsado na tela. */
+    details, details > * { display: block !important; }
+    details > summary { display: none !important; }
 
     a[href]::after { content: ""; }   /* nao poluir com a URL de cada link */
 }
