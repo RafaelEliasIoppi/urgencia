@@ -32,6 +32,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrl;
@@ -95,6 +96,27 @@ class UsuarioControllerTest {
             .andExpect(view().name("usuarios/lista"))
             .andExpect(model().attribute("usuarios", usuarios))
             .andExpect(model().attribute("q", (Object) null));
+    }
+
+    /**
+     * O e-mail de cada usuario precisa aparecer na tela (item pedido pelo
+     * usuario, 2026-08-05) - so conferir o model attribute nao pega um
+     * template que carregue os dados mas esqueca de exibir a coluna. Renderiza
+     * o HTML de verdade. Sem e-mail cadastrado, mostra um traco em vez de
+     * string vazia (mais claro que "campo desapareceu").
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void listarExibeOEmailDeCadaUsuarioNaTela() throws Exception {
+        Usuario semEmail = usuario(3L, "sememail", Perfil.OPERADOR);
+        semEmail.setEmail(null);
+        List<Usuario> usuarios = List.of(usuario(1L, "admin", Perfil.ADMIN), semEmail);
+        when(service.listar(null)).thenReturn(usuarios);
+
+        mvc.perform(get("/usuarios"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(containsString("admin@example.com")))
+            .andExpect(content().string(containsString(">E-mail<")));
     }
 
     /**
