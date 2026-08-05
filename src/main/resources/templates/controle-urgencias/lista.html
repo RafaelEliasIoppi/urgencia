@@ -21,7 +21,7 @@
          terceiro; o sistema tinha 4 dialetos visuais para "cartao de numero". -->
     <div class="row row-cols-2 row-cols-md-4 g-3 mb-4">
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-membros h-100">
+            <div class="stat-card stat-card-portal stat-card-membros stat-card-estatico h-100">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${ativas}">0</span>
                     <span class="stat-icon"><i class="bi bi-play-circle"></i></span>
@@ -30,7 +30,7 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-deferido h-100">
+            <div class="stat-card stat-card-portal stat-card-deferido stat-card-estatico h-100">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${renovadas}">0</span>
                     <span class="stat-icon"><i class="bi bi-arrow-clockwise"></i></span>
@@ -39,7 +39,7 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-andamento h-100">
+            <div class="stat-card stat-card-portal stat-card-andamento stat-card-estatico h-100">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${expiradas}">0</span>
                     <span class="stat-icon"><i class="bi bi-hourglass-bottom"></i></span>
@@ -48,7 +48,7 @@
             </div>
         </div>
         <div class="col">
-            <div class="stat-card stat-card-portal stat-card-cancelado h-100">
+            <div class="stat-card stat-card-portal stat-card-cancelado stat-card-estatico h-100">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${canceladas}">0</span>
                     <span class="stat-icon"><i class="bi bi-slash-circle"></i></span>

@@ -7,6 +7,7 @@ import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.lang.Nullable;
 import org.springframework.security.core.Authentication;
@@ -157,6 +158,31 @@ public class GlobalModelAdvice {
         // Autenticado sem nenhum dos papeis conhecidos: o login e o unico
         // destino garantido (qualquer area do sistema devolveria 403).
         return "/login";
+    }
+
+    /**
+     * URI da requisicao atual, relativa ao context-path (sempre comecando com
+     * "/"), para a navbar destacar a secao em que o operador esta (S13 da
+     * vistoria de UI de 2026-08-05).
+     *
+     * <p>Deliberadamente resolvido aqui, via parametro {@code HttpServletRequest}
+     * injetado pelo Spring MVC, em vez de {@code #httpServletRequest} do
+     * Thymeleaf: esse objeto de expressao do dialeto Spring depende de um
+     * {@code IWebContext} que nao fica disponivel em todo cenario de teste
+     * deste projeto (confirmado quebrando ~19 classes de {@code @WebMvcTest}/
+     * {@code @SpringBootTest} com "Property or field 'contextPath' cannot be
+     * found on null" ao tentar usa-lo direto no template) - um parametro de
+     * controller/advice comum e testado pelo proprio MockMvc, sem essa
+     * dependencia extra.</p>
+     */
+    @ModelAttribute("uriAtual")
+    public String uriAtual(HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        String ctx = request.getContextPath();
+        if (ctx != null && !ctx.isEmpty() && uri.startsWith(ctx)) {
+            uri = uri.substring(ctx.length());
+        }
+        return uri;
     }
 
     private boolean temPapelSolicitante(Authentication auth) {
