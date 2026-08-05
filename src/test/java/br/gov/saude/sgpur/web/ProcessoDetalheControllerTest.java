@@ -28,9 +28,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * Testes do ProcessoDetalheController: criacao (sempre a partir de uma
  * SolicitacaoOnline - ajuste de 2026-07-27 -, numeracao automatica vs
- * manual, validacoes), a tela de detalhe (gating das abas 1-5 e o
- * sub-rotulo de status), edicao, reabertura e exclusao. Recebimento (passo
- * 1) e sempre automatico e nao tem mais endpoint proprio.
+ * manual, validacoes), a tela de detalhe (gating das abas 1-4 e o
+ * sub-rotulo de status), edicao, reabertura e exclusao. O antigo passo
+ * "Recebimento" foi fundido em Envio em 2026-08-05 (sempre foi automatico e
+ * nunca teve endpoint proprio - ver FluxoProcessoService).
  */
 @WebMvcTest(ProcessoDetalheController.class)
 class ProcessoDetalheControllerTest {
@@ -88,13 +89,13 @@ class ProcessoDetalheControllerTest {
         // sobrescreve com uma lista nao-vazia quando precisar.
         when(fluxoService.montarEtapas(any())).thenReturn(List.of());
         when(fluxoService.montarPassosWizard(any())).thenReturn(List.of(
-            new PassoWizard(1, "Recebimento", "recebimento", PassoWizard.Estado.ATUAL, "")));
+            new PassoWizard(1, "Envio", "pane-envio", PassoWizard.Estado.ATUAL, "")));
         // Gating/subrotulo agora vem de FluxoProcessoService (extraido do
         // controller) - como o service e mockado aqui, o default e "nada
-        // liberado alem do recebimento" e sem subrotulo; cada teste que
-        // precisa de outro cenario sobrescreve com o stub especifico.
+        // liberado" e sem subrotulo; cada teste que precisa de outro cenario
+        // sobrescreve com o stub especifico.
         when(fluxoService.calcularGating(any())).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, false, false, false, false));
+            new FluxoProcessoService.GatingAbas(false, false, false, false));
         when(fluxoService.calcularSubrotuloStatus(any())).thenReturn(null);
         // Todo processo hoje vem do Portal do Solicitante; testes especificos
         // de detalhe sobrescrevem quando precisarem simular um processo
@@ -328,12 +329,12 @@ class ProcessoDetalheControllerTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void detalheDeUmProcessoRecemCriadoNaoLiberaNadaAlemDoRecebimento() throws Exception {
-        // Processo sem pareceres/anexos: nada alem do recebimento esta liberado.
+    void detalheDeUmProcessoRecemCriadoNaoLiberaNadaAlemDoEnvio() throws Exception {
+        // Processo sem pareceres/anexos: o Envio (passo 1, sempre liberado -
+        // ver default do fluxoService mockado acima) e o unico liberado.
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
             .andExpect(view().name("processos/detalhe"))
-            .andExpect(model().attribute("liberadoRecebimento", true))
             .andExpect(model().attribute("liberadoEnvio", false))
             .andExpect(model().attribute("liberadoRespostas", false))
             .andExpect(model().attribute("liberadoDecisao", false))
@@ -342,11 +343,13 @@ class ProcessoDetalheControllerTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR")
-    void detalheLiberaEnvioQuandoRecebimentoFoiFeito() throws Exception {
-        // Recebimento e sempre automatico desde 2026-07-27 - o controller so
-        // repassa o gating calculado por FluxoProcessoService (mockado aqui).
+    void detalheLiberaEnvioENaoLiberaRespostasAntesDoEnvioSerRegistrado() throws Exception {
+        // O controller so repassa o gating calculado por FluxoProcessoService
+        // (mockado aqui) - Envio (passo 1) sempre liberado desde 2026-08-05
+        // (Recebimento fundido nele, nao existe mais como pre-requisito), mas
+        // Respostas (passo 2) so libera depois que o envio for registrado.
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -368,7 +371,7 @@ class ProcessoDetalheControllerTest {
         when(processoService.contarRespondidos(processo)).thenReturn(1L);
         when(fluxoService.calcularSubrotuloStatus(processo)).thenReturn("Aguardando parecer (1/3)");
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, false, false, false, false));
+            new FluxoProcessoService.GatingAbas(false, false, false, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -394,7 +397,7 @@ class ProcessoDetalheControllerTest {
         when(fluxoService.calcularSubrotuloStatus(processo)).thenReturn(
             "Maioria formada - pronto para decidir (Deferido)");
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, false));
+            new FluxoProcessoService.GatingAbas(true, true, true, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -427,7 +430,7 @@ class ProcessoDetalheControllerTest {
         when(processoService.sugerirDecisao(processo)).thenReturn(Optional.of(StatusProcesso.DEFERIDO));
         when(processoService.contarRespondidos(processo)).thenReturn(2L);
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, false));
+            new FluxoProcessoService.GatingAbas(true, true, true, false));
 
         String html = mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -519,7 +522,7 @@ class ProcessoDetalheControllerTest {
         // processo hoje vem do Portal do Solicitante).
         when(solicitacaoOnlineRepository.findIdByProcessoGeradoId(1L)).thenReturn(Optional.of(42L));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -666,7 +669,7 @@ class ProcessoDetalheControllerTest {
     void detalheSeparaDocumentoPendenteDeAnonimizacaoDosDocumentosClinicos() throws Exception {
         Anexo pendente = anexoPendente(7L);
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -702,7 +705,7 @@ class ProcessoDetalheControllerTest {
         processo.addParecer(parecer(processo, m2, null, null, null));
         processo.addParecer(parecer(processo, m3, null, null, null));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -734,7 +737,7 @@ class ProcessoDetalheControllerTest {
         processo.addParecer(parecer(processo, membro(1L, "HCPA", "Ana"), null, null, null));
         processo.addParecer(parecer(processo, membro(2L, "HCC", "Bruno"), null, null, null));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         String html = mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -764,7 +767,7 @@ class ProcessoDetalheControllerTest {
     void corDoSubPassoDaAbaEnvioSegueOEstadoRealNaoAPosicao() throws Exception {
         processo.addParecer(parecer(processo, membro(1L, "HCPA", "Ana"), null, null, null));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         // Sem documento clinico: sub-passo 1 "atual" (azul), sub-passo 2 "bloqueado" (cinza).
         // Marcadores sao os comentarios HTML literais do proprio template (Thymeleaf
@@ -813,7 +816,7 @@ class ProcessoDetalheControllerTest {
         processo.addParecer(parecer(processo, m1, ResultadoParecer.FAVORAVEL, null, null));
         processo.addParecer(parecer(processo, semEmail, null, null, null));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, false, false, false));
+            new FluxoProcessoService.GatingAbas(true, false, false, false));
 
         String html = mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -853,7 +856,7 @@ class ProcessoDetalheControllerTest {
         when(processoService.contarRespondidos(processo)).thenReturn(2L);
         when(processoService.sugerirDecisao(processo)).thenReturn(Optional.of(StatusProcesso.INDEFERIDO));
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, false));
+            new FluxoProcessoService.GatingAbas(true, true, true, false));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -890,7 +893,7 @@ class ProcessoDetalheControllerTest {
         processo.setStatus(StatusProcesso.INDEFERIDO);
         processo.setNumeroOficio("0007/2026");
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+            new FluxoProcessoService.GatingAbas(true, true, true, true));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -925,7 +928,7 @@ class ProcessoDetalheControllerTest {
     void abaFinalizacaoMostraADataDeEnvioAoSntSemCampoEditavel() throws Exception {
         processo.setStatus(StatusProcesso.DEFERIDO);
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+            new FluxoProcessoService.GatingAbas(true, true, true, true));
 
         mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
@@ -952,7 +955,7 @@ class ProcessoDetalheControllerTest {
     void abaFinalizacaoNaoRepeteAPendenciaDeAnexoDuasVezes() throws Exception {
         processo.setStatus(StatusProcesso.DEFERIDO);
         when(fluxoService.calcularGating(processo)).thenReturn(
-            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+            new FluxoProcessoService.GatingAbas(true, true, true, true));
 
         String html = mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())

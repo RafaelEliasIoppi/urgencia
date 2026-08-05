@@ -100,15 +100,14 @@ class FluxoProcessoServiceTest {
     }
 
     @Test
-    void recebimentoEhSempreConcluidoAutomaticamente() {
-        // Desde 2026-07-27, todo processo nasce de uma SolicitacaoOnline
-        // convertida pelo Portal do Solicitante - o Recebimento (etapa 1)
-        // nunca depende de nenhum anexo, e ja nasce CONCLUIDA.
+    void envioEhAPrimeiraEtapaEComecaAtualQuandoNaoHaNenhumAnexoOuEnvio() {
+        // O Recebimento foi fundido em Envio em 2026-08-05 (era sempre
+        // automatico e concluido, sem nenhuma acao real do operador - ver
+        // FluxoProcessoService). Hoje Envio e a PRIMEIRA etapa do checklist.
         List<EtapaFluxo> etapas = fluxo().montarEtapas(processoComTresPareceres());
         assertThat(etapas).isNotEmpty();
-        assertThat(etapas.get(0).titulo()).contains("Recebimento");
-        assertThat(etapas.get(0).estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(etapas.get(0).detalhe()).contains("automatico");
+        assertThat(etapas.get(0).chave()).isEqualTo(Chave.ENVIO);
+        assertThat(etapas.get(0).estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
     }
 
     @Test
@@ -137,8 +136,8 @@ class FluxoProcessoServiceTest {
 
     @Test
     void resumoPendenciaApontaEtapaAtual() {
-        // Recebimento ja nasce CONCLUIDA (automatica) - a proxima etapa
-        // pendente (ATUAL) e o Envio aos 3 medicos.
+        // Envio aos 3 medicos e a primeira etapa do checklist (Recebimento
+        // foi fundido nela em 2026-08-05) - fica ATUAL desde o inicio.
         String resumo = fluxo().resumoPendencia(processoComTresPareceres());
         assertThat(resumo).contains("Envio");
     }
@@ -260,11 +259,10 @@ class FluxoProcessoServiceTest {
         Processo p = processoComTresPareceres();
         p.setStatus(StatusProcesso.SOLICITADO);
 
-        // Recebimento e sempre automatico: ja nasce CONCLUIDA, entao a etapa 2
-        // (Envio) ja comeca ATUAL desde o primeiro momento (nao ha mais um
-        // passo manual de "completar o recebimento" para liberar o Envio).
+        // Envio (etapa 1, com o Recebimento fundido nela desde 2026-08-05) ja
+        // comeca ATUAL desde o primeiro momento (nao ha mais um passo manual
+        // de "completar o recebimento" antes de liberar o Envio).
         List<EtapaFluxo> e0 = fluxo().montarEtapas(p);
-        assertThat(estado(e0, Chave.RECEBIMENTO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
         assertThat(estado(e0, Chave.ENVIO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
         assertThat(estado(e0, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
         assertThat(estado(e0, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
@@ -415,7 +413,6 @@ class FluxoProcessoServiceTest {
         p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
-        assertThat(estado(etapas, Chave.RECEBIMENTO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
         assertThat(estado(etapas, Chave.ENVIO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
         assertThat(estado(etapas, Chave.RESPOSTAS)).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
         assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
@@ -481,7 +478,7 @@ class FluxoProcessoServiceTest {
         // maioria ja formada (Respostas = CONCLUIDA), mas o 3o medico pediu
         // informacao complementar, pausando o fluxo. A timeline vertical
         // bloqueia "Decisao final" (PENDENTE) - o wizard horizontal precisa
-        // concordar e manter o passo 4 BLOQUEADA, nao ATUAL.
+        // concordar e manter o passo 3 BLOQUEADA, nao ATUAL.
         Processo p = processoComTresPareceres();
         registrarEnvioCompleto(p);
         registrarMaioria(p, ResultadoParecer.FAVORAVEL);
@@ -495,7 +492,7 @@ class FluxoProcessoServiceTest {
 
         List<PassoWizard> passos = fluxo().montarPassosWizard(p);
         PassoWizard passoDecisao = passos.stream()
-                .filter(passo -> passo.numero() == 4).findFirst().orElseThrow();
+                .filter(passo -> passo.numero() == 3).findFirst().orElseThrow();
         assertThat(passoDecisao.estado()).isEqualTo(PassoWizard.Estado.BLOQUEADA);
     }
 
@@ -517,11 +514,12 @@ class FluxoProcessoServiceTest {
         long concluidasEsperadas = etapas.stream()
                 .filter(e -> e.estado() == EtapaFluxo.Estado.CONCLUIDA).count();
 
-        // Recebimento, Envio, Respostas, Decisao, Comprovante SNT = 5 concluidas;
-        // Resposta ao solicitante fica ATUAL (nao concluida). Total de etapas = 6
-        // (sem a etapa de Informacao complementar, que so aparece em pausa).
-        assertThat(etapas).hasSize(6);
-        assertThat(concluidasEsperadas).isEqualTo(5);
+        // Envio, Respostas, Decisao, Comprovante SNT = 4 concluidas;
+        // Resposta ao solicitante fica ATUAL (nao concluida). Total de etapas = 5
+        // (sem a etapa de Informacao complementar, que so aparece em pausa - e
+        // sem Recebimento, fundido em Envio desde 2026-08-05).
+        assertThat(etapas).hasSize(5);
+        assertThat(concluidasEsperadas).isEqualTo(4);
         assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
     }
 
@@ -558,9 +556,9 @@ class FluxoProcessoServiceTest {
             .filter(e -> e.estado() == EtapaFluxo.Estado.CONCLUIDA).count();
 
         // Nao ha etapa de oficio nem de comprovante SNT em processo cancelado:
-        // sobram Recebimento, Envio, Respostas, Decisao e Resposta ao
-        // solicitante - todas concluidas.
-        assertThat(etapas).hasSize(5);
+        // sobram Envio, Respostas, Decisao e Resposta ao solicitante - todas
+        // concluidas (Recebimento fundido em Envio desde 2026-08-05).
+        assertThat(etapas).hasSize(4);
         assertThat(concluidas).isEqualTo(etapas.size());
     }
 
@@ -570,7 +568,7 @@ class FluxoProcessoServiceTest {
         p.setStatus(StatusProcesso.CANCELADO);
 
         PassoWizard finalizacao = fluxo().montarPassosWizard(p).stream()
-            .filter(passo -> passo.numero() == 5).findFirst().orElseThrow();
+            .filter(passo -> passo.numero() == 4).findFirst().orElseThrow();
 
         assertThat(finalizacao.estado()).isEqualTo(PassoWizard.Estado.CONCLUIDA);
     }
@@ -618,28 +616,27 @@ class FluxoProcessoServiceTest {
     }
 
     // ----------------------------------------------------------------
-    // Recebimento e SEMPRE automatico desde 2026-07-27 (todo processo nasce
-    // de uma SolicitacaoOnline convertida pelo Portal do Solicitante) - nao
-    // ha mais "e-mail original" a anexar nem confirmacao manual/capa gerada
-    // pelo operador; a etapa ja nasce concluida, com ou sem qualquer anexo,
-    // e independente de veioDoPortal(p) (que so serve hoje para achar o link
-    // "Ver solicitacao original" na tela de detalhe - ver
+    // Envio (com o Recebimento fundido nele em 2026-08-05) e SEMPRE liberado
+    // desde 2026-07-27 (todo processo nasce de uma SolicitacaoOnline
+    // convertida pelo Portal do Solicitante) - nao ha mais "e-mail original"
+    // a anexar nem confirmacao manual/capa gerada pelo operador antes dele;
+    // o gating de Envio e independente de veioDoPortal(p) (que so serve hoje
+    // para achar o link "Ver solicitacao original" na tela de detalhe - ver
     // ProcessoDetalheController.detalhe).
     // ----------------------------------------------------------------
 
     @Test
-    void recebimentoConcluiAutomaticamenteMesmoSemNenhumAnexoEIndependenteDeVeioDoPortal() {
+    void envioJaLiberadoMesmoSemNenhumAnexoEIndependenteDeVeioDoPortal() {
         Processo p = processoComTresPareceres();
         p.setId(10L);
-        // nenhum anexo e veioDoPortal(p) false (stub default de fluxo()): mesmo assim a
-        // etapa 1 ja nasce CONCLUIDA e o Envio (passo 2) ja libera de imediato.
+        // nenhum anexo e veioDoPortal(p) false (stub default de fluxo()): mesmo assim
+        // o Envio (passo 1) ja esta liberado de imediato.
         FluxoProcessoService fluxo = fluxo();
-        EtapaFluxo recebimento = fluxo.montarEtapas(p).get(0);
-        assertThat(recebimento.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(recebimento.detalhe()).contains("automatico");
+        EtapaFluxo primeiraEtapa = fluxo.montarEtapas(p).get(0);
+        assertThat(primeiraEtapa.chave()).isEqualTo(Chave.ENVIO);
+        assertThat(primeiraEtapa.estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
 
         FluxoProcessoService.GatingAbas gating = fluxo.calcularGating(p);
-        assertThat(gating.liberadoRecebimento()).isTrue();
         assertThat(gating.liberadoEnvio()).isTrue();
     }
 

@@ -232,9 +232,16 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   `DEFERIDO` para `REPROVADA` — um processo cancelado aparecia como
   "Reprovada" no Portal do Solicitante, dizendo que a equipe analisou e negou
   o pedido quando ele só foi cancelado (às vezes pelo próprio solicitante).
-- **Fluxo em 6 passos** (checklist `FluxoProcessoService` + abas na tela):
-  **1 Recebimento · 2 Envio · 3 Respostas · 4 Decisão · 5 Ofício/Comprovante ·
-  6 Resposta ao solicitante**. Cada etapa só fica **CONCLUIDA (verde)** na
+- **Fluxo em 5 passos** (checklist `FluxoProcessoService` + abas na tela):
+  **1 Envio · 2 Respostas · 3 Decisão · 4 Ofício/Comprovante · 5 Resposta ao
+  solicitante**. **Atualização de 2026-08-05: era "Fluxo em 6 passos" até
+  então, com um "1 Recebimento" antes de Envio** — removido como etapa/aba
+  própria e fundido em Envio (ver seção "Recebimento fundido em Envio" mais
+  abaixo neste arquivo para o detalhe completo da mudança). Boa parte do
+  texto histórico abaixo, sobre o antigo "Passo 1 (Recebimento)", continua
+  aqui só como arqueologia de por que ele já nascia sempre automático desde
+  2026-07-27 — não descreve mais uma aba/etapa que existe hoje. Cada etapa
+  só fica **CONCLUIDA (verde)** na
   timeline se a **sua própria condição** estiver satisfeita **E** todas as
   etapas anteriores também estiverem `CONCLUIDA` (`montar()`: `concluida &&
   anterioresConcluidas`). Sem essa segunda checagem uma etapa posterior pode
@@ -255,7 +262,9 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
    abaixo) — o parágrafo acima é histórico, mantido para quem for procurar o
    contexto do bug de 2026-07-09, mas o comportamento descrito já não existe
    mais no código.
-- **Passo 1 (Recebimento): SEMPRE automático desde 2026-07-27.** Criação
+- **Passo 1 (Recebimento): SEMPRE automático desde 2026-07-27** (histórico —
+  desde 2026-08-05 não é mais uma aba/etapa própria, foi fundido em Envio;
+  ver seção "Recebimento fundido em Envio" abaixo). Criação
   manual de processo "do zero" deixou de existir — `GET/POST /processos`
   (`ProcessoDetalheController.novo`/`salvar`) agora **exigem**
   `origemSolicitacaoOnlineId` (rejeita com flash de erro e redireciona para
@@ -2467,4 +2476,108 @@ este formulário; por isso `FluxoCompletoProcessoIT` (que só cobre o caminho
 automático) não precisou de nenhum ajuste para esta mudança específica.
 
 **Validação:** suíte completa, 0 falhas (JDK 21).
+
+## Recebimento fundido em Envio (2026-08-05)
+
+Segunda mudança aprovada explicitamente pelo dono do produto na mesma
+sessão da confirmação de "Registrar decisão" acima (branch
+`feat/confirmacao-decisao-fundir-recebimento`, commit separado).
+
+**Contexto:** desde 2026-07-27 (ver seção "Passo 1 (Recebimento)" acima), a
+etapa Recebimento é **sempre automática e concluída** — todo `Processo`
+nasce de uma `SolicitacaoOnline` convertida pelo Portal do Solicitante, e
+não sobrava nenhuma ação real do operador nessa aba, só uma etiqueta
+sempre-verde antes de Envio. **Decisão de produto:** eliminar o Recebimento
+como passo/etapa próprio, fundindo-o em Envio. O fluxo passou de **6 para 5**
+passos no checklist: **1 Envio · 2 Respostas · 3 Decisão · 4
+Ofício/Comprovante · 5 Resposta ao solicitante** (ver bullet "Fluxo em 5
+passos" acima, atualizado no lugar do antigo "Fluxo em 6 passos").
+
+**Levantamento feito antes de codar** (grep por `Recebimento`/`RECEBIMENTO`
+em todo `src/`, mais `docs/PLANO-FLUXO.md`) para não deixar aba/id/string
+órfã — todos os pontos abaixo foram tocados na mesma sessão:
+
+- **`EtapaFluxo.Chave`** (`service/dto/EtapaFluxo.java`): valor `RECEBIMENTO`
+  removido do enum (não ficou como "legado não usado" — não havia motivo
+  para manter um valor de identidade que nunca mais é produzido).
+- **`FluxoProcessoService.montarEtapas`**: o bloco que sempre adicionava a
+  etapa "Recebimento da solicitação" (`CONCLUIDA` incondicional) foi
+  removido; Envio passou a ser a **primeira** etapa da lista, com
+  `anterioresConcluidas` já `true` desde o início (mesmo efeito prático de
+  antes — Envio sempre foi liberado desde que Recebimento existia). Os
+  comentários numéricos das etapas seguintes foram renumerados (2→1, 3→2,
+  3b→2b, 4→3, 5→4, 5b→4b, 6→5).
+- **`FluxoProcessoService.montarPassosWizard`**: o passo "1. Recebimento"
+  (`pane-recebimento`) foi removido; os 4 passos restantes (Envio,
+  Respostas, Decisão, Finalização) foram renumerados 1-4. Tooltips que
+  citavam "(passo N)" foram ajustados para os números novos.
+- **`FluxoProcessoService.GatingAbas`**: o campo `liberadoRecebimento`
+  (sempre `true`, sem influenciar mais nada) foi removido do record — passou
+  de 5 para 4 campos: `(liberadoEnvio, liberadoRespostas, liberadoDecisao,
+  liberadoFinalizacao)`. `calcularGating` simplificado: `liberadoEnvio` é
+  agora diretamente `true` (era `recebimentoFeito`, que também já era
+  sempre `true`).
+- **`ProcessoDetalheController.detalhe`**: parou de expor o model attribute
+  `liberadoRecebimento` (não lido por nenhum template depois da remoção da
+  aba). `liberadoEnvio` continua exposto, com a mesma semântica de sempre
+  (`true`).
+- **`processos/detalhe.html`**: a `<!-- ABA 1: Recebimento -->` inteira foi
+  removida (era o card "Recebimento e ajuste do texto", sem nenhum
+  formulário — só o banner "Recebimento concluído!" e o botão "Avançar para
+  Envio", ambos sem função depois da fusão). O link **"Ver solicitação
+  original"** (`solicitacaoOnlineOrigemId`, alimentado por
+  `FluxoProcessoService.veioDoPortal`) **não desapareceu** — migrou para um
+  aviso curto no topo da aba Envio (agora a aba 1), com o mesmo texto/rota
+  de sempre. O switch de ícones do wizard (`bi-inbox` de Recebimento,
+  `bi-send` de Envio etc.) perdeu o case 1 antigo e foi renumerado. O badge
+  de contagem de favoráveis no passo "Respostas" trocou a condição de
+  `passo.numero == 3` para `passo.numero == 2`. As demais 4 abas (`ABA 2..5`
+  → `ABA 1..4`) só tiveram o comentário HTML renumerado — nenhum `id`,
+  `paneId` ou `aria-*` de Respostas/Decisão/Finalização mudou (eles são
+  gerados dinamicamente a partir de `passosWizard`, então a remoção do item
+  Recebimento da lista já bastou para não sobrar nenhum `id`/`aria-*` órfão
+  — confirmado que `AcessibilidadeEstruturaTest` continua verde sem
+  nenhum ajuste nele). Os dois banners do topo da tela (processo
+  encerrado/decisão tomada) tiveram a menção a "etapas 1-4 (recebimento,
+  envio, pareceres)" reescrita para não citar mais o recebimento como etapa
+  separada.
+- **`docs/PLANO-FLUXO.md`**: tabela "As 6 etapas do checklist" virou "As 5
+  etapas do checklist"; a linha do Recebimento foi removida e as demais
+  renumeradas, com uma nota explicando a fusão.
+- **Testes**: `FluxoProcessoServiceTest` (a maior mudança — removida a
+  asserção de `Chave.RECEBIMENTO`/`liberadoRecebimento()` em ~8 métodos,
+  contagens de `etapas.hasSize(n)` reduzidas em 1 onde aplicável, números de
+  `PassoWizard.numero()` ajustados nos 2 testes do wizard),
+  `ProcessoDetalheControllerTest` (`GatingAbas` com 4 args em todas as 15
+  ocorrências, fixture padrão do `PassoWizard` trocada de `"Recebimento"`
+  para `"Envio"`), `ProcessoExportacaoIntegrationTest` (a asserção do
+  relatório de movimentação, que verificava a string "Recebimento da
+  solicitação" no ZIP exportado, passou a verificar "Envio aos 3 médicos").
+- **E2E** (`ProcessoDetalhePage`, `FluxoCompletoProcessoIT`): os métodos
+  `passo2_anexarDocumentoClinico`/`passo2_registrarEnvio` viraram
+  `passo1_*`; `passo4_decidir` (que já tinha ganhado o clique em
+  `#btnConfirmarAcaoFinal` na mudança de "Registrar decisão" acima) virou
+  `passo3_decidir`;
+  `passo5_anexarOficioIndeferimento`/`passo5_anexarComprovanteSnt`/
+  `passo5_confirmarRespostaAoSolicitante` viraram `passo4_*`. As chamadas a
+  `passoConcluido(N)` no teste de fluxo completo foram renumeradas (a
+  antiga assertiva `passoConcluido(1)` logo após converter a solicitação,
+  que checava o Recebimento sempre-verde, foi removida — não há mais nada
+  ali para checar antes de anexar o primeiro documento clínico).
+
+**Validação:** suíte completa rodada de forma independente após esta
+mudança (com a confirmação de "Registrar decisão" já commitada antes) —
+**783 testes, 0 falhas** (JDK 21, mesma contagem de antes: nenhum teste foi
+adicionado nem removido de fato, só renomeado/reescrito). E2E rodado via
+`mvn verify -Pe2e -Dsaur.e2e.headed=false` (ambiente sem X server, sempre
+headless aqui — diferente do `.\e2e.ps1` do Windows citado no restante
+deste arquivo, que abre janela por padrão): o fluxo percorreu com sucesso a
+conversão da solicitação, o Envio (aba fundida, `passo1_*`), os votos reais
+dos 2 avaliadores, a decisão automática por maioria simples
+(`passoConcluido(2)`/`passoConcluido(3)` confirmados) e o anexo do ofício de
+indeferimento — validando a navegação completa pelas abas renumeradas.
+Falhou só na linha da confirmação final da resposta ao solicitante, com o
+mesmo log **pré-existente e documentado** ("EmailSender: remetente (from)
+nao configurado" — `SGPUR_MAIL_USER`/`SGPUR_MAIL_FROM` ausentes nesta
+máquina local), não relacionado a nenhuma das duas mudanças desta sessão.
 

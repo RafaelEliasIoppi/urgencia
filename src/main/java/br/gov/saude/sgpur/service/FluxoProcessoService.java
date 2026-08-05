@@ -15,8 +15,18 @@ import java.util.Optional;
 /**
  * Monta, em tempo real, a lista de etapas do processo, sinalizando o que ja
  * foi concluido, qual e a etapa atual e o que ainda falta. Reflete o fluxo:
- * Recebimento -> Envio aos 3 medicos -> Respostas -> Decisao
- * -> (Oficio de indeferimento, se reprovado) -> Resposta ao solicitante.
+ * Envio aos 3 medicos -> Respostas -> Decisao -> (Oficio de indeferimento,
+ * se reprovado, ou Comprovante SNT, se deferido) -> Resposta ao solicitante.
+ *
+ * <p><b>Recebimento fundido em Envio (2026-08-05).</b> Ate entao existia uma
+ * etapa "Recebimento" propria, primeira do fluxo. Desde 2026-07-27 ela era
+ * SEMPRE automatica e concluida (todo {@code Processo} nasce de uma {@code
+ * SolicitacaoOnline} convertida pelo Portal do Solicitante) - nao sobrava
+ * nenhuma acao real do operador nessa aba, so uma etiqueta sempre-verde
+ * antes do Envio. Removida como etapa/aba propria; o link "Ver solicitacao
+ * original" que vivia la (ver {@link #veioDoPortal}) migrou para dentro da
+ * aba Envio. O fluxo passou de 6 para 5 conceitos no checklist: Envio,
+ * Respostas, Decisao, Oficio/Comprovante SNT, Resposta ao solicitante.</p>
  */
 @Service
 public class FluxoProcessoService {
@@ -33,7 +43,8 @@ public class FluxoProcessoService {
     /**
      * true se o processo foi originado do Portal do Solicitante (convertido a
      * partir de uma {@code SolicitacaoOnline}). Usado para exibir o link "Ver
-     * solicitacao original" no card de Recebimento da tela de detalhe - nao
+     * solicitacao original" no card de Envio da tela de detalhe (o
+     * Recebimento nao tem mais aba propria - ver javadoc da classe) - nao
      * influencia mais nenhum gating (todo processo nasce do Portal).
      */
     public boolean veioDoPortal(Processo p) {
@@ -52,21 +63,14 @@ public class FluxoProcessoService {
         // encerrados, a cascata de "anteriores concluidas" e ignorada.
         boolean finalizado = p.getStatus() != null && p.getStatus().isFinalizado();
 
-        // 1. Recebimento da solicitacao: SEMPRE automatico e concluido. Desde
-        //    2026-07-27, cada processo nasce obrigatoriamente de uma
-        //    SolicitacaoOnline convertida pelo Portal do Solicitante
-        //    (ProcessoDetalheController.novo/salvar passaram a exigir
-        //    origemSolicitacaoOnlineId) - nao existe mais cadastro manual "do
-        //    zero" nem "e-mail original" a anexar, entao esta etapa nunca
-        //    depende de nenhum anexo.
-        //    veioDoPortal(p) continua existindo so para achar o link "Ver
-        //    solicitacao original" na tela de detalhe.
-        String detReceb = "Recebimento automatico (solicitacao enviada pelo Portal do Solicitante).";
-        etapas.add(montar(Chave.RECEBIMENTO, "Recebimento da solicitação", "inbox-fill",
-            true, anterioresConcluidas, detReceb));
-        anterioresConcluidas = finalizado || anterioresConcluidas;
-
-        // 2. Envio aos 3 medicos (data de envio registrada em todos os pareceres).
+        // 1. Envio aos 3 medicos (data de envio registrada em todos os pareceres).
+        //    O Recebimento (que existia como etapa 1 antes de 2026-08-05) foi
+        //    fundido aqui: era sempre automatico e concluido (todo Processo
+        //    nasce de uma SolicitacaoOnline convertida pelo Portal do
+        //    Solicitante), sem nenhuma acao real do operador - so uma
+        //    etiqueta sempre-verde antes desta etapa. veioDoPortal(p)
+        //    continua existindo so para achar o link "Ver solicitacao
+        //    original" na tela de detalhe (agora dentro da aba Envio).
         //    Exige ao menos um documento clinico (PDF) anexado: o PDF dos
         //    avaliadores e montado SO com esses documentos (com cabecalho
         //    carimbado), sem folha-rosto gerada pelo sistema.
@@ -93,7 +97,7 @@ public class FluxoProcessoService {
         etapas.add(montar(Chave.ENVIO, "Envio aos 3 médicos", "send-fill", enviado, anterioresConcluidas, detEnvio));
         anterioresConcluidas = finalizado || (anterioresConcluidas && enviado);
 
-        // 3. Respostas dos medicos. Por MAIORIA SIMPLES (2 de 3), assim que ha
+        // 2. Respostas dos medicos. Por MAIORIA SIMPLES (2 de 3), assim que ha
         //    2 votos do mesmo tipo a etapa esta pronta: nao e preciso aguardar
         //    o 3o parecer para decidir.
         long respondidos = processoService.contarRespondidos(p);
@@ -118,7 +122,7 @@ public class FluxoProcessoService {
             respostasOk, anterioresConcluidas, detResp));
         anterioresConcluidas = finalizado || (anterioresConcluidas && respostasOk);
 
-        // 3b. Informacao complementar (apenas enquanto um medico pediu mais dados).
+        // 2b. Informacao complementar (apenas enquanto um medico pediu mais dados).
         //     Funciona como uma PAUSA: bloqueia a decisao ate o solicitante
         //     responder e o operador retomar a analise.
         if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO) {
@@ -130,7 +134,7 @@ public class FluxoProcessoService {
             anterioresConcluidas = false;
         }
 
-        // 4. Decisao final
+        // 3. Decisao final
         boolean decidido = p.getStatus().isFinalizado();
         String detDecisao;
         if (decidido) {
@@ -146,7 +150,7 @@ public class FluxoProcessoService {
         etapas.add(montar(Chave.DECISAO, "Decisão final", "hammer", decidido, anterioresConcluidas, detDecisao));
         anterioresConcluidas = finalizado || (anterioresConcluidas && decidido);
 
-        // 5. Oficio de indeferimento (apenas quando indeferido)
+        // 4. Oficio de indeferimento (apenas quando indeferido)
         if (p.getStatus() == StatusProcesso.INDEFERIDO) {
             boolean oficioOk = p.getMotivoIndeferimento() != null && !p.getMotivoIndeferimento().isBlank()
                 && temAnexo(p, TipoAnexo.OFICIO_INDEFERIMENTO)
@@ -163,7 +167,7 @@ public class FluxoProcessoService {
             anterioresConcluidas = anterioresConcluidas && oficioOk;
         }
 
-        // 5b. Comprovante de insercao da urgencia renal no SNT (apenas quando deferido)
+        // 4b. Comprovante de insercao da urgencia renal no SNT (apenas quando deferido)
         if (p.getStatus() == StatusProcesso.DEFERIDO) {
             boolean comprovanteOk = temAnexo(p, TipoAnexo.COMPROVANTE_SNT);
             etapas.add(montar(Chave.COMPROVANTE_SNT, "Comprovante SNT", "clipboard2-check-fill",
@@ -174,7 +178,7 @@ public class FluxoProcessoService {
             anterioresConcluidas = anterioresConcluidas && comprovanteOk;
         }
 
-        // 6. Resposta ao solicitante — exige o flag de e-mail enviado.
+        // 5. Resposta ao solicitante — exige o flag de e-mail enviado.
         //    O COMPROVANTE_ENVIO_SOLICITANTE (print manual) deixou de ser
         //    exigido: o proprio sistema envia o e-mail e registra a auditoria.
         //
@@ -204,9 +208,11 @@ public class FluxoProcessoService {
     }
 
     /**
-     * Agrupa as etapas de {@link #montarEtapas} nos 5 passos fixos do wizard
-     * horizontal da tela de detalhe, aplicando a MESMA cascata sequencial da
-     * timeline vertical (um passo so fica CONCLUIDA se os anteriores tambem
+     * Agrupa as etapas de {@link #montarEtapas} nos 4 passos fixos do wizard
+     * horizontal da tela de detalhe (Envio, Respostas, Decisão, Finalização -
+     * o Recebimento nao tem mais passo/aba propria desde 2026-08-05, ver
+     * javadoc da classe), aplicando a MESMA cascata sequencial da timeline
+     * vertical (um passo so fica CONCLUIDA se os anteriores tambem
      * estiverem). Garante que as duas linhas do tempo nunca divirjam.
      */
     public java.util.List<PassoWizard> montarPassosWizard(Processo p) {
@@ -215,21 +221,17 @@ public class FluxoProcessoService {
         java.util.List<PassoWizard> passos = new ArrayList<>();
         boolean anteriorConcluido = true;
 
-        anteriorConcluido = adicionarPasso(passos, 1, "1. Recebimento", "pane-recebimento",
-            etapaConcluida(etapas, Chave.RECEBIMENTO), anteriorConcluido,
-            "Conclua o Recebimento (passo 1) primeiro.", "Recebimento");
-
-        anteriorConcluido = adicionarPasso(passos, 2, "2. Envio", "pane-envio",
+        anteriorConcluido = adicionarPasso(passos, 1, "1. Envio", "pane-envio",
             etapaConcluida(etapas, Chave.ENVIO), anteriorConcluido,
-            "Conclua o Recebimento (passo 1) primeiro.", "Envio aos avaliadores");
+            "Envio aos avaliadores ainda nao foi registrado.", "Envio aos avaliadores");
 
-        anteriorConcluido = adicionarPasso(passos, 3, "3. Respostas", "pane-respostas",
+        anteriorConcluido = adicionarPasso(passos, 2, "2. Respostas", "pane-respostas",
             etapaConcluida(etapas, Chave.RESPOSTAS), anteriorConcluido,
-            "Registre o Envio aos avaliadores (passo 2) primeiro.", "Pareceres dos avaliadores");
+            "Registre o Envio aos avaliadores (passo 1) primeiro.", "Pareceres dos avaliadores");
 
         // "Informacao complementar" pausa o fluxo (ver montarEtapas) mesmo com
         // "Respostas dos medicos" ja CONCLUIDA (maioria formada antes do pedido
-        // de informacao). Sem essa checagem, o wizard destrava o passo 4 nesse
+        // de informacao). Sem essa checagem, o wizard destrava o passo 3 nesse
         // caso enquanto a timeline vertical mantem "Decisao final" PENDENTE -
         // as duas linhas do tempo dessincronizam.
         boolean aguardandoInfo = etapas.stream()
@@ -238,23 +240,23 @@ public class FluxoProcessoService {
             anteriorConcluido = false;
         }
 
-        anteriorConcluido = adicionarPasso(passos, 4, "4. Decisão", "pane-decisao",
+        anteriorConcluido = adicionarPasso(passos, 3, "3. Decisão", "pane-decisao",
             etapaConcluida(etapas, Chave.DECISAO), anteriorConcluido,
             aguardandoInfo
                 ? "Aguardando informacao complementar do solicitante antes de decidir."
-                : "Receba todos os pareceres (passo 3) antes de decidir.",
+                : "Receba todos os pareceres (passo 2) antes de decidir.",
             "Decisão final");
 
-        // Passo 5 (Finalizacao) agrupa o bloco pos-decisao: Oficio (se
+        // Passo 4 (Finalizacao) agrupa o bloco pos-decisao: Oficio (se
         // indeferido) ou Comprovante SNT (se deferido), mais a Resposta ao
         // solicitante. So concluido se TODAS as etapas desse bloco que
         // existirem para o status atual estiverem CONCLUIDA.
         boolean finalizacaoOk = etapaConcluidaSeExistir(etapas, Chave.OFICIO)
             && etapaConcluidaSeExistir(etapas, Chave.COMPROVANTE_SNT)
             && etapaConcluida(etapas, Chave.RESPOSTA_SOLICITANTE);
-        adicionarPasso(passos, 5, "5. Finalização", "pane-finalizacao",
+        adicionarPasso(passos, 4, "4. Finalização", "pane-finalizacao",
             finalizacaoOk, anteriorConcluido,
-            "Registre a decisao (passo 4) primeiro.", "Finalização");
+            "Registre a decisao (passo 3) primeiro.", "Finalização");
 
         return passos;
     }
@@ -291,24 +293,24 @@ public class FluxoProcessoService {
     }
 
     /**
-     * Gating das abas do wizard (1..5) na tela de detalhe: ate qual passo o
+     * Gating das abas do wizard (1..4) na tela de detalhe: ate qual passo o
      * operador pode navegar/agir. Extraido de
      * {@code ProcessoDetalheController.detalhe} (vistoria arquitetural
      * 2026-07-25) para ficar num lugar testavel/reaproveitavel, em vez de
      * calculado inline no controller. Mesma logica de antes, sem mudanca de
-     * comportamento.
+     * comportamento (so perdeu o campo {@code liberadoRecebimento} em
+     * 2026-08-05, ja que o Recebimento nao tem mais aba propria - era sempre
+     * {@code true} e nao influenciava mais nada alem do proprio Envio).
      */
-    public record GatingAbas(boolean liberadoRecebimento, boolean liberadoEnvio,
-                              boolean liberadoRespostas, boolean liberadoDecisao,
-                              boolean liberadoFinalizacao) {
+    public record GatingAbas(boolean liberadoEnvio, boolean liberadoRespostas,
+                              boolean liberadoDecisao, boolean liberadoFinalizacao) {
     }
 
     public GatingAbas calcularGating(Processo p) {
-        // 1 Recebimento sempre automatico e liberado; cada passo seguinte
-        // exige o anterior pronto. Todo processo nasce do Portal do
+        // Envio (passo 1) sempre liberado: todo processo nasce do Portal do
         // Solicitante (ver veioDoPortal/montarEtapas), entao nao ha mais
-        // nenhum anexo exigido para esta etapa.
-        boolean recebimentoFeito = true;
+        // nenhuma etapa/anexo anterior exigido para chegar aqui.
+        boolean liberadoEnvio = true;
         boolean envioFeito = envioRegistrado(p);
         long respondidos = processoService.contarRespondidos(p);
         int totalMedicos = p.getPareceres().size();
@@ -324,13 +326,10 @@ public class FluxoProcessoService {
         // decisao e a finalizacao ficam bloqueadas ate o operador retomar a analise.
         boolean aguardandoInfo = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
 
-        boolean liberadoRecebimento = true;
-        boolean liberadoEnvio = recebimentoFeito;
-        boolean liberadoRespostas = recebimentoFeito && envioFeito;
+        boolean liberadoRespostas = liberadoEnvio && envioFeito;
         boolean liberadoDecisao = liberadoRespostas && respostasOk && !aguardandoInfo;
         boolean liberadoFinalizacao = decidido;
-        return new GatingAbas(liberadoRecebimento, liberadoEnvio, liberadoRespostas,
-            liberadoDecisao, liberadoFinalizacao);
+        return new GatingAbas(liberadoEnvio, liberadoRespostas, liberadoDecisao, liberadoFinalizacao);
     }
 
     /**

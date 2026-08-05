@@ -1,9 +1,9 @@
 # Plano do Fluxo — SAUR (Urgência Renal)
 
 Mapeia o fluxo real do usuário (10 etapas da planilha Excel) para o código, o
-ciclo de status e os endpoints reais de cada uma das 6 abas do processo.
+ciclo de status e os endpoints reais de cada uma das abas do processo.
 
-> Atualizado em 2026-07-31. Ver `CLAUDE.md` (raiz do repo) para o texto
+> Atualizado em 2026-08-05. Ver `CLAUDE.md` (raiz do repo) para o texto
 > completo e mais recente das regras de negócio — este documento é um mapa
 > de apoio, focado na correspondência etapa → controller/service/template.
 
@@ -55,7 +55,13 @@ backfill nem atualizam `CHECK` constraints automaticamente — ver a seção
 "Convenções de código" do `CLAUDE.md` para o procedimento manual exigido a
 cada mudança desse tipo.
 
-## As 6 etapas do checklist (fluxo dividido em 6 abas)
+## As 5 etapas do checklist (fluxo dividido em 4 abas do wizard)
+
+> **Atualizado em 2026-08-05: o Recebimento deixou de ser uma etapa/aba
+> própria**, fundido em Envio — ver nota logo abaixo da tabela. O checklist
+> (timeline vertical) tem 5 conceitos; o wizard horizontal (abas) agrupa em
+> só 4, porque Ofício/Comprovante + Resposta ao solicitante já viviam juntos
+> numa única aba "Finalização" desde antes.
 
 Cada etapa é montada por `FluxoProcessoService.montarEtapas`/
 `montarPassosWizard` (fonte única, usada tanto pela timeline vertical quanto
@@ -64,17 +70,23 @@ própria condição **e** todas as anteriores também estiverem concluídas.
 
 | # | Etapa | Endpoint(s) reais | Service | Template |
 |---|---|---|---|---|
-| 1 | Recebimento | **Nenhum** — sempre automático, sem upload nem endpoint próprio | `FluxoProcessoService.montarEtapas` marca `true` incondicionalmente | `detalhe.html#pane-recebimento` |
-| 2 | Envio | `POST /processos/{id}/documento-clinico` (`ProcessoDecisaoController.anexarDocumentoClinico`) · `POST /processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao` (`ProcessoDetalheController.confirmarAnonimizacao`, trava de anonimização) · `POST /processos/{id}/registrar-envio` (`ProcessoDecisaoController.registrarEnvio`) | `RegistroEnvioService.registrar` + `enviarConvitesAvaliadores` / `SolicitacaoAvaliadorService.consolidar` + `carimbarCabecalho` / `ProcessoValidator.validarRegistroEnvio` | `detalhe.html#pane-envio` |
-| 3 | Respostas | `POST /avaliador/{processoId}/votar` (`AvaliadorController.registrarVoto`, único caminho de voto) · `POST /processos/{id}/lembrete-avaliador` / `.../lembrete-pendentes` (lembrete manual, não registra parecer) · `POST /processos/{id}/retomar-analise` (`ProcessoDecisaoController.retomarAnalise`, sai da pausa "Solicita informação") | `ProcessoService.atualizarStatusPorPareceres` + `tentarDecisaoAutomatica` + `retomarAposInformacao` | `detalhe.html#pane-respostas` (acompanha) · `avaliador/votar.html` (vota) |
-| 4 | Decisão | `POST /processos/{id}/decidir` (`ProcessoDecisaoController.decidir`) | `ProcessoService.decidir` + `ProcessoValidator` (contagem de votos/pausa/motivo) + `DecisaoFinalService.gerarDocumentos` | `detalhe.html#pane-decisao` |
-| 5 | Ofício/Comprovante | `POST /processos/{id}/oficio-upload` · `POST /processos/{id}/comprovante-snt` · `POST /processos/{id}/finalizacao` (datas do ofício) — todos em `ProcessoAnexoController` | `AnexoStorageService` + `OficioService` | `detalhe.html#pane-finalizacao` |
-| 6 | Resposta ao solicitante | `POST /processos/{id}/finalizar` (`ProcessoDecisaoController.finalizar`) — ação única, dispara o e-mail automaticamente | `ProcessoService.finalizarResposta` (envia e-mail com o anexo obrigatório + marca `emailEnviadoSolicitante=true`) | `detalhe.html#pane-finalizacao` |
+| 1 | Envio | `POST /processos/{id}/documento-clinico` (`ProcessoDecisaoController.anexarDocumentoClinico`) · `POST /processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao` (`ProcessoDetalheController.confirmarAnonimizacao`, trava de anonimização) · `POST /processos/{id}/registrar-envio` (`ProcessoDecisaoController.registrarEnvio`) | `RegistroEnvioService.registrar` + `enviarConvitesAvaliadores` / `SolicitacaoAvaliadorService.consolidar` + `carimbarCabecalho` / `ProcessoValidator.validarRegistroEnvio` | `detalhe.html#pane-envio` |
+| 2 | Respostas | `POST /avaliador/{processoId}/votar` (`AvaliadorController.registrarVoto`, único caminho de voto) · `POST /processos/{id}/lembrete-avaliador` / `.../lembrete-pendentes` (lembrete manual, não registra parecer) · `POST /processos/{id}/retomar-analise` (`ProcessoDecisaoController.retomarAnalise`, sai da pausa "Solicita informação") | `ProcessoService.atualizarStatusPorPareceres` + `tentarDecisaoAutomatica` + `retomarAposInformacao` | `detalhe.html#pane-respostas` (acompanha) · `avaliador/votar.html` (vota) |
+| 3 | Decisão | `POST /processos/{id}/decidir` (`ProcessoDecisaoController.decidir`) | `ProcessoService.decidir` + `ProcessoValidator` (contagem de votos/pausa/motivo) + `DecisaoFinalService.gerarDocumentos` | `detalhe.html#pane-decisao` |
+| 4 | Ofício/Comprovante | `POST /processos/{id}/oficio-upload` · `POST /processos/{id}/comprovante-snt` — em `ProcessoAnexoController` | `AnexoStorageService` + `OficioService` | `detalhe.html#pane-finalizacao` |
+| 5 | Resposta ao solicitante | `POST /processos/{id}/finalizar` (`ProcessoDecisaoController.finalizar`) — ação única, dispara o e-mail automaticamente | `ProcessoService.finalizarResposta` (envia e-mail com o anexo obrigatório + marca `emailEnviadoSolicitante=true`) | `detalhe.html#pane-finalizacao` |
 
 Notas importantes sobre a tabela acima (histórico ↔ estado atual):
 
-- **Passo 1 (Recebimento) é sempre automático desde 2026-07-27.** Não existe
-  mais cadastro manual "do zero": `GET/POST /processos` (`novo`/`salvar` em
+- **Recebimento fundido em Envio (2026-08-05).** Não existia mais nenhuma
+  ação real nessa aba desde 2026-07-27 (sempre `true` incondicionalmente,
+  sem upload nem endpoint próprio) — só uma etiqueta sempre-verde antes do
+  Envio. Removida como etapa/aba própria; o link "Ver solicitação original"
+  que vivia lá migrou para dentro da aba Envio (agora o passo 1). Ver
+  `FluxoProcessoService`/CLAUDE.md.
+
+- **Recebimento é sempre automático desde 2026-07-27** e não existe mais
+  cadastro manual "do zero": `GET/POST /processos` (`novo`/`salvar` em
   `ProcessoDetalheController`) **exigem** `origemSolicitacaoOnlineId` — todo
   `Processo` nasce de uma `SolicitacaoOnline` convertida pelo Portal do
   Solicitante. O antigo endpoint `POST /{id}/recebimento`
@@ -83,9 +95,12 @@ Notas importantes sobre a tabela acima (histórico ↔ estado atual):
   processo real que ainda precise dele. Os valores de enum que essa etapa
   usava (`TipoAnexo.SOLICITACAO_RECEBIDA`, `TipoAnexo.CAPA_PROCESSO`) também
   **foram removidos do enum por completo** (commit `041dc43`,
-  2026-07-29) — hoje o `TipoAnexo` nem tem mais esses valores.
-- **Trava de anonimização (Passo 2, não documentada em versões anteriores
-  deste arquivo):** documentos que chegam pelo Portal do Solicitante entram
+  2026-07-29) — hoje o `TipoAnexo` nem tem mais esses valores. Sem nenhuma
+  ação real sobrando, o Recebimento deixou de ser uma etapa/aba própria em
+  2026-08-05 (ver nota acima da tabela) — sempre foi só uma etiqueta
+  sempre-verde antes do Envio.
+- **Trava de anonimização (Passo 1/Envio, não documentada em versões
+  anteriores deste arquivo):** documentos que chegam pelo Portal do Solicitante entram
   como `TipoAnexo.DOCUMENTO_PORTAL_NAO_ANONIMIZADO` (staging) e **nunca**
   entram no PDF consolidado nem satisfazem `ProcessoValidator.
   validarRegistroEnvio` enquanto o operador não confirmar explicitamente,
@@ -114,7 +129,7 @@ Notas importantes sobre a tabela acima (histórico ↔ estado atual):
   `ProcessoValidator`/`ProcessoService` — fazia sentido só quando conviviam
   voto por operador/e-mail e voto autenticado; hoje só existe o voto
   autenticado, que já é a prova de não-repúdio).
-- **Passo 6 é uma ação única** desde que `ProcessoService.finalizarResposta`
+- **Passo 5 (Resposta ao solicitante) é uma ação única** desde que `ProcessoService.finalizarResposta`
   foi criado como fonte única da regra: um clique em "Finalizar" dispara o
   e-mail (com o anexo obrigatório, comprovante SNT ou ofício, já embutido) e
   marca `Processo.emailEnviadoSolicitante = true`. O upload manual de
@@ -171,6 +186,7 @@ Notas importantes sobre a tabela acima (histórico ↔ estado atual):
   (lança `IllegalStateException` se tentarem chamar isso sobre um processo
   finalizado).
 - Processo ENCERRADO (`DEFERIDO`/`INDEFERIDO`/`CANCELADO`) trava as etapas
-  1-4 e o upload genérico/exclusão de anexos/lembretes
-  (`ProcessoValidator.edicaoBloqueada`); as etapas 5-6 continuam liberadas
-  (papelada pós-decisão). Só ADMIN reabre (`POST /processos/{id}/reabrir`).
+  1-3 (Envio, Respostas, Decisão) e o upload genérico/exclusão de
+  anexos/lembretes (`ProcessoValidator.edicaoBloqueada`); as etapas 4-5
+  continuam liberadas (papelada pós-decisão). Só ADMIN reabre
+  (`POST /processos/{id}/reabrir`).

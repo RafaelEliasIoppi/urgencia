@@ -36,8 +36,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  *       2026-07-27 - nao ha mais cadastro manual "do zero").</li>
  *   <li>Operador: login, revisa a solicitacao na fila de triagem
  *       (/processos/solicitacoes-online) e converte em processo - o
- *       Recebimento ja nasce concluido automaticamente - e registra o Envio
- *       aos 3 avaliadores.</li>
+ *       Recebimento e sempre automatico (fundido na aba Envio desde
+ *       2026-08-05, sem passo/acao propria) - e registra o Envio aos 3
+ *       avaliadores.</li>
  *   <li>2 medicos avaliadores: cada um se autentica no Portal do Avaliador
  *       (/avaliador) e VOTA DE VERDADE no seu proprio processo - nao e o
  *       operador lancando o resultado por eles.</li>
@@ -149,15 +150,14 @@ class FluxoCompletoProcessoIT extends PlaywrightTestBase {
 
             Long processoId = extrairIdDaUrl(page.url());
 
-            // Passo 1 (Recebimento) e SEMPRE automatico desde 2026-07-27: todo
-            // processo ja nasce com essa etapa concluida, sem nenhuma acao manual
-            // do operador (o endpoint de registrar recebimento foi removido).
-            assertThat(detalhe.passoConcluido(1)).isTrue();
-
+            // O Recebimento nao tem passo/aba propria desde 2026-08-05 - era
+            // sempre automatico e concluido (sem nenhuma acao manual do
+            // operador), fundido na aba Envio (agora o passo 1). O processo
+            // ja nasce nela pronto para anexar documentos.
             detalhe
-                .passo2_anexarDocumentoClinico(pdfPayload("laudo.pdf", "Laudo clinico anonimizado"))
-                .passo2_registrarEnvio();
-            assertThat(detalhe.passoConcluido(2)).isTrue();
+                .passo1_anexarDocumentoClinico(pdfPayload("laudo.pdf", "Laudo clinico anonimizado"))
+                .passo1_registrarEnvio();
+            assertThat(detalhe.passoConcluido(1)).isTrue();
 
             // ===== Atores 2 e 3: os proprios medicos votando no Portal do Avaliador =====
             // Cada um numa janela/sessao propria - o operador continua logado na dele.
@@ -211,21 +211,21 @@ class FluxoCompletoProcessoIT extends PlaywrightTestBase {
             // registrado (ProcessoService.tentarDecisaoAutomatica, chamado
             // pelo proprio AvaliadorController logo apos o voto) - inclusive
             // gerando o oficio de indeferimento automaticamente. Por isso nao
-            // ha nenhum "passo4_decidir" manual aqui: ao recarregar a tela, os
-            // passos 3 (Respostas) e 4 (Decisao) ja chegam concluidos.
+            // ha nenhum "passo3_decidir" manual aqui: ao recarregar a tela, os
+            // passos 2 (Respostas) e 3 (Decisao) ja chegam concluidos.
             page.reload();
             page.waitForLoadState();
+            assertThat(detalhe.passoConcluido(2)).isTrue();
             assertThat(detalhe.passoConcluido(3)).isTrue();
-            assertThat(detalhe.passoConcluido(4)).isTrue();
 
-            // Passo 5: o oficio NAO e gerado pelo sistema (2026-08-04) - o
+            // Passo 4: o oficio NAO e gerado pelo sistema (2026-08-04) - o
             // operador redige por fora (partindo do rascunho editavel que a
             // tela oferece) e anexa o documento assinado, que e o unico oficio
             // valido do processo. So depois disso a resposta pode ser enviada.
-            detalhe.passo5_anexarOficioIndeferimento(
+            detalhe.passo4_anexarOficioIndeferimento(
                 pdfPayload("oficio-indeferimento.pdf", "Oficio de indeferimento assinado"));
-            detalhe.passo5_confirmarRespostaAoSolicitante();
-            assertThat(detalhe.passoConcluido(5)).isTrue();
+            detalhe.passo4_confirmarRespostaAoSolicitante();
+            assertThat(detalhe.passoConcluido(4)).isTrue();
 
             // Percorre a tela inteira (rolagem suave) para dar tempo de ver o
             // processo concluido, com todos os anexos gerados, antes de abrir o PDF.

@@ -42,18 +42,19 @@
         </form>
     </div>
 
-    <!-- Aviso de processo ENCERRADO: edicao travada (etapas 1 a 4, anexos gerais
-         e lembretes bloqueados). So o ADMIN pode reabrir. As etapas 5-6 (oficio,
-         comprovante SNT, resposta ao solicitante) continuam liberadas - por isso
-         o aviso muda de acordo com essas etapas terem sido concluidas ou nao,
-         evitando o processo parecer "100% finalizado" quando ainda falta anexar
-         o oficio/comprovante e enviar a resposta ao solicitante. -->
+    <!-- Aviso de processo ENCERRADO: edicao travada (envio, pareceres, decisao,
+         anexos gerais e lembretes bloqueados). So o ADMIN pode reabrir. As
+         etapas de finalizacao (oficio, comprovante SNT, resposta ao
+         solicitante) continuam liberadas - por isso o aviso muda de acordo
+         com essas etapas terem sido concluidas ou nao, evitando o processo
+         parecer "100% finalizado" quando ainda falta anexar o
+         oficio/comprovante e enviar a resposta ao solicitante. -->
     <div th:if="${processo.status.finalizado and !processo.emailEnviadoSolicitante and processo.status.name() != 'CANCELADO'}"
          class="alert alert-warning border d-flex align-items-center gap-2 mb-4" role="alert">
         <i class="bi bi-exclamation-triangle-fill fs-5"></i>
         <div>
             <strong>Decisão registrada, mas o processo ainda não está concluído.</strong>
-            A edição das etapas 1-4 (recebimento, envio, pareceres) foi bloqueada, porém
+            A edição do envio e dos pareceres foi bloqueada, porém
             ainda faltam etapas de conclusão na <a href="#finalizacao">aba Finalização</a>
             (anexar o ofício/comprovante e enviar a resposta ao solicitante).
         </div>
@@ -281,11 +282,13 @@
                          que as duas linhas do tempo nunca fiquem fora de sincronia. -->
                     <!-- ARIA das abas (corrigido em 2026-08-04): cada passo precisa de
                          id proprio, porque os paineis apontam para ele via
-                         aria-labelledby="tab-<paneId>". Antes os ids nao existiam e as 5
+                         aria-labelledby="tab-<paneId>". Antes os ids nao existiam e as
                          referencias apontavam para o vazio - o componente se declarava
                          tablist/tab/tabpanel sem fornecer nada do que esses papeis exigem
                          (nem aria-selected, nem aria-controls). Coberto por
-                         AcessibilidadeEstruturaTest.
+                         AcessibilidadeEstruturaTest. (2026-08-05: o Recebimento deixou de
+                         ter aba propria - fundido em Envio, ver FluxoProcessoService -
+                         entao o wizard passou de 5 para 4 passos.)
                          Passo BLOQUEADO: aria-disabled + tabindex="-1" tiram o passo da
                          ordem de Tab e o anunciam como desabilitado; o clique em si e
                          barrado no processo-detalhe.js (o preventDefault tem que rodar
@@ -304,61 +307,44 @@
                              aninhados em th:classappend (regra do CLAUDE.md contra ternario
                              aninhado > 3 niveis). -->
                         <div class="wizard-circle" th:switch="${passo.numero}">
-                             <i th:case="1" class="bi bi-inbox"></i>
-                             <i th:case="2" class="bi bi-send"></i>
-                             <i th:case="3" class="bi bi-chat-square-text"></i>
-                             <i th:case="4" class="bi bi-hammer"></i>
+                             <i th:case="1" class="bi bi-send"></i>
+                             <i th:case="2" class="bi bi-chat-square-text"></i>
+                             <i th:case="3" class="bi bi-hammer"></i>
                              <i th:case="*" class="bi bi-flag"></i>
                         </div>
                         <span class="wizard-label" th:text="${passo.titulo}">Passo</span>
-                        <span class="badge bg-success ms-1" th:if="${passo.numero == 3 and envioFeito and favoraveis > 0}"
+                        <span class="badge bg-success ms-1" th:if="${passo.numero == 2 and envioFeito and favoraveis > 0}"
                               th:text="${favoraveis}" style="font-size:.55rem;">0</span>
                     </a>
                 </div><!-- /wizard -->
                 </div><!-- /wizard-wrapper -->
 
                 <div class="tab-content wizard-content" id="fasesTabContent">
-                <!-- ABA 1: Recebimento e ajuste do texto -->
-                <div class="tab-pane fade" th:classappend="${abaAtivaPaneId == 'pane-recebimento'} ? 'show active' : ''"
-                     id="pane-recebimento" role="tabpanel" aria-labelledby="tab-recebimento">
-                    <div class="card mb-4" id="recebimento">
-                        <div class="card-header"><i class="bi bi-inbox"></i> Recebimento e ajuste do texto</div>
-                        <div class="card-body">
-                            <!-- Todo processo nasce de uma solicitacao enviada pelo Portal do
-                                 Solicitante (ajuste de 2026-07-27: nao ha mais cadastro manual
-                                 "do zero") - recebimento automatico, sem e-mail/PDF original para
-                                 anexar e sem acao manual do operador. So o rodape verde abaixo
-                                 comunica isso (2026-08-05: a frase estava duplicada aqui em cima
-                                 tambem, dizendo a mesma coisa duas vezes numa aba sem nenhuma
-                                 acao - relatorio de clareza, item 4.9). -->
-                        </div>
-
-                        <!-- Finalizacao explicita da etapa (sempre automatica) -->
-                        <div th:if="${liberadoEnvio}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
-                            <div>
-                                <i class="bi bi-check-circle-fill fs-5 me-2"></i>
-                                <strong>Recebimento concluído!</strong>
-                                <span class="text-muted small ms-2">Solicitação enviada pelo Portal do Solicitante.</span>
-                                <a th:if="${solicitacaoOnlineOrigemId != null}" class="small ms-2"
-                                   th:href="@{/processos/solicitacoes-online/{id}(id=${solicitacaoOnlineOrigemId})}">
-                                    Ver solicitação original
-                                </a>
-                            </div>
-                            <button type="button" class="btn btn-success btn-sm"
-                                    data-goto-pane="pane-envio">
-                                <i class="bi bi-arrow-right"></i> Avançar para Envio
-                            </button>
-                        </div>
-                    </div>
-                </div><!-- /ABA 1 Recebimento -->
-
-                <!-- ABA 2: Envio -->
+                <!-- ABA 1: Envio (o Recebimento nao tem mais aba propria desde
+                     2026-08-05 - era sempre automatico e concluido, sem nenhuma
+                     acao real do operador; o unico resquicio util, o link "Ver
+                     solicitacao original", migrou para o aviso logo abaixo. Ver
+                     FluxoProcessoService/CLAUDE.md. -->
                 <div class="tab-pane fade" th:classappend="${abaAtivaPaneId == 'pane-envio'} ? 'show active' : ''"
                      id="pane-envio" role="tabpanel" aria-labelledby="tab-envio">
             <!-- Secao: Envio aos Avaliadores -->
             <div class="card mb-4" id="envio">
                 <div class="card-header"><i class="bi bi-send"></i> Envio aos Avaliadores</div>
                 <div class="card-body">
+                    <!-- Recebimento automatico: todo processo nasce de uma
+                         solicitacao enviada pelo Portal do Solicitante (ajuste de
+                         2026-07-27), sem e-mail/PDF original para anexar nem acao
+                         manual do operador - so este aviso curto e o link para a
+                         solicitacao de origem. -->
+                    <p class="small text-muted mb-3">
+                        <i class="bi bi-inbox"></i>
+                        Processo recebido automaticamente via Portal do Solicitante.
+                        <a th:if="${solicitacaoOnlineOrigemId != null}"
+                           th:href="@{/processos/solicitacoes-online/{id}(id=${solicitacaoOnlineOrigemId})}">
+                            Ver solicitação original
+                        </a>
+                    </p>
+
                     <!-- Aviso: medico da mesma equipe/instituicao do solicitante (NAO bloqueia) -->
                     <div th:if="${!medicosMesmaEquipe.isEmpty()}" class="alert alert-warning py-2 mb-3">
                         <i class="bi bi-exclamation-triangle-fill"></i>
@@ -599,9 +585,9 @@
                     </div>
                 </div>
             </div>
-                </div><!-- /ABA 2 Envio -->
+                </div><!-- /ABA 1 Envio -->
 
-                <!-- ABA 3: Respostas -->
+                <!-- ABA 2: Respostas -->
                 <div class="tab-pane fade" th:classappend="${abaAtivaPaneId == 'pane-respostas'} ? 'show active' : ''"
                      id="pane-respostas" role="tabpanel" aria-labelledby="tab-respostas">
             <!-- Aviso quando o envio ainda nao foi registrado -->
@@ -818,9 +804,9 @@
                     </div>
                 </div>
             </div>
-                </div><!-- /ABA 3 Respostas -->
+                </div><!-- /ABA 2 Respostas -->
 
-                <!-- ABA 4: Decisao -->
+                <!-- ABA 3: Decisao -->
                 <div class="tab-pane fade" th:classappend="${abaAtivaPaneId == 'pane-decisao'} ? 'show active' : ''"
                      id="pane-decisao" role="tabpanel" aria-labelledby="tab-decisao">
             <!-- Decisao -->
@@ -893,9 +879,9 @@
                     </div>
                 </div>
             </div>
-                </div><!-- /ABA 4 Decisao -->
+                </div><!-- /ABA 3 Decisao -->
 
-                <!-- ABA 5: Finalizacao -->
+                <!-- ABA 4: Finalizacao -->
                 <div class="tab-pane fade" th:classappend="${abaAtivaPaneId == 'pane-finalizacao'} ? 'show active' : ''"
                      id="pane-finalizacao" role="tabpanel" aria-labelledby="tab-finalizacao">
             <!-- Finalizacao / oficio / comprovante / resposta -->
@@ -1125,7 +1111,7 @@
 
                 </div>
             </div>
-                </div><!-- /ABA 5 Finalizacao -->
+                </div><!-- /ABA 4 Finalizacao -->
                 </div><!-- /tab-content -->
             </div><!-- /th:with abas -->
 

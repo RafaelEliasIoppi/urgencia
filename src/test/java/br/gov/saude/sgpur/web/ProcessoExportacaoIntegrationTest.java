@@ -232,8 +232,10 @@ class ProcessoExportacaoIntegrationTest {
             .contains("MOVIMENTACAO (LINHA DO TEMPO)")
             // EtapaFluxo.titulo() e texto de exibicao, acentuado desde a
             // Fase 7 do relatorio de clareza (2026-08-05) - a identidade da
-            // etapa passou a ser EtapaFluxo.Chave, nao mais o titulo.
-            .contains("Recebimento da solicitação");
+            // etapa passou a ser EtapaFluxo.Chave, nao mais o titulo. O
+            // Recebimento foi fundido em Envio no mesmo dia (2026-08-05) -
+            // Envio passou a ser a primeira etapa da linha do tempo.
+            .contains("Envio aos 3 médicos");
     }
 
     @Test

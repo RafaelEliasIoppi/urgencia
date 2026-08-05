@@ -5,9 +5,16 @@ import com.microsoft.playwright.Page;
 import com.microsoft.playwright.options.FilePayload;
 
 /**
- * Page Object da tela de detalhe do processo (wizard de 5 passos). Cada
- * metodo corresponde a uma acao que um operador humano realizaria clicando
- * na tela - nao chama nenhum endpoint diretamente.
+ * Page Object da tela de detalhe do processo (wizard de 4 passos: Envio,
+ * Respostas, Decisao, Finalizacao). Cada metodo corresponde a uma acao que
+ * um operador humano realizaria clicando na tela - nao chama nenhum
+ * endpoint diretamente.
+ *
+ * <p><b>O Recebimento nao tem passo/aba propria desde 2026-08-05</b> - era
+ * sempre automatico e concluido (todo processo nasce de uma
+ * SolicitacaoOnline convertida pelo operador), sem nenhuma acao manual, e
+ * foi fundido na aba Envio (agora o passo 1). Ver
+ * {@code FluxoProcessoService}/CLAUDE.md.
  */
 public class ProcessoDetalhePage {
 
@@ -25,14 +32,10 @@ public class ProcessoDetalhePage {
         page.locator(".wizard-step[href='#" + paneId + "']").click();
     }
 
-    // ===== Passo 1: Recebimento (SEMPRE automatico desde 2026-07-27 - todo
-    //       processo nasce de uma SolicitacaoOnline convertida pelo operador,
-    //       sem nenhuma acao manual de recebimento; ver passoConcluido(1)) =====
+    // ===== Passo 1: Envio (inclui o Recebimento automatico) =====
 
-    // ===== Passo 2: Envio =====
-
-    public ProcessoDetalhePage passo2_anexarDocumentoClinico(FilePayload documentoClinico) {
-        narrar("Passo 2/5 - Envio: anexando o documento clinico anonimizado...");
+    public ProcessoDetalhePage passo1_anexarDocumentoClinico(FilePayload documentoClinico) {
+        narrar("Passo 1/4 - Envio: anexando o documento clinico anonimizado...");
         clicarPasso("pane-envio");
         page.locator("#pane-envio form[action*='documento-clinico'] input[name=arquivo]").setInputFiles(documentoClinico);
         page.locator("#pane-envio button:has-text('Anexar documento clínico')").click();
@@ -44,11 +47,11 @@ public class ProcessoDetalhePage {
      * "Registrar envio" ganhou confirmacao por modal na Fase 4 do relatorio
      * de clareza (2026-08-05, item 4.3): dispara e-mail real e irreversivel
      * aos avaliadores, mesma protecao ja usada em
-     * {@link #passo5_confirmarRespostaAoSolicitante()}. O texto do botao nao
+     * {@link #passo4_confirmarRespostaAoSolicitante()}. O texto do botao nao
      * mudou - so o clique precisa passar pelo modal antes de seguir.
      */
-    public ProcessoDetalhePage passo2_registrarEnvio() {
-        narrar("Passo 2/5 - Envio: registrando o envio aos 3 avaliadores...");
+    public ProcessoDetalhePage passo1_registrarEnvio() {
+        narrar("Passo 1/4 - Envio: registrando o envio aos 3 avaliadores...");
         clicarPasso("pane-envio");
         page.locator("#pane-envio button:has-text('Registrar envio')").click();
         page.locator("#btnConfirmarAcaoFinal").click();
@@ -56,31 +59,28 @@ public class ProcessoDetalhePage {
         return this;
     }
 
-    // ===== Passo 3: Respostas (registradas pelos proprios avaliadores no Portal
+    // ===== Passo 2: Respostas (registradas pelos proprios avaliadores no Portal
     //       do Avaliador - ver AvaliadorPage - nao ha mais acao do operador aqui) =====
 
-    // ===== Passo 4: Decisao =====
+    // ===== Passo 3: Decisao =====
     //
     // O sistema decide sozinho (ProcessoService.tentarDecisaoAutomatica,
     // chamado por AvaliadorController logo apos cada voto) assim que a
     // maioria simples se forma (2 favoraveis defere, 2 desfavoraveis
     // indefere; ou o coordenador CET-RS vota favoravel sozinho). O oficio de
-    // indeferimento NAO sai daqui: e sempre anexado pelo operador no passo 5
+    // indeferimento NAO sai daqui: e sempre anexado pelo operador no passo 4
     // (2026-08-04). O formulario manual
     // abaixo (`#decisaoSelect`) SO aparece quando o processo AINDA NAO esta
     // finalizado (th:unless="${processo.status.finalizado}" no template) -
     // usado para Cancelado (nunca automatico) ou para redecidir apos uma
     // reabertura pelo ADMIN. No cenario feliz de 2/3 votos formando maioria,
     // nunca chame este metodo - o processo ja chega finalizado sozinho.
-    // Ganhou confirmacao por modal em 2026-08-05 (mesma protecao ja usada em
-    // #passo5_confirmarRespostaAoSolicitante) - o clique no botao precisa ser
-    // seguido do clique em #btnConfirmarAcaoFinal antes de seguir.
-    public ProcessoDetalhePage passo4_decidir(String decisao) {
-        return passo4_decidir(decisao, null);
+    public ProcessoDetalhePage passo3_decidir(String decisao) {
+        return passo3_decidir(decisao, null);
     }
 
-    public ProcessoDetalhePage passo4_decidir(String decisao, String motivoIndeferimento) {
-        narrar("Passo 4/5 - Decisao: registrando a decisao final (" + decisao + ")...");
+    public ProcessoDetalhePage passo3_decidir(String decisao, String motivoIndeferimento) {
+        narrar("Passo 3/4 - Decisao: registrando a decisao final (" + decisao + ")...");
         clicarPasso("pane-decisao");
         page.locator("#decisaoSelect").selectOption(decisao);
         if (motivoIndeferimento != null) {
@@ -92,7 +92,7 @@ public class ProcessoDetalhePage {
         return this;
     }
 
-    // ===== Passo 5: Finalizacao =====
+    // ===== Passo 4: Finalizacao =====
 
     /**
      * Anexa o Oficio de Indeferimento (obrigatorio so quando INDEFERIDO).
@@ -100,8 +100,8 @@ public class ProcessoDetalhePage {
      * baixa um rascunho editavel, ajusta no Word e anexa o documento final -
      * o anexo e o unico oficio valido do processo.
      */
-    public ProcessoDetalhePage passo5_anexarOficioIndeferimento(FilePayload oficio) {
-        narrar("Passo 5/5 - Finalizacao: anexando o oficio de indeferimento assinado...");
+    public ProcessoDetalhePage passo4_anexarOficioIndeferimento(FilePayload oficio) {
+        narrar("Passo 4/4 - Finalizacao: anexando o oficio de indeferimento assinado...");
         clicarPasso("pane-finalizacao");
         page.locator("#finalizacao form[action*='oficio-upload'] input[name=arquivo]").setInputFiles(oficio);
         page.locator("#finalizacao form[action*='oficio-upload'] button").click();
@@ -110,8 +110,8 @@ public class ProcessoDetalhePage {
     }
 
     /** Anexa/substitui o comprovante SNT (obrigatorio so quando DEFERIDO - nao e gerado pelo sistema). */
-    public ProcessoDetalhePage passo5_anexarComprovanteSnt(FilePayload comprovanteSnt) {
-        narrar("Passo 5/5 - Finalizacao: anexando o comprovante de insercao no SNT...");
+    public ProcessoDetalhePage passo4_anexarComprovanteSnt(FilePayload comprovanteSnt) {
+        narrar("Passo 4/4 - Finalizacao: anexando o comprovante de insercao no SNT...");
         clicarPasso("pane-finalizacao");
         page.locator("#finalizacao form[action*='comprovante-snt'] input[name=arquivo]").setInputFiles(comprovanteSnt);
         page.locator("#finalizacao form[action*='comprovante-snt'] button").click();
@@ -130,8 +130,8 @@ public class ProcessoDetalhePage {
      * o clique abre o modal generico de confirmacao (ver
      * static/js/confirmar-acao.js) - precisa confirmar antes do submit real.
      */
-    public ProcessoDetalhePage passo5_confirmarRespostaAoSolicitante() {
-        narrar("Passo 5/5 - Finalizacao: enviando a resposta final ao solicitante...");
+    public ProcessoDetalhePage passo4_confirmarRespostaAoSolicitante() {
+        narrar("Passo 4/4 - Finalizacao: enviando a resposta final ao solicitante...");
         clicarPasso("pane-finalizacao");
         page.locator("#finalizacao form[action*='/finalizar'] button").click();
         page.locator("#btnConfirmarAcaoFinal").click();
@@ -141,7 +141,7 @@ public class ProcessoDetalhePage {
 
     // ===== Asserts / leitura de estado =====
 
-    /** true se o passo (1 a 5) esta marcado como concluido (classe .concluida) na barra do wizard. */
+    /** true se o passo (1 a 4) esta marcado como concluido (classe .concluida) na barra do wizard. */
     public boolean passoConcluido(int numero) {
         return page.locator(".wizard-step:nth-child(" + numero + ")")
             .getAttribute("class").contains("concluida");
