@@ -203,6 +203,43 @@ public interface ProcessoRepository extends JpaRepository<Processo, Long> {
     Page<Processo> buscar(@Param("q") String q, @Param("status") StatusProcesso status, Pageable pageable);
 
     /**
+     * Inicializa {@code pareceres}+{@code membro} (fetch join) para um lote de
+     * processos JA carregados na mesma transacao/persistence context (ex.: a
+     * pagina de {@link #buscar}). Nao serve para paginar - o resultado desta
+     * consulta e descartado pelo chamador; o efeito util e o Hibernate casar
+     * (pelo id, via o identity map da sessao) as colecoes recem-carregadas com
+     * as MESMAS instancias gerenciadas de {@code Processo} que ja estao na
+     * lista/pagina, evitando 1 select de pareceres por processo (N+1).
+     *
+     * <p>Query separada de {@code buscar}/{@code buscarEncerrados} de
+     * proposito: {@code Page} paginado + {@code left join fetch} de colecao na
+     * MESMA consulta faz o Hibernate paginar em memoria (aviso
+     * "firstResult/maxResults specified with collection fetch"), quebrando a
+     * paginacao real do banco.</p>
+     */
+    @Query("""
+        select distinct p from Processo p
+        left join fetch p.pareceres par
+        left join fetch par.membro
+        where p.id in :ids
+        """)
+    List<Processo> inicializarPareceresComMembro(@Param("ids") java.util.Collection<Long> ids);
+
+    /**
+     * Inicializa {@code anexos} (fetch join) para um lote de processos, mesmo
+     * padrao/motivo de {@link #inicializarPareceresComMembro} - consulta
+     * separada porque {@code pareceres} e {@code anexos} sao ambos
+     * {@code List} (bag): um {@code left join fetch} simultaneo dos dois
+     * lancaria {@code MultipleBagFetchException}.
+     */
+    @Query("""
+        select distinct p from Processo p
+        left join fetch p.anexos
+        where p.id in :ids
+        """)
+    List<Processo> inicializarAnexos(@Param("ids") java.util.Collection<Long> ids);
+
+    /**
      * Busca paginada dos processos ENCERRADOS (/arquivo).
      *
      * <p>Ate 2026-08-04 o ArquivoController carregava TODOS os encerrados em

@@ -507,6 +507,27 @@ public class ProcessoService {
         return processoRepository.findDeferidosSemComprovanteSnt();
     }
 
+    /**
+     * Inicializa {@code pareceres}+{@code membro} e {@code anexos} para um
+     * lote de processos ja carregados (ex.: a pagina de {@code /processos}),
+     * evitando o N+1 de {@code FluxoProcessoService.pendenciaAberta} (que
+     * navega as duas colecoes por processo). Precisa rodar DENTRO da mesma
+     * transacao/persistence context do chamador - o resultado das duas
+     * consultas e descartado de proposito, o efeito util e o Hibernate casar
+     * as colecoes recem-carregadas com as MESMAS instancias gerenciadas de
+     * {@code Processo} que ja estao em {@code processos} (identity map da
+     * sessao), sem precisar substituir a lista original.
+     */
+    @Transactional(readOnly = true)
+    public void inicializarPareceresEAnexos(List<Processo> processos) {
+        if (processos.isEmpty()) {
+            return;
+        }
+        List<Long> ids = processos.stream().map(Processo::getId).toList();
+        processoRepository.inicializarPareceresComMembro(ids);
+        processoRepository.inicializarAnexos(ids);
+    }
+
     /** True se o processo esta encerrado e, portanto, com a edicao travada. */
     public boolean edicaoBloqueada(Processo processo) {
         return validator.edicaoBloqueada(processo);

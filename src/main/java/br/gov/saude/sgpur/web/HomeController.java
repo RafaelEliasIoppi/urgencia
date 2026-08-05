@@ -57,6 +57,16 @@ public class HomeController {
                 .thenComparing(Processo::getSequencial,
                     java.util.Comparator.nullsLast(java.util.Comparator.reverseOrder())))
             .toList();
+        // findByAnoComPareceres ja traz pareceres+membro por fetch join, mas
+        // anexos continua LAZY - o calculo de pendencia abaixo (via
+        // FluxoProcessoService.pendenciaAberta) navega p.getAnexos() por
+        // processo. Inicializa num lote so (mesma transacao/persistence
+        // context), evitando 1 select de anexos por processo do ano inteiro
+        // em toda visita ao Painel.
+        if (!processos.isEmpty()) {
+            processoRepository.inicializarAnexos(
+                processos.stream().map(Processo::getId).toList());
+        }
 
         long deferidos = 0;
         long indeferidos = 0;

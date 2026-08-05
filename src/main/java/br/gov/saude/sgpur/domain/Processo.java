@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
+import org.hibernate.annotations.BatchSize;
 import org.springframework.format.annotation.DateTimeFormat;
 
 import java.time.LocalDate;
@@ -144,12 +145,23 @@ public class Processo {
     @Column(name = "data_decisao")
     private LocalDateTime dataDecisao;
 
+    // @BatchSize: quando a colecao nao veio por fetch join (ex.: a pagina de
+    // /processos, que so pagina bem sem fetch join de colecao - ver
+    // ProcessoRepository.buscar), o Hibernate busca os pareceres/anexos de
+    // ATE 20 processos numa unica query "in (:ids)" em vez de 1 query por
+    // processo (N+1). Achado em vistoria de 2026-08-05:
+    // FluxoProcessoService.pendenciaAberta(p), chamado por processo da
+    // pagina/lista em ProcessoListaController e HomeController, navega
+    // p.getPareceres()/p.getAnexos() - sem isso eram dezenas de queries
+    // extras por render de /processos e do Painel (/).
     @OneToMany(mappedBy = "processo", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
+    @BatchSize(size = 20)
     private List<Parecer> pareceres = new ArrayList<>();
 
     @OneToMany(mappedBy = "processo", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("dataUpload ASC")
+    @BatchSize(size = 20)
     private List<Anexo> anexos = new ArrayList<>();
 
     /**
