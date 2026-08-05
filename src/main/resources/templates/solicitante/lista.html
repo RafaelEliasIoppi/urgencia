@@ -44,33 +44,33 @@
             <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start active"
                     data-filtro="total">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.total()}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${resumo.total()}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-collection"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Total enviadas</div>
+                <div class="stat-label">Total enviadas</div>
             </button>
         </div>
         <div class="col">
             <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
                     data-filtro="aguardando">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.aguardandoTriagem()}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${resumo.aguardandoTriagem()}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-hourglass-split"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Aguardando triagem</div>
+                <div class="stat-label">Aguardando triagem</div>
             </button>
         </div>
         <div class="col">
             <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
                     data-filtro="analise">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.emAnalise()}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${resumo.emAnalise()}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-search"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Em análise</div>
+                <div class="stat-label">Em análise</div>
             </button>
         </div>
         <div class="col">
@@ -80,11 +80,11 @@
             <button type="button" class="stat-card stat-card-portal stat-card-total stat-card-filtro w-100 border-0 text-start"
                     data-filtro="decididas">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.decididas()}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${resumo.decididas()}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-check-circle-fill"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Decididas</div>
+                <div class="stat-label">Decididas</div>
             </button>
         </div>
         <div class="col">
@@ -92,11 +92,11 @@
             <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
                     data-filtro="devolvidas">
                 <div class="d-flex align-items-center justify-content-between">
-                    <span class="stat-number" style="color:var(--stat-text);" th:text="${resumo.devolvidas()}">0</span>
-                    <span class="stat-icon" style="background:var(--stat-icon-bg);color:var(--stat-icon-color);">
+                    <span class="stat-number" th:text="${resumo.devolvidas()}">0</span>
+                    <span class="stat-icon">
                         <i class="bi bi-arrow-return-left"></i></span>
                 </div>
-                <div class="stat-label" style="color:var(--stat-text);">Devolvidas</div>
+                <div class="stat-label">Devolvidas</div>
             </button>
         </div>
     </div>

@@ -46,11 +46,14 @@
             <div class="row g-3 mb-2">
                 <div class="col-md-8">
                     <label class="form-label" for="equipeSolicitanteInfo">Equipe / hospital</label>
-                    <input type="text" id="equipeSolicitanteInfo" class="form-control" th:value="${equipe}" disabled readonly>
+                    <!--/* so readonly (sem disabled): disabled tira o campo da ordem de
+                           tabulacao/leitor de tela; sem "name", nao e enviado no submit de
+                           qualquer forma - so informativo, exatamente como antes. */-->
+                    <input type="text" id="equipeSolicitanteInfo" class="form-control" th:value="${equipe}" readonly>
                 </div>
                 <div class="col-md-4">
                     <label class="form-label" for="emailSolicitanteInfo">E-mail</label>
-                    <input type="text" id="emailSolicitanteInfo" class="form-control" th:value="${email}" disabled readonly>
+                    <input type="text" id="emailSolicitanteInfo" class="form-control" th:value="${email}" readonly>
                 </div>
             </div>
             <p class="small text-muted">
@@ -118,6 +121,14 @@
                      role="status">
                     <i class="bi bi-check-circle-fill fs-5"></i>
                     <span id="documentosResumoTexto" class="fw-semibold"></span>
+                </div>
+                <!--/* Aviso preventivo de tamanho total (soma de todos os arquivos
+                       selecionados) - so aparece se ultrapassar um limiar razoavel,
+                       nao bloqueia o envio. */-->
+                <div id="documentosAvisoTamanho" class="alert alert-warning d-none d-flex align-items-start gap-2 py-2 mt-2 mb-0"
+                     role="alert">
+                    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                    <span id="documentosAvisoTamanhoTexto"></span>
                 </div>
                 <ul id="documentosSelecionados" class="list-group mt-2"></ul>
             </div>

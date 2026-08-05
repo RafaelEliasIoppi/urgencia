@@ -105,7 +105,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 }
             }).catch(function () {
                 if (typeof mostrarToast === 'function') {
-                    mostrarToast('Não foi possível salvar o rascunho. Tente novamente.', 'danger');
+                    // 'danger' nao e um tipo reconhecido por toast.js (so
+                    // 'success'/'error'/'info' - ver static/js/toast.js) e cai
+                    // no fallback neutro azul de "info", alem de gerar a
+                    // classe CSS "toast-danger" (inexistente em app.css,
+                    // barra lateral cinza). 'error' e o tipo correto.
+                    mostrarToast('Não foi possível salvar o rascunho. Tente novamente.', 'error');
                 } else if (rascunhoStatus) {
                     rascunhoStatus.textContent = 'Falha ao salvar rascunho.';
                 }
@@ -119,9 +124,19 @@ document.addEventListener('DOMContentLoaded', function () {
     var lista = document.getElementById('documentosSelecionados');
     var resumo = document.getElementById('documentosResumo');
     var resumoTexto = document.getElementById('documentosResumoTexto');
+    var avisoTamanho = document.getElementById('documentosAvisoTamanho');
+    var avisoTamanhoTexto = document.getElementById('documentosAvisoTamanhoTexto');
     if (!input || !lista) {
         return;
     }
+
+    // Limiar de aviso (nao bloqueante) para a SOMA de todos os arquivos
+    // selecionados. O mesmo limite documentado por arquivo individual
+    // (25 MB, application.yml: spring.servlet.multipart.max-file-size) -
+    // o servidor tambem tem um limite de REQUISICAO inteira
+    // (max-request-size: 30MB), entao varios arquivos grandes juntos podem
+    // ser recusados mesmo cada um respeitando o limite individual.
+    var LIMITE_TOTAL_BYTES = 25 * 1024 * 1024;
 
     function formatarTamanho(bytes) {
         if (bytes < 1024) return bytes + ' B';
@@ -143,8 +158,9 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Atualiza o aviso "N documento(s) selecionado(s)" acima da lista - some
     // por completo quando nao ha nenhum arquivo selecionado, para nao dar a
-    // falsa impressao de que algo foi anexado.
-    function atualizarResumo(total) {
+    // falsa impressao de que algo foi anexado. Mostra tambem a soma do
+    // tamanho de todos os arquivos.
+    function atualizarResumo(total, tamanhoTotalBytes) {
         if (!resumo || !resumoTexto) {
             return;
         }
@@ -153,13 +169,32 @@ document.addEventListener('DOMContentLoaded', function () {
             return;
         }
         resumo.classList.remove('d-none');
-        resumoTexto.textContent = total + ' documento' + (total === 1 ? '' : 's') + ' selecionado' + (total === 1 ? '' : 's');
+        resumoTexto.textContent = total + ' documento' + (total === 1 ? '' : 's') + ' selecionado' + (total === 1 ? '' : 's')
+            + ' — total: ' + formatarTamanho(tamanhoTotalBytes);
+    }
+
+    // Aviso preventivo (nao bloqueante) quando a soma dos arquivos passa do
+    // limiar razoavel - so um alerta visivel, o envio continua liberado (o
+    // servidor decide de verdade se aceita ou recusa).
+    function atualizarAvisoTamanho(total, tamanhoTotalBytes) {
+        if (!avisoTamanho || !avisoTamanhoTexto) {
+            return;
+        }
+        if (total === 0 || tamanhoTotalBytes <= LIMITE_TOTAL_BYTES) {
+            avisoTamanho.classList.add('d-none');
+            return;
+        }
+        avisoTamanho.classList.remove('d-none');
+        avisoTamanhoTexto.textContent = 'O total selecionado (' + formatarTamanho(tamanhoTotalBytes) + ') e grande. '
+            + 'O envio pode demorar mais ou ser recusado pelo servidor — considere reduzir a quantidade/tamanho dos arquivos.';
     }
 
     function renderizar() {
         var arquivos = Array.prototype.slice.call(input.files || []);
+        var tamanhoTotalBytes = arquivos.reduce(function (soma, arquivo) { return soma + arquivo.size; }, 0);
         lista.replaceChildren();
-        atualizarResumo(arquivos.length);
+        atualizarResumo(arquivos.length, tamanhoTotalBytes);
+        atualizarAvisoTamanho(arquivos.length, tamanhoTotalBytes);
         arquivos.forEach(function (arquivo, indice) {
             var item = document.createElement('li');
             item.className = 'list-group-item d-flex justify-content-between align-items-start gap-2 py-2 px-3 small';
@@ -187,6 +222,7 @@ document.addEventListener('DOMContentLoaded', function () {
             btnRemover.type = 'button';
             btnRemover.className = 'btn btn-sm btn-outline-danger py-0 px-2 flex-shrink-0';
             btnRemover.title = 'Remover ' + arquivo.name;
+            btnRemover.setAttribute('aria-label', 'Remover arquivo ' + arquivo.name);
             btnRemover.innerHTML = '<i class="bi bi-x-lg"></i>';
             btnRemover.addEventListener('click', function () { removerArquivo(indice); });
 
