@@ -974,7 +974,10 @@ class ProcessoDetalheControllerTest {
 
         String frase = "Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.";
         int ocorrencias = html.split(java.util.regex.Pattern.quote(frase), -1).length - 1;
-        org.assertj.core.api.Assertions.assertThat(ocorrencias).isEqualTo(1);
+        // Desde a correcao S2 (2026-08-05), o motivo aparece 2x: no title do
+        // botao desabilitado (nao confiavel em toque/celular) e num paragrafo
+        // visivel logo abaixo (.subpasso-regra) - nao mais so no title.
+        org.assertj.core.api.Assertions.assertThat(ocorrencias).isEqualTo(2);
         org.assertj.core.api.Assertions.assertThat(html).contains("title=\"" + frase + "\"");
         // A trava real (o botao desabilitado) continua intacta.
         String finalizacao = html.substring(html.indexOf("id=\"pane-finalizacao\""));
