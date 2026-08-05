@@ -846,8 +846,9 @@
                                 <li>Deferir e Indeferir ficam bloqueados enquanto o processo estiver <strong>pausado</strong> aguardando informação complementar (exceto o voto favorável do coordenador, que defere mesmo assim).</li>
                             </ul>
                         </details>
-                        <form th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post"
-                              data-lock-submit="Registrando decisão...">
+                        <form id="formDecisao" th:action="@{/processos/{id}/decidir(id=${processo.id})}" method="post"
+                              data-lock-submit="Registrando decisão..."
+                              data-confirm-msg="Confirma o registro desta decisão? Esta ação é irreversível.">
                             <div class="row g-2 align-items-end">
                                 <div class="col-md-4">
                                     <label class="form-label" for="decisaoSelect">Decisão</label>

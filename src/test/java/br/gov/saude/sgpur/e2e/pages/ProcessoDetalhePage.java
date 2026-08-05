@@ -72,6 +72,9 @@ public class ProcessoDetalhePage {
     // usado para Cancelado (nunca automatico) ou para redecidir apos uma
     // reabertura pelo ADMIN. No cenario feliz de 2/3 votos formando maioria,
     // nunca chame este metodo - o processo ja chega finalizado sozinho.
+    // Ganhou confirmacao por modal em 2026-08-05 (mesma protecao ja usada em
+    // #passo5_confirmarRespostaAoSolicitante) - o clique no botao precisa ser
+    // seguido do clique em #btnConfirmarAcaoFinal antes de seguir.
     public ProcessoDetalhePage passo4_decidir(String decisao) {
         return passo4_decidir(decisao, null);
     }
@@ -84,6 +87,7 @@ public class ProcessoDetalhePage {
             page.locator("#motivoIndeferimentoInput").fill(motivoIndeferimento);
         }
         page.locator("#decisao button:has-text('Registrar decisão')").click();
+        page.locator("#btnConfirmarAcaoFinal").click();
         page.waitForLoadState();
         return this;
     }

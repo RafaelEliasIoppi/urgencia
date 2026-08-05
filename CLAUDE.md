@@ -2433,3 +2433,38 @@ que a linha é um arquivo anexado. Nenhum `id`/`name` de campo mudou (o
 `PortalSolicitantePage.java` do E2E localiza `#documentos` pelo mesmo
 seletor de sempre, sem referência aos elementos internos da lista).
 
+## Confirmação antes de "Registrar decisão" (2026-08-05)
+
+Mudança aprovada explicitamente pelo dono do produto nesta sessão. O
+formulário da aba Decisão (`POST /processos/{id}/decidir`,
+`processos/detalhe.html`) registrava Deferido/Indeferido/Cancelado com um
+único clique, sem nenhuma barreira contra clique acidental — mesma classe de
+risco já coberta em excluir/reabrir/cancelar/"Enviar Resposta ao
+Solicitante" (ver seção "Confirmação antes de Enviar Resposta ao
+Solicitante" acima, usada como modelo). Ganhou `data-confirm-msg`,
+reaproveitando o modal genérico já existente (`static/js/confirmar-acao.js`
++ `layout.html :: confirmModal`, `#btnConfirmarAcaoFinal`) — **nenhum modal
+novo foi criado**.
+
+Como o formulário tem um único botão "Registrar decisão" que vale para as 3
+opções do `<select id="decisaoSelect">` (Deferido/Indeferido/Cancelado), a
+mensagem de confirmação é **dinâmica**: `processo-detalhe.js` atualiza o
+atributo `data-confirm-msg` do `<form id="formDecisao">` a cada troca do
+select (`change`, mesmo listener que já existia para mostrar/esconder o
+campo de motivo), citando o rótulo da decisão selecionada — ex. *"Confirma o
+registro da decisão "Indeferido" para este processo? Esta ação é
+irreversível."* Funciona porque `confirmar-acao.js` só lê
+`el.dataset.confirmMsg` no momento do `submit`, não faz cache do valor no
+carregamento da página.
+
+O E2E (`ProcessoDetalhePage.passo4_decidir`) passou a clicar em
+`#btnConfirmarAcaoFinal` depois do clique no botão "Registrar decisão",
+mesmo padrão já usado no ajuste do botão "Enviar Resposta ao Solicitante".
+Esse caminho manual só é exercitado em `Cancelado` ou redecisão após
+reabertura pelo ADMIN — no caminho feliz de maioria simples o processo
+decide sozinho (`ProcessoService.tentarDecisaoAutomatica`), sem passar por
+este formulário; por isso `FluxoCompletoProcessoIT` (que só cobre o caminho
+automático) não precisou de nenhum ajuste para esta mudança específica.
+
+**Validação:** suíte completa, 0 falhas (JDK 21).
+
