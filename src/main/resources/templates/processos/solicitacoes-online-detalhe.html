@@ -6,7 +6,25 @@
 <div th:replace="~{layout :: flash}"></div>
 
 <main id="conteudo" class="container my-4 container-narrow">
-    <h1 class="h3 mb-3" th:text="${solicitacao.pacienteNome}">Paciente</h1>
+    <!-- Acoes principais promovidas para o cabecalho (relatorio de clareza,
+         2026-08-05, item 5.3): antes ficavam abaixo da lista de anexos, no
+         meio da pagina, e numa solicitacao com muitos documentos cairiam
+         abaixo da dobra. "Devolver" e a acao minoritaria (outline-secondary,
+         nao mais outline-danger - devolver nao e destrutivo, so retorna ao
+         solicitante); "Revisar e converter" continua a acao principal. -->
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+        <h1 class="h3 mb-0" th:text="${solicitacao.pacienteNome}">Paciente</h1>
+        <div class="d-flex gap-2" th:if="${solicitacao.status.name() == 'ENVIADA'}">
+            <button type="button" class="btn btn-outline-secondary" data-bs-toggle="modal"
+                    data-bs-target="#modalDevolver">
+                <i class="bi bi-arrow-return-left"></i> Devolver
+            </button>
+            <a th:href="@{/processos/solicitacoes-online/{id}/converter(id=${solicitacao.id})}"
+               class="btn btn-primary">
+                <i class="bi bi-arrow-right-circle"></i> Revisar e converter
+            </a>
+        </div>
+    </div>
 
     <div class="card mb-3">
         <div class="card-body">
@@ -37,20 +55,10 @@
         </li>
     </ul>
 
-    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+    <div class="d-flex">
         <a th:href="@{/processos/solicitacoes-online}" class="btn btn-outline-secondary">
             <i class="bi bi-arrow-left"></i> Voltar
         </a>
-        <div class="d-flex gap-2" th:if="${solicitacao.status.name() == 'ENVIADA'}">
-            <button type="button" class="btn btn-outline-danger" data-bs-toggle="modal"
-                    data-bs-target="#modalDevolver">
-                <i class="bi bi-arrow-return-left"></i> Devolver
-            </button>
-            <a th:href="@{/processos/solicitacoes-online/{id}/converter(id=${solicitacao.id})}"
-               class="btn btn-primary">
-                <i class="bi bi-arrow-right-circle"></i> Revisar e converter
-            </a>
-        </div>
     </div>
 
     <!-- Conversa com o solicitante -->
