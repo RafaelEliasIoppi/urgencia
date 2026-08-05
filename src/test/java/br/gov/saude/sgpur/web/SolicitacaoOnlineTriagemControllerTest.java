@@ -157,7 +157,16 @@ class SolicitacaoOnlineTriagemControllerTest {
             .andExpect(flash().attributeExists("msg"));
 
         verify(service).devolver(50L, "Falta documento clinico.");
-        verify(auditoria).registrar(eq("SOLICITACAO_ONLINE_DEVOLVIDA"), any());
+        org.mockito.ArgumentCaptor<String> detalheCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(auditoria).registrar(eq("SOLICITACAO_ONLINE_DEVOLVIDA"), detalheCaptor.capture());
+        String detalhe = detalheCaptor.getValue();
+        // solicitacao: pacienteNome = "Fulano de Tal" (RGCT "123456789-12345")
+        org.assertj.core.api.Assertions.assertThat(detalhe)
+            .doesNotContain("Fulano")
+            .doesNotContain("Tal")
+            .doesNotContain("123456789-12345")
+            .contains("50")
+            .contains("F.T.");
     }
 
     @Test
