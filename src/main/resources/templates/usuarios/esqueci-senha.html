@@ -21,7 +21,8 @@
             <div th:if="${erroRedefinicao}" class="alert alert-danger py-2" th:text="${erroRedefinicao}"></div>
             <p class="text-muted small mb-3" th:unless="${sucesso}">
                 Informe seu login para receber uma senha temporária.
-                Após o login, troque a senha na edição do seu perfil.
+                Após o login, troque a senha no menu com o seu nome (canto
+                superior direito) → "Alterar senha".
             </p>
             <form th:action="@{/usuarios/esqueci-senha}" method="post" th:unless="${sucesso}">
                 <div class="mb-3">
