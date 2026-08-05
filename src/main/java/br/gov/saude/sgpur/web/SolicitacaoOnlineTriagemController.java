@@ -1,15 +1,23 @@
 package br.gov.saude.sgpur.web;
 
+import br.gov.saude.sgpur.domain.AnexoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.MensagemSolicitacao;
 import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.Usuario;
+import br.gov.saude.sgpur.repository.AnexoSolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
+import br.gov.saude.sgpur.service.AnexoSolicitacaoOnlineStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.Iniciais;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -17,6 +25,8 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import java.net.MalformedURLException;
+import java.nio.file.Path;
 import java.security.Principal;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -59,14 +69,20 @@ public class SolicitacaoOnlineTriagemController {
     private final AuditoriaService auditoria;
     private final MensagemSolicitacaoService mensagemService;
     private final UsuarioRepository usuarioRepo;
+    private final AnexoSolicitacaoOnlineRepository anexoRepo;
+    private final AnexoSolicitacaoOnlineStorageService anexoStorage;
 
     public SolicitacaoOnlineTriagemController(SolicitacaoOnlineService service, AuditoriaService auditoria,
             MensagemSolicitacaoService mensagemService,
-            UsuarioRepository usuarioRepo) {
+            UsuarioRepository usuarioRepo,
+            AnexoSolicitacaoOnlineRepository anexoRepo,
+            AnexoSolicitacaoOnlineStorageService anexoStorage) {
         this.service = service;
         this.auditoria = auditoria;
         this.mensagemService = mensagemService;
         this.usuarioRepo = usuarioRepo;
+        this.anexoRepo = anexoRepo;
+        this.anexoStorage = anexoStorage;
     }
 
     @GetMapping
@@ -106,6 +122,41 @@ public class SolicitacaoOnlineTriagemController {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
         mensagemService.marcarComoLidas(id, MensagemSolicitacao.RemetenteMensagem.SOLICITANTE, operador.getId());
         return "processos/solicitacoes-online-detalhe";
+    }
+
+    /**
+     * Download, pelo OPERADOR/ADMIN em triagem, de um documento anexado a
+     * ESTA solicitacao online (nunca aceita caminho vindo do request - busca
+     * o anexo pelo ID persistido e confirma que ele pertence de fato a
+     * solicitacao {@code id} da URL, mesmo padrao de posse de
+     * {@link SolicitanteController#baixarAnexo}, so que aqui quem baixa e o
+     * operador, nao o proprio solicitante). Sem essa checagem, um operador
+     * poderia adivinhar o ID de um anexo de OUTRA solicitacao e baixa-lo por
+     * aqui (IDOR). A rota ja e restrita a ADMIN/OPERADOR pela regra
+     * "/processos/**" do SecurityConfig, ja que este controller vive sob
+     * /processos.
+     */
+    @GetMapping("/{id}/anexo/{anexoId}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Resource> baixarAnexo(@PathVariable Long id, @PathVariable Long anexoId)
+            throws MalformedURLException {
+        AnexoSolicitacaoOnline anexo = anexoRepo.findById(anexoId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        if (!anexo.getSolicitacaoOnline().getId().equals(id)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Este anexo nao pertence a esta solicitacao.");
+        }
+        Path arquivo = anexoStorage.resolverArquivo(anexo);
+        Resource resource = new UrlResource(arquivo.toUri());
+        if (!resource.exists() || !resource.isReadable()) {
+            return ResponseEntity.notFound().build();
+        }
+        String contentType = anexo.getContentType() != null
+            ? anexo.getContentType() : MediaType.APPLICATION_OCTET_STREAM_VALUE;
+        return ResponseEntity.ok()
+            .contentType(MediaType.parseMediaType(contentType))
+            .header(HttpHeaders.CONTENT_DISPOSITION,
+                "attachment; filename=\"" + anexo.getNomeArquivo() + "\"")
+            .body(resource);
     }
 
     /**
