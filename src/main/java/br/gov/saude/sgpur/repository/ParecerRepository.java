@@ -2,6 +2,7 @@ package br.gov.saude.sgpur.repository;
 
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
+import br.gov.saude.sgpur.domain.StatusProcesso;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -39,6 +40,21 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
 
     /** Localiza o parecer de um membro especifico em um processo especifico. */
     Optional<Parecer> findByProcessoIdAndMembroId(Long processoId, Long membroId);
+
+    /**
+     * Contagem direta (sem carregar nenhuma entidade) de pareceres "pendentes
+     * ativos para voto" de um membro — MESMO criterio de
+     * {@link br.gov.saude.sgpur.web.AvaliadorController#pendenteAtivoParaVoto}
+     * (resultado nulo, envio ja registrado, processo em status ENVIADO), so que
+     * resolvido pelo banco com um {@code count(...)} em vez de trazer as
+     * entidades {@code Parecer} inteiras e filtrar em Java navegando
+     * {@code Parecer.processo} (LAZY). Usado por
+     * {@link br.gov.saude.sgpur.web.GlobalModelAdvice#pendentesAvaliador()},
+     * que roda em TODA requisicao do avaliador (e um {@code @ModelAttribute}
+     * de {@code @ControllerAdvice}) — a query anterior era um N+1 por render.
+     */
+    long countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
+        Long membroId, StatusProcesso status);
 
     /**
      * Pareceres pendentes (resultado nulo, envio ja registrado) de um processo
