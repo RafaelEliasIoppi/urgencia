@@ -155,4 +155,27 @@ class MembroControllerTest {
             .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
             .hasFieldOrPropertyWithValue("statusCode", org.springframework.http.HttpStatus.NOT_FOUND);
     }
+
+    /**
+     * A tela de listagem passa o termo de busca ao repositorio (que resolve
+     * o filtro no banco, ver {@code MembroUrgenciaRenalRepository.buscar})
+     * e devolve o mesmo termo ao model, para o campo de busca continuar
+     * preenchido apos o filtro (mesmo padrao de /processos e /arquivo).
+     */
+    @Test
+    void listarComTermoDeBuscaRepassaAoRepositorioEAoModel() {
+        MembroUrgenciaRenal m = new MembroUrgenciaRenal("HCPA", "Maria Silva", null);
+        when(repo.buscar("maria")).thenReturn(java.util.List.of(m));
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0L, null, 0L, 7, java.util.Map.of()));
+
+        org.springframework.ui.ConcurrentModel model = new org.springframework.ui.ConcurrentModel();
+        String view = controller.listar("maria", model);
+
+        assertThat(view).isEqualTo("membros/lista");
+        assertThat(model.getAttribute("membros")).isEqualTo(java.util.List.of(m));
+        assertThat(model.getAttribute("q")).isEqualTo("maria");
+        org.mockito.Mockito.verify(repo).buscar("maria");
+        org.mockito.Mockito.verify(repo, org.mockito.Mockito.never()).findAll();
+    }
 }

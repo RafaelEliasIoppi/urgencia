@@ -154,6 +154,15 @@ public class ControleUrgenciaService {
     }
 
     /**
+     * Mesma lista de {@link #listarAtivas()}, com busca por paciente, RGCT
+     * ou equipe resolvida no banco ({@code ControleUrgenciaRepository.
+     * buscarAtivas}). {@code q} nulo/vazio devolve todos os ativos.
+     */
+    public List<ControleUrgencia> listarAtivas(String q) {
+        return repo.buscarAtivas(q);
+    }
+
+    /**
      * Retorna todos os registros (inclusive inativos).
      */
     public List<ControleUrgencia> listarTodas() {

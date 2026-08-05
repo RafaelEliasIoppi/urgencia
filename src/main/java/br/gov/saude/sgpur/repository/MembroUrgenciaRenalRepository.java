@@ -5,6 +5,7 @@ import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 
@@ -15,6 +16,24 @@ public interface MembroUrgenciaRenalRepository extends JpaRepository<MembroUrgen
     long countByAtivoTrue();
 
     List<MembroUrgenciaRenal> findByCoordenadorTrue();
+
+    /**
+     * Busca por nome, instituicao ou e-mail, resolvida no banco (mesmo
+     * padrao de {@code ProcessoRepository.buscar}). {@code q} nulo/vazio
+     * devolve todos, ordenados por instituicao (mesma ordem de
+     * {@link #findByAtivoTrueOrderByInstituicaoAsc}). Sem paginacao: o
+     * volume de membros e pequeno (equipe fixa de avaliadores), diferente de
+     * Processo/SolicitacaoOnline.
+     */
+    @Query("""
+        select m from MembroUrgenciaRenal m
+        where (:q is null or :q = ''
+               or lower(m.nome) like lower(concat('%', :q, '%'))
+               or lower(m.instituicao) like lower(concat('%', :q, '%'))
+               or lower(m.email) like lower(concat('%', :q, '%')))
+        order by m.instituicao asc
+        """)
+    List<MembroUrgenciaRenal> buscar(@Param("q") String q);
 
     /**
      * Adquire um lock pessimista de escrita (SELECT ... FOR UPDATE) sobre TODAS

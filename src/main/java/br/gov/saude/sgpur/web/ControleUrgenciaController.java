@@ -23,8 +23,9 @@ public class ControleUrgenciaController {
     }
 
     @GetMapping
-    public String listar(Model model) {
-        model.addAttribute("registros", service.listarAtivas());
+    public String listar(@RequestParam(required = false) String q, Model model) {
+        model.addAttribute("registros", service.listarAtivas(q));
+        model.addAttribute("q", q);
         model.addAttribute("ativas", service.contarPorSituacao(SituacaoUrgencia.ATIVA));
         model.addAttribute("renovadas", service.contarPorSituacao(SituacaoUrgencia.RENOVADA));
         model.addAttribute("expiradas", service.contarPorSituacao(SituacaoUrgencia.EXPIRADA));

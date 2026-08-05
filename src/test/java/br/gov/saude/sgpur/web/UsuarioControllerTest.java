@@ -88,12 +88,34 @@ class UsuarioControllerTest {
     @WithMockUser(roles = "ADMIN")
     void listarExibeUsuariosDoServico() throws Exception {
         List<Usuario> usuarios = List.of(usuario(1L, "admin", Perfil.ADMIN), usuario(2L, "operador1", Perfil.OPERADOR));
-        when(service.listar()).thenReturn(usuarios);
+        when(service.listar(null)).thenReturn(usuarios);
 
         mvc.perform(get("/usuarios"))
             .andExpect(status().isOk())
             .andExpect(view().name("usuarios/lista"))
-            .andExpect(model().attribute("usuarios", usuarios));
+            .andExpect(model().attribute("usuarios", usuarios))
+            .andExpect(model().attribute("q", (Object) null));
+    }
+
+    /**
+     * A busca (item 5 do docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md) e
+     * resolvida no banco (UsuarioRepository.buscar) - aqui so confirmamos
+     * que o termo digitado chega ao servico e volta ao model, sem cair de
+     * volta em listar() sem filtro.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void listarComTermoDeBuscaRepassaAoServicoEAoModel() throws Exception {
+        List<Usuario> filtrados = List.of(usuario(1L, "admin", Perfil.ADMIN));
+        when(service.listar("adm")).thenReturn(filtrados);
+
+        mvc.perform(get("/usuarios").param("q", "adm"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("usuarios/lista"))
+            .andExpect(model().attribute("usuarios", filtrados))
+            .andExpect(model().attribute("q", "adm"));
+
+        verify(service, never()).listar();
     }
 
     @Test

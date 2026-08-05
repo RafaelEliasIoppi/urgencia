@@ -36,9 +36,10 @@ public class MembroController {
     }
 
     @GetMapping
-    public String listar(Model model) {
-        var membros = repo.findAll();
+    public String listar(@RequestParam(required = false) String q, Model model) {
+        var membros = repo.buscar(q);
         model.addAttribute("membros", membros);
+        model.addAttribute("q", q);
         // Estatisticas por membro: [0]=designados, [1]=avaliados, [2]=favoraveis
         Map<Long, long[]> stats = new LinkedHashMap<>();
         for (MembroUrgenciaRenal m : membros) {

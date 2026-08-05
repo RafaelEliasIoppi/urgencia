@@ -47,6 +47,15 @@ public class UsuarioService {
         return repo.findAll();
     }
 
+    /**
+     * Lista com busca por login/nome, resolvida no banco
+     * ({@code UsuarioRepository.buscar}). {@code q} nulo/vazio devolve
+     * todos, mesmo comportamento de {@link #listar()}.
+     */
+    public List<Usuario> listar(String q) {
+        return repo.buscar(q);
+    }
+
     public Usuario buscar(Long id) {
         return repo.findById(id)
             .orElseThrow(() -> new IllegalArgumentException("Usuario nao encontrado: " + id));
