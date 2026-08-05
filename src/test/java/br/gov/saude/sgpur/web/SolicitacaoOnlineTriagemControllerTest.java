@@ -3,8 +3,10 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.StatusSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.Usuario;
+import br.gov.saude.sgpur.repository.AnexoSolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
+import br.gov.saude.sgpur.service.AnexoSolicitacaoOnlineStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
@@ -47,6 +49,8 @@ class SolicitacaoOnlineTriagemControllerTest {
     @MockitoBean private MensagemSolicitacaoService mensagemService;
     @MockitoBean private UsuarioRepository usuarioRepo;
     @MockitoBean private ParecerRepository parecerRepo;
+    @MockitoBean private AnexoSolicitacaoOnlineRepository anexoRepo;
+    @MockitoBean private AnexoSolicitacaoOnlineStorageService anexoStorage;
 
     private SolicitacaoOnline solicitacao;
 

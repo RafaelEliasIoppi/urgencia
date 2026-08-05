@@ -49,7 +49,11 @@
 
     <h2 class="h6 text-muted">Documentos anexados</h2>
     <ul class="list-group mb-3">
-        <li class="list-group-item" th:each="a : ${solicitacao.anexos}" th:text="${a.nomeArquivo}"></li>
+        <li class="list-group-item" th:each="a : ${solicitacao.anexos}">
+            <i class="bi bi-file-earmark"></i>
+            <a th:href="@{/processos/solicitacoes-online/{id}/anexo/{anexoId}(id=${solicitacao.id}, anexoId=${a.id})}"
+               th:text="${a.nomeArquivo}" target="_blank">arquivo</a>
+        </li>
         <li class="list-group-item text-muted" th:if="${solicitacao.anexos.isEmpty()}">
             Nenhum documento anexado.
         </li>
@@ -114,7 +118,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
-                <label class="form-label" for="observacoes">Motivo (visivel ao solicitante) *</label>
+                <label class="form-label" for="observacoes">Motivo (visível ao solicitante) *</label>
                 <textarea name="observacoes" class="form-control" rows="3" required id="observacoes"></textarea>
             </div>
             <div class="modal-footer">
