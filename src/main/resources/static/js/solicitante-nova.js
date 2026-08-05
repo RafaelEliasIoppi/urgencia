@@ -117,6 +117,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var input = document.getElementById('documentos');
     var lista = document.getElementById('documentosSelecionados');
+    var resumo = document.getElementById('documentosResumo');
+    var resumoTexto = document.getElementById('documentosResumoTexto');
     if (!input || !lista) {
         return;
     }
@@ -139,26 +141,56 @@ document.addEventListener('DOMContentLoaded', function () {
         renderizar();
     }
 
+    // Atualiza o aviso "N documento(s) selecionado(s)" acima da lista - some
+    // por completo quando nao ha nenhum arquivo selecionado, para nao dar a
+    // falsa impressao de que algo foi anexado.
+    function atualizarResumo(total) {
+        if (!resumo || !resumoTexto) {
+            return;
+        }
+        if (total === 0) {
+            resumo.classList.add('d-none');
+            return;
+        }
+        resumo.classList.remove('d-none');
+        resumoTexto.textContent = total + ' documento' + (total === 1 ? '' : 's') + ' selecionado' + (total === 1 ? '' : 's');
+    }
+
     function renderizar() {
         var arquivos = Array.prototype.slice.call(input.files || []);
         lista.replaceChildren();
+        atualizarResumo(arquivos.length);
         arquivos.forEach(function (arquivo, indice) {
             var item = document.createElement('li');
-            item.className = 'list-group-item d-flex justify-content-between align-items-center py-1 px-2 small';
+            item.className = 'list-group-item d-flex justify-content-between align-items-start gap-2 py-2 px-3 small';
+
+            var infoDiv = document.createElement('div');
+            infoDiv.className = 'd-flex align-items-center gap-2';
+            infoDiv.style.minWidth = '0';
+
+            var icone = document.createElement('i');
+            icone.className = 'bi bi-file-earmark-text-fill text-primary flex-shrink-0';
 
             var nomeSpan = document.createElement('span');
-            nomeSpan.className = 'text-truncate';
-            nomeSpan.style.minWidth = '0';
+            // "text-break" (utilitario do Bootstrap) em vez de "text-truncate":
+            // "text-truncate" corta o nome do arquivo com reticencias em vez de
+            // quebrar linha, escondendo o nome real (bug relatado pelo usuario -
+            // a lista de anexos aparecia "cortada", sem dar para confirmar qual
+            // arquivo tinha sido selecionado).
+            nomeSpan.className = 'text-break';
             nomeSpan.textContent = arquivo.name + ' (' + formatarTamanho(arquivo.size) + ')';
+
+            infoDiv.appendChild(icone);
+            infoDiv.appendChild(nomeSpan);
 
             var btnRemover = document.createElement('button');
             btnRemover.type = 'button';
-            btnRemover.className = 'btn btn-sm btn-outline-danger py-0 px-2 ms-2 flex-shrink-0';
+            btnRemover.className = 'btn btn-sm btn-outline-danger py-0 px-2 flex-shrink-0';
             btnRemover.title = 'Remover ' + arquivo.name;
             btnRemover.innerHTML = '<i class="bi bi-x-lg"></i>';
             btnRemover.addEventListener('click', function () { removerArquivo(indice); });
 
-            item.appendChild(nomeSpan);
+            item.appendChild(infoDiv);
             item.appendChild(btnRemover);
             lista.appendChild(item);
         });
