@@ -114,12 +114,15 @@ public class ProcessoDetalhePage {
      * - nao ha mais checkbox de confirmacao nem upload manual de
      * "comprovante de envio" nesta etapa. So habilitado quando o documento
      * obrigatorio da decisao (Oficio de Indeferimento ou Comprovante SNT) ja
-     * estiver anexado.
+     * estiver anexado. O form tem data-confirm-msg (acao irreversivel), entao
+     * o clique abre o modal generico de confirmacao (ver
+     * static/js/confirmar-acao.js) - precisa confirmar antes do submit real.
      */
     public ProcessoDetalhePage passo5_confirmarRespostaAoSolicitante() {
         narrar("Passo 5/5 - Finalizacao: enviando a resposta final ao solicitante...");
         clicarPasso("pane-finalizacao");
         page.locator("#finalizacao form[action*='/finalizar'] button").click();
+        page.locator("#btnConfirmarAcaoFinal").click();
         page.waitForLoadState();
         return this;
     }
