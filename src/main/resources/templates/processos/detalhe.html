@@ -910,8 +910,16 @@
                     </p>
 
                     <!-- Oficio de Indeferimento (apenas INDEFERIDO) -->
-                    <div th:if="${processo.status.name() == 'INDEFERIDO'}" class="border rounded p-3 mb-3 bg-light">
-                        <h6 class="mb-2"><i class="bi bi-file-earmark-text text-danger"></i> Ofício de Indeferimento</h6>
+                    <section th:if="${processo.status.name() == 'INDEFERIDO'}" class="subpasso"
+                             th:classappend="${oficioAnexo != null} ? 'subpasso-ok' : 'subpasso-atual'">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num">
+                                <i class="bi bi-check-lg" th:if="${oficioAnexo != null}"></i>
+                                <span th:if="${oficioAnexo == null}">1</span>
+                            </span>
+                            <h3 class="h6 mb-0">Ofício de Indeferimento</h3>
+                            <span th:replace="~{layout :: status(${oficioAnexo != null})}"></span>
+                        </header>
                         <!-- O oficio NAO e gerado pelo sistema (2026-08-04): o documento
                              oficial e sempre o que o operador anexa. O sistema so oferece
                              um rascunho editavel como ponto de partida. O anexo vai junto
@@ -990,11 +998,19 @@
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </section>
 
                     <!-- Comprovante SNT (apenas DEFERIDO) -->
-                    <div th:if="${processo.status.name() == 'DEFERIDO'}" class="border rounded p-3 mb-3 bg-light">
-                        <h6 class="mb-2"><i class="bi bi-clipboard2-check text-success"></i> Comprovante SNT</h6>
+                    <section th:if="${processo.status.name() == 'DEFERIDO'}" class="subpasso"
+                             th:classappend="${comprovanteSnT != null} ? 'subpasso-ok' : 'subpasso-atual'">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num">
+                                <i class="bi bi-check-lg" th:if="${comprovanteSnT != null}"></i>
+                                <span th:if="${comprovanteSnT == null}">1</span>
+                            </span>
+                            <h3 class="h6 mb-0">Comprovante SNT</h3>
+                            <span th:replace="~{layout :: status(${comprovanteSnT != null})}"></span>
+                        </header>
                         <p class="small text-muted mb-2">
                             Anexe o comprovante de inserção da urgência renal no
                             Sistema Nacional de Transplantes (SNT). Obrigatório para concluir o processo.
@@ -1040,13 +1056,29 @@
                                 </button>
                             </div>
                         </form>
-                    </div>
+                    </section>
 
                     <hr class="my-4">
 
-                    <!-- Resposta ao solicitante (sempre visivel na finalizacao) -->
-                    <div class="border rounded p-3 bg-light">
-                        <h6 class="mb-2"><i class="bi bi-envelope-check text-primary"></i> Resposta ao solicitante</h6>
+                    <!-- Resposta ao solicitante (sempre visivel na finalizacao).
+                         bloqueado/motivoBloqueio pre-calculados aqui (regra do CLAUDE.md
+                         contra ternario aninhado > 3 niveis em atributos Thymeleaf) e
+                         reusados tanto no estado visual do sub-passo quanto no
+                         th:disabled/title do botao - fonte unica, sem duplicar a condicao. -->
+                    <section class="subpasso"
+                             th:with="bloqueado=${(processo.status.name() == 'DEFERIDO' and comprovanteSnT == null)
+                                          or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)
+                                          or (processo.status.name() == 'CANCELADO')},
+                                      motivoBloqueio=${processo.status.name() == 'DEFERIDO' and comprovanteSnT == null} ? 'Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.' : (${processo.status.name() == 'INDEFERIDO' and oficioAnexo == null} ? 'Anexe o ofício de indeferimento acima antes de enviar a resposta.' : null)"
+                             th:classappend="${processo.emailEnviadoSolicitante} ? 'subpasso-ok' : (${bloqueado} ? 'subpasso-bloqueado' : 'subpasso-atual')">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num">
+                                <i class="bi bi-check-lg" th:if="${processo.emailEnviadoSolicitante}"></i>
+                                <span th:unless="${processo.emailEnviadoSolicitante}">2</span>
+                            </span>
+                            <h3 class="h6 mb-0">Resposta ao solicitante</h3>
+                            <span th:replace="~{layout :: status(${processo.emailEnviadoSolicitante})}"></span>
+                        </header>
 
                         <!-- Ja enviada -->
                         <div th:if="${processo.emailEnviadoSolicitante}">
@@ -1064,18 +1096,6 @@
 
                         <!-- Nao enviada ainda -->
                         <div th:unless="${processo.emailEnviadoSolicitante}">
-                            <!-- Alerta se documento obrigatorio faltando -->
-                            <div th:if="${processo.status.name() == 'DEFERIDO' and comprovanteSnT == null}"
-                                 class="alert alert-warning py-2 mb-2">
-                                <span th:replace="~{layout :: status(false)}"></span>
-                                Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.
-                            </div>
-                            <div th:if="${processo.status.name() == 'INDEFERIDO' and oficioAnexo == null}"
-                                 class="alert alert-warning py-2 mb-2">
-                                <span th:replace="~{layout :: status(false)}"></span>
-                                Anexe o ofício de indeferimento acima antes de enviar a resposta.
-                            </div>
-
                             <!-- Previa do e-mail -->
                             <div th:if="${emailRespostaPreview != null}" class="border rounded p-2 bg-white mb-2">
                                 <small class="text-muted fw-semibold">Prévia do e-mail que será enviado:</small>
@@ -1087,20 +1107,20 @@
                                      th:text="${emailRespostaPreview.corpo()}"></pre>
                             </div>
 
-                            <!-- Botao unico de envio -->
+                            <!-- Botao unico de envio. A pendencia (comprovante/oficio faltando)
+                                 nao precisa mais de um alert proprio - o motivo ja esta no
+                                 title do botao desabilitado, que e a trava real (bloqueado). -->
                             <form th:if="${processo.status.finalizado}"
                                   th:action="@{/processos/{id}/finalizar(id=${processo.id})}" method="post"
                                   data-lock-submit="Enviando resposta..."
                                   data-confirm-msg="Confirma o envio da resposta final ao solicitante? Esta ação é irreversível e vai disparar o e-mail oficial de Deferido/Indeferido com os anexos correspondentes.">
                                 <button type="submit" class="btn btn-success"
-                                        th:disabled="${(processo.status.name() == 'DEFERIDO' and comprovanteSnT == null)
-                                            or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)
-                                            or (processo.status.name() == 'CANCELADO')}">
+                                        th:disabled="${bloqueado}" th:title="${motivoBloqueio}">
                                     <i class="bi bi-envelope-check"></i> Enviar Resposta ao Solicitante
                                 </button>
                             </form>
                         </div>
-                    </div>
+                    </section>
 
                 </div>
             </div>
@@ -1110,8 +1130,21 @@
 
             <!-- Anexos -->
             <div class="card" id="anexos">
-                <div class="card-header"><i class="bi bi-paperclip"></i> Anexos (e-mails e documentos)</div>
-                <div class="card-body">
+                <!-- Colapsado por padrao (relatorio de clareza, 2026-08-05, item 4.12):
+                     cada anexo aqui ja aparece em pelo menos mais um lugar da tela (sub-passo
+                     de upload, ou o card de Oficio/Comprovante) - este card e o repositorio
+                     completo e o unico lugar com exclusao genarica, mas nao precisa competir
+                     visualmente com o resto da pagina o tempo todo. Mesmo padrao ja usado no
+                     card de chat desta tela. -->
+                <div class="card-header d-flex justify-content-between align-items-center" role="button"
+                     data-bs-toggle="collapse" data-bs-target="#corpoAnexos" aria-expanded="false">
+                    <span><i class="bi bi-paperclip"></i> Todos os anexos</span>
+                    <span class="d-flex align-items-center gap-1">
+                        <span class="badge bg-secondary" th:text="${#lists.size(processo.anexos)}">0</span>
+                        <i class="bi bi-chevron-up chevron-collapse"></i>
+                    </span>
+                </div>
+                <div class="card-body collapse" id="corpoAnexos">
                     <ul class="list-group mb-3" th:if="${!processo.anexos.isEmpty()}">
                         <li class="list-group-item d-flex flex-wrap justify-content-between align-items-center gap-2"
                             th:each="a : ${processo.anexos}">

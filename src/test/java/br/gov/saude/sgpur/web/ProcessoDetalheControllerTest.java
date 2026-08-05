@@ -936,6 +936,38 @@ class ProcessoDetalheControllerTest {
                 org.hamcrest.Matchers.containsString("name=\"dataEnvioSnt\""))));
     }
 
+    /**
+     * Relatorio de clareza (2026-08-05), item 4.8: a pendencia "falta anexar
+     * o comprovante/oficio antes de enviar" era dita DUAS vezes - um alert
+     * amarelo dentro do bloco de Comprovante SNT e outro, com o MESMO texto,
+     * dentro do bloco de Resposta ao solicitante - alem do botao ja vir
+     * th:disabled na mesma condicao (a trava real). Agora o motivo vive so
+     * no title do botao desabilitado. Renderiza o template de verdade num
+     * DEFERIDO sem comprovante e confere que a frase aparece uma vez so,
+     * como atributo title, e que o botao continua desabilitado (a trava nao
+     * mudou, so o texto que a duplicava).
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void abaFinalizacaoNaoRepeteAPendenciaDeAnexoDuasVezes() throws Exception {
+        processo.setStatus(StatusProcesso.DEFERIDO);
+        when(fluxoService.calcularGating(processo)).thenReturn(
+            new FluxoProcessoService.GatingAbas(true, true, true, true, true));
+
+        String html = mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        String frase = "Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.";
+        int ocorrencias = html.split(java.util.regex.Pattern.quote(frase), -1).length - 1;
+        org.assertj.core.api.Assertions.assertThat(ocorrencias).isEqualTo(1);
+        org.assertj.core.api.Assertions.assertThat(html).contains("title=\"" + frase + "\"");
+        // A trava real (o botao desabilitado) continua intacta.
+        String finalizacao = html.substring(html.indexOf("id=\"pane-finalizacao\""));
+        org.assertj.core.api.Assertions.assertThat(finalizacao).contains("Enviar Resposta ao Solicitante");
+        org.assertj.core.api.Assertions.assertThat(finalizacao).contains("disabled");
+    }
+
     /** Anexo em staging (veio do portal, ainda nao revisado) vinculado ao processo. */
     private Anexo anexoPendente(Long id) {
         Anexo a = new Anexo();
