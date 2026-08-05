@@ -2011,3 +2011,60 @@ editar um corpo de e-mail, tentar navegar para outra aba do wizard (deve
 avisar) e depois confirmar que enviar o e-mail normalmente **não** dispara
 nenhum aviso extra.
 
+## Poll global pausado em background + toast unificado + CSP sem Google Fonts (2026-08-04)
+
+3 itens do `docs/RELATORIO-UI-INTERACAO-AVANCADA-2026-08.md` (PR #19, ainda
+não mesclado no momento desta sessão), implementados na branch
+`feat/poll-pausado-toast-unificado`:
+
+1. **Os dois polls globais de notificação (`layout.html`, `setInterval` de
+   20s que checam contagem de mensagens não lidas — um para ADMIN/OPERADOR,
+   outro para SOLICITANTE) agora pausam com a aba em background.** Antes
+   nunca paravam: uma aba aberta e esquecida mantinha a `HttpSession` viva
+   indefinidamente via poll, na prática anulando o `timeout: 30m` de
+   `application-prod.yml` (decisão de segurança deliberada da vistoria de
+   2026-07-28). Reaproveitado exatamente o padrão já usado em
+   `chat-solicitacao.js` (`visibilitychange` + uma flag `pollAtivo` que o
+   `setInterval` consulta a cada tick, retomando o poll imediatamente quando
+   a aba volta a ficar visível). `chat-solicitacao.js` e o intervalo de 20s
+   em si **não foram tocados** — só o pause/resume dos dois polls do
+   `layout.html`.
+2. **`mostrarToast` tinha DUAS implementações divergentes** — uma inline no
+   fragment `notificacaoSonora` de `layout.html` (usada pelas ~24 telas que
+   não são o detalhe do processo) e outra em `processo-detalhe.js` (só a
+   tela `/processos/{id}`, que sobrescrevia `window.mostrarToast` por
+   carregar depois na mesma página). A de `processo-detalhe.js` tinha fade-out
+   suave (300ms) e `aria-label="Fechar"` no botão de fechar; a de
+   `layout.html` não tinha nenhum dos dois. **Unificadas em
+   `static/js/toast.js`** (arquivo novo, com a versão mais completa),
+   carregado por `layout.html` dentro do fragment `navbar` — precisa vir
+   ANTES do `<script th:replace="~{layout :: notificacaoSonora}">`, que
+   ainda define só `tocarNotificacao()`. `processo-detalhe.js` perdeu a
+   definição duplicada; continua chamando `mostrarToast(...)` livremente
+   (função global, mesma assinatura de antes: `(mensagem, tipo)`), garantido
+   porque `toast.js` carrega mais cedo na página via o fragment `navbar`
+   (todo template que usa `processo-detalhe.js` também usa `layout ::
+   navbar` — verificado). Nenhum teste dependia do texto/estrutura interna
+   de nenhuma das duas versões antigas.
+3. **CSP de produção (`SecurityConfig.CSP_PROD`) parou de liberar
+   `fonts.googleapis.com`/`fonts.gstatic.com`.** Essas origens sobraram da
+   época em que a fonte Inter vinha do Google Fonts — desde a Fase E da
+   sessão "UI da área do operador" (2026-08-04, mais acima neste arquivo) a
+   fonte é auto-hospedada (`@font-face` em `app.css`, arquivos em
+   `/fonts`), mas ninguém tinha voltado para apertar a CSP. Confirmado por
+   grep no projeto inteiro que não sobra nenhuma outra referência a
+   `googleapis`/`gstatic` fora de `GeminiService` (API do Gemini, endpoint
+   diferente, não afetado por essa CSP) — remover as duas origens de
+   `style-src`/`font-src` não quebra nada.
+
+**Validação:** suíte completa **759 testes** — 0 falhas relevantes (as 2
+falhas vistas nesta sessão foram a flakiness de timing já documentada em
+`ComprovanteSntPendenteQueriesIntegrationTest`/
+`LembreteAvaliadorTimestampIntegrationTest`, nem sempre as duas aparecem
+juntas na mesma rodada). `.\e2e.ps1 -Headless` chegou até o passo 5 do fluxo
+e falhou na mesma linha já documentada (`FluxoCompletoProcessoIT:228`,
+SMTP local não configurado — `SGPUR_MAIL_USER`/`SGPUR_MAIL_FROM` ausentes
+nesta máquina), confirmando que a falha é pré-existente e não relacionada.
+Nenhuma regra de negócio, entidade ou endpoint mudou nesta sessão — só
+JS/CSS/CSP.
+
