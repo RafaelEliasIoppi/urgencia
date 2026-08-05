@@ -3,6 +3,7 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.*;
 import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo;
+import br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
 import org.springframework.stereotype.Service;
@@ -61,7 +62,7 @@ public class FluxoProcessoService {
         //    veioDoPortal(p) continua existindo so para achar o link "Ver
         //    solicitacao original" na tela de detalhe.
         String detReceb = "Recebimento automatico (solicitacao enviada pelo Portal do Solicitante).";
-        etapas.add(montar("Recebimento da solicitacao", "inbox-fill",
+        etapas.add(montar(Chave.RECEBIMENTO, "Recebimento da solicitação", "inbox-fill",
             true, anterioresConcluidas, detReceb));
         anterioresConcluidas = finalizado || anterioresConcluidas;
 
@@ -89,7 +90,7 @@ public class FluxoProcessoService {
         } else {
             detEnvio = "Enviado aos " + totalMedicos + " medicos.";
         }
-        etapas.add(montar("Envio aos 3 medicos", "send-fill", enviado, anterioresConcluidas, detEnvio));
+        etapas.add(montar(Chave.ENVIO, "Envio aos 3 médicos", "send-fill", enviado, anterioresConcluidas, detEnvio));
         anterioresConcluidas = finalizado || (anterioresConcluidas && enviado);
 
         // 3. Respostas dos medicos. Por MAIORIA SIMPLES (2 de 3), assim que ha
@@ -113,7 +114,7 @@ public class FluxoProcessoService {
         } else {
             detResp = respondidos + " pareceres recebidos (com anexo). Favoraveis: " + favoraveis + ".";
         }
-        etapas.add(montar("Respostas dos medicos", "chat-square-text-fill",
+        etapas.add(montar(Chave.RESPOSTAS, "Respostas dos médicos", "chat-square-text-fill",
             respostasOk, anterioresConcluidas, detResp));
         anterioresConcluidas = finalizado || (anterioresConcluidas && respostasOk);
 
@@ -121,7 +122,7 @@ public class FluxoProcessoService {
         //     Funciona como uma PAUSA: bloqueia a decisao ate o solicitante
         //     responder e o operador retomar a analise.
         if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO) {
-            etapas.add(montar("Informacao complementar", "question-circle-fill",
+            etapas.add(montar(Chave.INFO_COMPLEMENTAR, "Informação complementar", "question-circle-fill",
                 false, anterioresConcluidas,
                 "Aguardando informacao complementar do solicitante. Envie o pedido, "
                 + "anexe a resposta recebida e retome a analise para liberar a decisao."));
@@ -142,7 +143,7 @@ public class FluxoProcessoService {
                     + ProcessoService.AVALIADORES_POR_PROCESSO + " favoraveis).")
                 .orElse("Aguardando pareceres suficientes para decidir.");
         }
-        etapas.add(montar("Decisao final", "hammer", decidido, anterioresConcluidas, detDecisao));
+        etapas.add(montar(Chave.DECISAO, "Decisão final", "hammer", decidido, anterioresConcluidas, detDecisao));
         anterioresConcluidas = finalizado || (anterioresConcluidas && decidido);
 
         // 5. Oficio de indeferimento (apenas quando indeferido)
@@ -157,7 +158,7 @@ public class FluxoProcessoService {
             if (p.getDataEmissaoOficio() == null) faltas.add("data de emissao");
             String detOficio = oficioOk ? "Oficio de indeferimento completo."
                 : "Falta: " + String.join(", ", faltas) + ".";
-            etapas.add(montar("Oficio de indeferimento", "file-earmark-text-fill",
+            etapas.add(montar(Chave.OFICIO, "Ofício de indeferimento", "file-earmark-text-fill",
                 oficioOk, anterioresConcluidas, detOficio));
             anterioresConcluidas = anterioresConcluidas && oficioOk;
         }
@@ -165,7 +166,7 @@ public class FluxoProcessoService {
         // 5b. Comprovante de insercao da urgencia renal no SNT (apenas quando deferido)
         if (p.getStatus() == StatusProcesso.DEFERIDO) {
             boolean comprovanteOk = temAnexo(p, TipoAnexo.COMPROVANTE_SNT);
-            etapas.add(montar("Comprovante SNT", "clipboard2-check-fill",
+            etapas.add(montar(Chave.COMPROVANTE_SNT, "Comprovante SNT", "clipboard2-check-fill",
                 comprovanteOk, anterioresConcluidas,
                 comprovanteOk ? "Comprovante de insercao da urgencia renal no SNT anexado."
                               : "Anexe o comprovante de insercao da urgencia renal no "
@@ -196,7 +197,7 @@ public class FluxoProcessoService {
         } else {
             detResposta = "Falta marcar o e-mail como enviado.";
         }
-        etapas.add(montar("Resposta ao solicitante", "envelope-check-fill",
+        etapas.add(montar(Chave.RESPOSTA_SOLICITANTE, "Resposta ao solicitante", "envelope-check-fill",
             respostaOk, anterioresConcluidas, detResposta));
 
         return etapas;
@@ -215,15 +216,15 @@ public class FluxoProcessoService {
         boolean anteriorConcluido = true;
 
         anteriorConcluido = adicionarPasso(passos, 1, "1. Recebimento", "pane-recebimento",
-            etapaConcluida(etapas, "Recebimento da solicitacao"), anteriorConcluido,
+            etapaConcluida(etapas, Chave.RECEBIMENTO), anteriorConcluido,
             "Conclua o Recebimento (passo 1) primeiro.", "Recebimento");
 
         anteriorConcluido = adicionarPasso(passos, 2, "2. Envio", "pane-envio",
-            etapaConcluida(etapas, "Envio aos 3 medicos"), anteriorConcluido,
+            etapaConcluida(etapas, Chave.ENVIO), anteriorConcluido,
             "Conclua o Recebimento (passo 1) primeiro.", "Envio aos avaliadores");
 
         anteriorConcluido = adicionarPasso(passos, 3, "3. Respostas", "pane-respostas",
-            etapaConcluida(etapas, "Respostas dos medicos"), anteriorConcluido,
+            etapaConcluida(etapas, Chave.RESPOSTAS), anteriorConcluido,
             "Registre o Envio aos avaliadores (passo 2) primeiro.", "Pareceres dos avaliadores");
 
         // "Informacao complementar" pausa o fluxo (ver montarEtapas) mesmo com
@@ -232,28 +233,28 @@ public class FluxoProcessoService {
         // caso enquanto a timeline vertical mantem "Decisao final" PENDENTE -
         // as duas linhas do tempo dessincronizam.
         boolean aguardandoInfo = etapas.stream()
-            .anyMatch(e -> e.titulo().equals("Informacao complementar") && !e.isConcluida());
+            .anyMatch(e -> e.chave() == Chave.INFO_COMPLEMENTAR && !e.isConcluida());
         if (aguardandoInfo) {
             anteriorConcluido = false;
         }
 
-        anteriorConcluido = adicionarPasso(passos, 4, "4. Decisao", "pane-decisao",
-            etapaConcluida(etapas, "Decisao final"), anteriorConcluido,
+        anteriorConcluido = adicionarPasso(passos, 4, "4. Decisão", "pane-decisao",
+            etapaConcluida(etapas, Chave.DECISAO), anteriorConcluido,
             aguardandoInfo
                 ? "Aguardando informacao complementar do solicitante antes de decidir."
                 : "Receba todos os pareceres (passo 3) antes de decidir.",
-            "Decisao final");
+            "Decisão final");
 
         // Passo 5 (Finalizacao) agrupa o bloco pos-decisao: Oficio (se
         // indeferido) ou Comprovante SNT (se deferido), mais a Resposta ao
         // solicitante. So concluido se TODAS as etapas desse bloco que
         // existirem para o status atual estiverem CONCLUIDA.
-        boolean finalizacaoOk = etapaConcluidaSeExistir(etapas, "Oficio de indeferimento")
-            && etapaConcluidaSeExistir(etapas, "Comprovante SNT")
-            && etapaConcluida(etapas, "Resposta ao solicitante");
-        adicionarPasso(passos, 5, "5. Finalizacao", "pane-finalizacao",
+        boolean finalizacaoOk = etapaConcluidaSeExistir(etapas, Chave.OFICIO)
+            && etapaConcluidaSeExistir(etapas, Chave.COMPROVANTE_SNT)
+            && etapaConcluida(etapas, Chave.RESPOSTA_SOLICITANTE);
+        adicionarPasso(passos, 5, "5. Finalização", "pane-finalizacao",
             finalizacaoOk, anteriorConcluido,
-            "Registre a decisao (passo 4) primeiro.", "Finalizacao");
+            "Registre a decisao (passo 4) primeiro.", "Finalização");
 
         return passos;
     }
@@ -277,14 +278,14 @@ public class FluxoProcessoService {
         return anteriorConcluido && concluido;
     }
 
-    /** true se a etapa com esse titulo existe e esta CONCLUIDA. */
-    private boolean etapaConcluida(List<EtapaFluxo> etapas, String titulo) {
-        return etapas.stream().anyMatch(e -> e.titulo().equals(titulo) && e.isConcluida());
+    /** true se a etapa com essa chave existe e esta CONCLUIDA. */
+    private boolean etapaConcluida(List<EtapaFluxo> etapas, Chave chave) {
+        return etapas.stream().anyMatch(e -> e.chave() == chave && e.isConcluida());
     }
 
     /** true se a etapa nao existir para o status atual (nao se aplica) OU estiver CONCLUIDA. */
-    private boolean etapaConcluidaSeExistir(List<EtapaFluxo> etapas, String titulo) {
-        return etapas.stream().filter(e -> e.titulo().equals(titulo)).findFirst()
+    private boolean etapaConcluidaSeExistir(List<EtapaFluxo> etapas, Chave chave) {
+        return etapas.stream().filter(e -> e.chave() == chave).findFirst()
             .map(EtapaFluxo::isConcluida)
             .orElse(true);
     }
@@ -366,12 +367,15 @@ public class FluxoProcessoService {
 
     /** Mensagem curta de "o que falta" para o processo (etapa atual pendente). */
     public String resumoPendencia(Processo p) {
-        return pendenciaAberta(p).orElse("Processo concluido.");
+        return pendenciaAberta(p)
+            .map(e -> e.titulo() + ": " + e.detalhe())
+            .orElse("Processo concluido.");
     }
 
     /**
-     * Igual a {@link #resumoPendencia}, mas VAZIO quando nao ha etapa pendente
-     * nenhuma - para quem precisa distinguir "nada a fazer" de "falta algo" sem
+     * Igual a {@link #resumoPendencia}, mas devolve a ETAPA inteira (nao so a
+     * string ja concatenada) e VAZIO quando nao ha etapa pendente nenhuma -
+     * para quem precisa distinguir "nada a fazer" de "falta algo" sem
      * comparar a string "Processo concluido.".
      *
      * <p>Existe por causa do Painel: ele so calculava pendencia para processo
@@ -381,17 +385,25 @@ public class FluxoProcessoService {
      * Status final significa apenas que a DECISAO saiu e a edicao das etapas
      * 1-4 travou; a papelada de conclusao continua pendente (bug relatado em
      * producao no processo 04/2026).
+     *
+     * <p><b>Devolve o {@link EtapaFluxo} inteiro desde 2026-08-05</b> (item
+     * 5.1 do relatorio de clareza) para quem exibe a pendencia numa CELULA DE
+     * TABELA poder mostrar so {@code titulo()} (curto) e reservar
+     * {@code detalhe()} (a frase completa) para o atributo {@code title} -
+     * antes a string ja vinha concatenada ("Titulo: frase longa..."), sempre
+     * visivel por inteiro, empurrando as demais colunas ou sendo cortada sem
+     * reticencias (ver dashboard.html/processos/lista.html).
      */
-    public Optional<String> pendenciaAberta(Processo p) {
+    public Optional<EtapaFluxo> pendenciaAberta(Processo p) {
         for (EtapaFluxo e : montarEtapas(p)) {
             if (e.estado() == Estado.ATUAL) {
-                return Optional.of(e.titulo() + ": " + e.detalhe());
+                return Optional.of(e);
             }
         }
         return Optional.empty();
     }
 
-    private EtapaFluxo montar(String titulo, String icone, boolean concluida,
+    private EtapaFluxo montar(Chave chave, String titulo, String icone, boolean concluida,
                               boolean anterioresConcluidas, String detalhe) {
         // So mostra CONCLUIDA (verde) se as etapas anteriores tambem estiverem
         // concluidas - senao a etapa fica "verde fora de ordem" mesmo com sua
@@ -406,7 +418,7 @@ public class FluxoProcessoService {
         } else {
             estado = Estado.PENDENTE;
         }
-        return new EtapaFluxo(titulo, icone, estado, detalhe);
+        return new EtapaFluxo(chave, titulo, icone, estado, detalhe);
     }
 
     private boolean temAnexo(Processo p, TipoAnexo tipo) {

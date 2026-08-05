@@ -212,10 +212,14 @@
                             <div th:if="${l.processo.status.isFinalizado()}" class="badge-encerramento-xs">
                                 <span th:replace="~{layout :: badgeEncerramento(${l.processo}, '')}"></span>
                             </div>
+                            <!-- Relatorio de clareza (2026-08-05), item 5.1: a celula mostra so o
+                                 rotulo curto da etapa pendente (ex. "Envio aos 3 médicos"); a frase
+                                 completa (o que falta de verdade) fica reservada pro title, em vez
+                                 de competir por espaco na tabela / ser cortada sem reticencias. -->
                             <div th:if="${pendencias.containsKey(l.processo.id)}"
-                                 class="mt-1 text-muted fst-italic" style="font-size:.7rem;max-width:12rem;"
-                                 th:text="${pendencias.get(l.processo.id)}"
-                                 th:title="${pendencias.get(l.processo.id)}">o que falta</div>
+                                 class="mt-1 text-muted fst-italic text-truncate" style="font-size:.7rem;max-width:12rem;"
+                                 th:text="${pendencias.get(l.processo.id).titulo()}"
+                                 th:title="${pendencias.get(l.processo.id).titulo()} + ': ' + ${pendencias.get(l.processo.id).detalhe()}">o que falta</div>
                         </td>
                         <td class="align-top" style="min-width:9rem;max-width:12rem;" th:each="c : ${l.medicos}">
                             <th:block th:if="${c.definido}">

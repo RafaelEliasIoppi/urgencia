@@ -62,7 +62,10 @@ class ProcessoListaControllerTest {
     void listaSemFiltrosUsaPaginaZeroETamanho15() throws Exception {
         Page<Processo> pagina = new PageImpl<>(List.of(processo), PageRequest.of(0, 15), 1);
         when(processoService.buscar(isNull(), isNull(), eq(PageRequest.of(0, 15)))).thenReturn(pagina);
-        when(fluxoService.resumoPendencia(processo)).thenReturn("Falta o Envio");
+        br.gov.saude.sgpur.service.dto.EtapaFluxo etapaEnvio = new br.gov.saude.sgpur.service.dto.EtapaFluxo(
+            br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
+            br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado.ATUAL, "Falta o Envio");
+        when(fluxoService.pendenciaAberta(processo)).thenReturn(java.util.Optional.of(etapaEnvio));
 
         mvc.perform(get("/processos"))
             .andExpect(status().isOk())
@@ -70,7 +73,49 @@ class ProcessoListaControllerTest {
             .andExpect(model().attribute("processos", List.of(processo)))
             .andExpect(model().attribute("paginaAtual", 0))
             .andExpect(model().attribute("totalPaginas", 1))
-            .andExpect(model().attribute("pendencias", org.hamcrest.Matchers.hasEntry(1L, "Falta o Envio")));
+            .andExpect(model().attribute("pendencias", org.hamcrest.Matchers.hasEntry(1L, etapaEnvio)));
+    }
+
+    /**
+     * Relatorio de clareza (2026-08-05), item 5.1: a celula da coluna "O que
+     * falta" mostra so o titulo curto da etapa - a frase completa fica no
+     * title, sem empurrar as demais colunas da tabela. Renderiza o template
+     * de verdade.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void colunaOQueFaltaMostraSoOTituloCurtoEAFraseCompletaNoTitle() throws Exception {
+        Page<Processo> pagina = new PageImpl<>(List.of(processo), PageRequest.of(0, 15), 1);
+        when(processoService.buscar(isNull(), isNull(), eq(PageRequest.of(0, 15)))).thenReturn(pagina);
+        when(fluxoService.pendenciaAberta(processo)).thenReturn(java.util.Optional.of(
+            new br.gov.saude.sgpur.service.dto.EtapaFluxo(
+                br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
+                br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado.ATUAL,
+                "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.")));
+
+        String html = mvc.perform(get("/processos"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains(">Envio aos 3 médicos<");
+        org.assertj.core.api.Assertions.assertThat(html).contains(
+            "title=\"Envio aos 3 médicos: Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.\"");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("Nada pendente");
+    }
+
+    /** Processo sem nenhuma pendencia aberta cai no fallback "Nada pendente". */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void processoSemPendenciaAbertaMostraNadaPendente() throws Exception {
+        Page<Processo> pagina = new PageImpl<>(List.of(processo), PageRequest.of(0, 15), 1);
+        when(processoService.buscar(isNull(), isNull(), eq(PageRequest.of(0, 15)))).thenReturn(pagina);
+        when(fluxoService.pendenciaAberta(processo)).thenReturn(java.util.Optional.empty());
+
+        String html = mvc.perform(get("/processos"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains("Nada pendente");
     }
 
     /**
@@ -95,7 +140,6 @@ class ProcessoListaControllerTest {
         Page<Processo> pagina = new PageImpl<>(List.of(decididoIncompleto, encerrado),
             PageRequest.of(0, 15), 2);
         when(processoService.buscar(isNull(), isNull(), any())).thenReturn(pagina);
-        when(fluxoService.resumoPendencia(any())).thenReturn("Comprovante SNT: anexe o comprovante");
 
         String html = mvc.perform(get("/processos"))
             .andExpect(status().isOk())
@@ -110,7 +154,6 @@ class ProcessoListaControllerTest {
     void filtraPorTermoDeBuscaEStatus() throws Exception {
         Page<Processo> pagina = new PageImpl<>(List.of(processo), PageRequest.of(0, 15), 1);
         when(processoService.buscar(eq("Maria"), eq(StatusProcesso.ENVIADO), any())).thenReturn(pagina);
-        when(fluxoService.resumoPendencia(any())).thenReturn("");
 
         mvc.perform(get("/processos").param("q", "Maria").param("status", "ENVIADO"))
             .andExpect(status().isOk())
@@ -158,7 +201,6 @@ class ProcessoListaControllerTest {
         when(processoService.listarDeferidosSemComprovanteSnt())
             .thenReturn(List.of(deferidoSemComprovante));
         when(processoService.idsDeferidosSemComprovanteSnt()).thenReturn(java.util.Set.of(9L));
-        when(fluxoService.resumoPendencia(any())).thenReturn("Comprovante SNT: anexe o comprovante.");
 
         mvc.perform(get("/processos").param("filtro", "snt-pendente"))
             .andExpect(status().isOk())

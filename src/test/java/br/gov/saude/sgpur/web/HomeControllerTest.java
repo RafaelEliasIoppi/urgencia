@@ -9,6 +9,7 @@ import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
+import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import br.gov.saude.sgpur.web.dto.PainelLinha;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -125,10 +126,12 @@ class HomeControllerTest {
         Processo concluido = processo(3L, 3, StatusProcesso.INDEFERIDO);
         when(processoRepository.findByAnoComPareceres(ano))
             .thenReturn(List.of(emAndamento, decididoIncompleto, concluido));
-        when(fluxoService.pendenciaAberta(emAndamento))
-            .thenReturn(java.util.Optional.of("Decisao: aguardando os pareceres"));
-        when(fluxoService.pendenciaAberta(decididoIncompleto))
-            .thenReturn(java.util.Optional.of("Comprovante SNT: anexe o comprovante"));
+        EtapaFluxo etapaDecisao = new EtapaFluxo(EtapaFluxo.Chave.DECISAO, "Decisão final", "hammer",
+            EtapaFluxo.Estado.ATUAL, "aguardando os pareceres");
+        EtapaFluxo etapaSnt = new EtapaFluxo(EtapaFluxo.Chave.COMPROVANTE_SNT, "Comprovante SNT", "clipboard2-check-fill",
+            EtapaFluxo.Estado.ATUAL, "anexe o comprovante");
+        when(fluxoService.pendenciaAberta(emAndamento)).thenReturn(java.util.Optional.of(etapaDecisao));
+        when(fluxoService.pendenciaAberta(decididoIncompleto)).thenReturn(java.util.Optional.of(etapaSnt));
         when(fluxoService.pendenciaAberta(concluido)).thenReturn(java.util.Optional.empty());
         when(membroService.contarAtivos()).thenReturn(0L);
         when(tempoRespostaService.calcular()).thenReturn(
@@ -137,10 +140,38 @@ class HomeControllerTest {
         mvc.perform(get("/"))
             .andExpect(status().isOk())
             .andExpect(model().attribute("pendencias", Map.of(
-                1L, "Decisao: aguardando os pareceres",
-                2L, "Comprovante SNT: anexe o comprovante")))
+                1L, etapaDecisao,
+                2L, etapaSnt)))
             // O contador "em andamento" nao muda: decidido continua fora dele.
             .andExpect(model().attribute("emAndamento", 1L));
+    }
+
+    /**
+     * Relatorio de clareza (2026-08-05), item 5.1: a celula da pendencia
+     * mostra so o titulo curto da etapa - a frase completa (o que falta de
+     * verdade) fica so no title, para nao competir por espaco na tabela do
+     * Painel. Renderiza o template de verdade.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void pendenciaNaCelulaDoPainelMostraSoOTituloCurtoEAFraseCompletaNoTitle() throws Exception {
+        int ano = Year.now().getValue();
+        Processo p = processo(1L, 1, StatusProcesso.ENVIADO);
+        when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of(p));
+        when(fluxoService.pendenciaAberta(p)).thenReturn(java.util.Optional.of(
+            new EtapaFluxo(EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
+                EtapaFluxo.Estado.ATUAL, "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.")));
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        String html = mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains(">Envio aos 3 médicos<");
+        org.assertj.core.api.Assertions.assertThat(html).contains(
+            "title=\"Envio aos 3 médicos: Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.\"");
     }
 
     /**
