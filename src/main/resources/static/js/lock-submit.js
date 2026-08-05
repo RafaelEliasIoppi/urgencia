@@ -30,19 +30,29 @@
 // navegador e quem segue em frente. Nao precisa reabilitar o botao depois:
 // a resposta troca a pagina inteira (redirect), entao o HTML novo ja vem
 // limpo do servidor.
+//
+// window.travarBotoesSubmit(form, mensagem) fica exposta globalmente para
+// que confirmar-acao.js possa disparar a mesma trava visual manualmente,
+// so DEPOIS que o operador confirmar no modal (ver confirmar-acao.js para o
+// motivo: el.submit() nao redispara o evento 'submit', entao o listener
+// abaixo nunca rodaria sozinho nesse caminho).
 (function () {
+    function travarBotoesSubmit(form, mensagem) {
+        var botoes = form.querySelectorAll('button[type="submit"], button:not([type])');
+        setTimeout(function () {
+            botoes.forEach(function (btn) {
+                btn.disabled = true;
+                if (mensagem) {
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + mensagem;
+                }
+            });
+        }, 0);
+    }
+    window.travarBotoesSubmit = travarBotoesSubmit;
+
     document.querySelectorAll('form[data-lock-submit]').forEach(function (form) {
         form.addEventListener('submit', function () {
-            var mensagem = form.dataset.lockSubmit;
-            var botoes = form.querySelectorAll('button[type="submit"], button:not([type])');
-            setTimeout(function () {
-                botoes.forEach(function (btn) {
-                    btn.disabled = true;
-                    if (mensagem) {
-                        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> ' + mensagem;
-                    }
-                });
-            }, 0);
+            travarBotoesSubmit(form, form.dataset.lockSubmit);
         });
     });
 })();
