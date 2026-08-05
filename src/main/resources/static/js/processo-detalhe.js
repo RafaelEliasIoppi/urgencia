@@ -1,44 +1,10 @@
 // === SAUR - Processo Detalhe ===
 // Funcoes da tela de detalhe do processo (wizard, pareceres, IA, e-mail).
 
-// ===== Notificacao toast =====
-// Intencionalmente global (window.mostrarToast) - e a unica funcao deste
-// arquivo chamada de fora dele (ex.: outros scripts da tela poderiam querer
-// mostrar um toast). Todo o resto fica dentro da IIFE abaixo.
-window.mostrarToast = function (mensagem, tipo) {
-    tipo = tipo || 'info';
-    var container = document.getElementById('toastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'toastContainer';
-        container.className = 'toast-container-sgpur';
-        container.setAttribute('role', 'status');
-        container.setAttribute('aria-live', 'polite');
-        document.body.appendChild(container);
-    }
-    var icones = {success: 'bi-check-circle-fill text-success', error: 'bi-exclamation-triangle-fill text-danger', info: 'bi-info-circle-fill text-primary'};
-    var toast = document.createElement('div');
-    toast.className = 'toast-sgpur toast-' + tipo;
-    var icone = document.createElement('i');
-    icone.className = 'bi toast-icon ' + (icones[tipo] || icones.info);
-    var corpo = document.createElement('div');
-    corpo.className = 'toast-body';
-    corpo.textContent = mensagem;
-    var fechar = document.createElement('button');
-    fechar.className = 'toast-close';
-    fechar.setAttribute('aria-label', 'Fechar');
-    fechar.textContent = '×';
-    fechar.addEventListener('click', function () { toast.remove(); });
-    toast.appendChild(icone);
-    toast.appendChild(corpo);
-    toast.appendChild(fechar);
-    container.appendChild(toast);
-    setTimeout(function () {
-        toast.style.opacity = '0';
-        toast.style.transition = 'opacity .3s';
-        setTimeout(function () { toast.remove(); }, 300);
-    }, 5000);
-};
+// mostrarToast() NAO e mais definida aqui (era uma segunda implementacao
+// divergente da de layout.html - unificadas em /js/toast.js, carregado por
+// layout.html/navbar em toda tela, inclusive esta - ver CLAUDE.md). Este
+// arquivo continua usando window.mostrarToast livremente, só nao a declara.
 
 (function () {
     // Mostra/oculta o motivo conforme a decisao
