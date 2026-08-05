@@ -116,7 +116,7 @@ public class FluxoProcessoService {
             detResp = "Faltam " + (totalMedicos - respondidos) + " de " + totalMedicos
                 + " pareceres. Favoraveis ate agora: " + favoraveis + ".";
         } else {
-            detResp = respondidos + " pareceres recebidos (com anexo). Favoraveis: " + favoraveis + ".";
+            detResp = respondidos + " pareceres recebidos. Favoraveis: " + favoraveis + ".";
         }
         etapas.add(montar(Chave.RESPOSTAS, "Respostas dos médicos", "chat-square-text-fill",
             respostasOk, anterioresConcluidas, detResp));
@@ -394,6 +394,15 @@ public class FluxoProcessoService {
      * reticencias (ver dashboard.html/processos/lista.html).
      */
     public Optional<EtapaFluxo> pendenciaAberta(Processo p) {
+        // CANCELADO (corrigido em 2026-08-05): um processo cancelado antes do
+        // envio/pareceres tinha sua primeira etapa marcada ATUAL - a edicao ja
+        // fica bloqueada por edicaoBloqueada nesse status, entao essa
+        // pendencia era impossivel de resolver e travava a barra de progresso
+        // abaixo de 100% para sempre. Mesmo raciocinio ja aplicado a
+        // respostaOk (montarEtapas) para o cancelamento a partir da decisao.
+        if (p.getStatus() == StatusProcesso.CANCELADO) {
+            return Optional.empty();
+        }
         for (EtapaFluxo e : montarEtapas(p)) {
             if (e.estado() == Estado.ATUAL) {
                 return Optional.of(e);
@@ -431,7 +440,7 @@ public class FluxoProcessoService {
      * divergirem da timeline (antes usavam apenas {@code pareceres.get(0)}, o
      * que destoava quando so parte dos pareceres tinha data de envio).
      */
-    private boolean envioRegistrado(Processo p) {
+    public boolean envioRegistrado(Processo p) {
         return !p.getPareceres().isEmpty()
             && p.getPareceres().stream().allMatch(par -> par.getDataEnvio() != null);
     }

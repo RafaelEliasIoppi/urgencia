@@ -518,6 +518,14 @@ public class ProcessoDetalheController {
         // (FluxoProcessoService), para as duas linhas nunca divergirem.
         var passosWizard = fluxoService.montarPassosWizard(p);
         model.addAttribute("passosWizard", passosWizard);
+
+        // envioFeito: usado em varios pontos do template (badge do wizard,
+        // avisos, subpassos). Calculado uma unica vez aqui via
+        // FluxoProcessoService.envioRegistrado - fonte unica, em vez do
+        // template recalcular localmente com um criterio abandonado (so
+        // olhar pareceres.get(0), que diverge quando so parte dos pareceres
+        // tem dataEnvio - ver javadoc de envioRegistrado).
+        model.addAttribute("envioFeito", fluxoService.envioRegistrado(p));
         String abaAtivaPaneId = passosWizard.stream()
             .filter(passo -> passo.estado() != PassoWizard.Estado.CONCLUIDA)
             .findFirst()

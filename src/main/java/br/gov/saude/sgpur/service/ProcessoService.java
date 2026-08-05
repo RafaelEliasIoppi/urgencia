@@ -231,9 +231,11 @@ public class ProcessoService {
         StatusProcesso decisao = sugestao.get();
         // DEFERIDO dispensa motivo. INDEFERIDO tambem finaliza automaticamente
         // (decisao de produto confirmada): como o motivo e obrigatorio para o
-        // oficio, geramos um texto consolidando as justificativas dos
-        // pareceres desfavoraveis — o operador pode ajusta-lo depois (ADMIN
-        // reabre o processo em /processos/{id}/reabrir e redecide pelo mesmo
+        // oficio, geramos um texto institucional/impessoal (NUNCA o texto das
+        // justificativas dos avaliadores - ver javadoc de
+        // gerarMotivoIndeferimentoAutomatico, e a confidencialidade que ele
+        // protege) — o operador pode ajusta-lo depois (ADMIN reabre o
+        // processo em /processos/{id}/reabrir e redecide pelo mesmo
         // formulario da aba Decisao, que reenvia o motivo).
         String motivoIndeferimento = decisao == StatusProcesso.INDEFERIDO
             ? gerarMotivoIndeferimentoAutomatico(p) : null;
