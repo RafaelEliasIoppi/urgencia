@@ -4,6 +4,7 @@ import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.ProcessoService;
+import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
@@ -60,10 +61,16 @@ public class ProcessoListaController {
         model.addAttribute("q", q);
         model.addAttribute("statusSelecionado", status);
         model.addAttribute("filtroSntPendente", sntPendente);
-        // resumo de pendencia por processo (id -> texto)
-        java.util.Map<Long, String> pendencias = new java.util.LinkedHashMap<>();
+        // Resumo de pendencia por processo (id -> etapa atual). Desde
+        // 2026-08-05 (item 5.1 do relatorio de clareza) guarda a EtapaFluxo
+        // inteira, nao mais uma string ja concatenada: o template mostra so
+        // o titulo curto na celula e reserva a frase completa pro title,
+        // sem competir por espaco na coluna nem cortar sem reticencias.
+        // Processo sem pendencia (Optional vazio) simplesmente nao entra no
+        // mapa - o template cai no fallback "Nada pendente".
+        java.util.Map<Long, EtapaFluxo> pendencias = new java.util.LinkedHashMap<>();
         for (Processo p : processos) {
-            pendencias.put(p.getId(), fluxoService.resumoPendencia(p));
+            fluxoService.pendenciaAberta(p).ifPresent(e -> pendencias.put(p.getId(), e));
         }
         model.addAttribute("pendencias", pendencias);
         // Deferidos sem comprovante SNT: badge de pendencia na linha + atalho

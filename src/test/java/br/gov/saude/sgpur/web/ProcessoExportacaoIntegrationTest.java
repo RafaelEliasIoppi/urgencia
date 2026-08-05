@@ -230,7 +230,10 @@ class ProcessoExportacaoIntegrationTest {
             .contains("Nao favoravel")
             .contains("Deferido")
             .contains("MOVIMENTACAO (LINHA DO TEMPO)")
-            .contains("Recebimento da solicitacao");
+            // EtapaFluxo.titulo() e texto de exibicao, acentuado desde a
+            // Fase 7 do relatorio de clareza (2026-08-05) - a identidade da
+            // etapa passou a ser EtapaFluxo.Chave, nao mais o titulo.
+            .contains("Recebimento da solicitação");
     }
 
     @Test

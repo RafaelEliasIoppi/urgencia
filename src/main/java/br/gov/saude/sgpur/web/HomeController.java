@@ -6,6 +6,7 @@ import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.MembroUrgenciaRenalService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.service.TempoRespostaService.ResumoTempo;
+import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import br.gov.saude.sgpur.web.dto.PainelLinha;
 import org.springframework.stereotype.Controller;
 import org.springframework.transaction.annotation.Transactional;
@@ -61,7 +62,7 @@ public class HomeController {
         long indeferidos = 0;
         long cancelados = 0;
         long emAndamento = 0;
-        Map<Long, String> pendencias = new LinkedHashMap<>();
+        Map<Long, EtapaFluxo> pendencias = new LinkedHashMap<>();
         for (Processo p : processos) {
             switch (p.getStatus()) {
                 case DEFERIDO -> deferidos++;
@@ -81,8 +82,11 @@ public class HomeController {
             // para isEmAndamento(), entao esses ficavam sem nenhum "o que falta"
             // no Painel - justamente os que precisam de acao e ninguem ve.
             // pendenciaAberta devolve vazio quando nao ha nada pendente, entao
-            // processo realmente concluido continua com a celula limpa.
-            fluxoService.pendenciaAberta(p).ifPresent(msg -> pendencias.put(p.getId(), msg));
+            // processo realmente concluido continua com a celula limpa. Desde
+            // 2026-08-05 devolve a EtapaFluxo inteira (nao so a string ja
+            // concatenada), para o template mostrar so o titulo curto na
+            // celula e reservar a frase completa (titulo + detalhe) pro title.
+            fluxoService.pendenciaAberta(p).ifPresent(e -> pendencias.put(p.getId(), e));
         }
 
         model.addAttribute("totalProcessos", processos.size());
