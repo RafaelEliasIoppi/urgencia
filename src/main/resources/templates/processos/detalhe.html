@@ -526,32 +526,23 @@
 
                     <!-- ========== PASSO 2: Registrar envio ========== -->
                     <section th:unless="${envioFeito}" class="subpasso"
-                              th:classappend="${!documentosClinicos.isEmpty()} ? 'subpasso-atual' : 'subpasso-bloqueado'">
+                              th:classappend="${!documentosClinicos.isEmpty()} ? 'subpasso-atual' : 'subpasso-bloqueado'"
+                              th:with="pendentes=${processo.pareceres.?[resultado == null]}">
                         <header class="subpasso-head">
                             <span class="subpasso-num">2</span>
                             <h3 class="h6 fw-bold mb-0">Registrar envio</h3>
                             <span th:replace="~{layout :: status(${envioFeito})}"></span>
                         </header>
-                        <p class="small text-muted mb-1">
-                            Ao clicar, o sistema executa <strong>de uma vez</strong> as ações abaixo.
-                            Revise antes de confirmar — os e-mails saem na hora.
+                        <p class="small text-muted mb-2">
+                            Ao confirmar, o sistema gera o PDF anonimizado, marca o processo como
+                            <strong>Enviado</strong> e envia o convite por e-mail. <em>Os e-mails saem na hora.</em>
                         </p>
-                        <ol class="small text-muted ps-3 mb-2">
-                            <li>Funde os documentos clínicos anexados em um <strong>PDF único</strong>,
-                                carimbado em cada página com o número do processo e as
-                                <strong>iniciais</strong> do paciente (o nome completo nunca vai aos médicos).</li>
-                            <li>Registra a <strong>data de hoje</strong> como data de envio e passa o
-                                processo para <strong>Enviado</strong>.</li>
-                            <li>Envia o <strong>convite do Portal do Avaliador</strong> por e-mail a cada
-                                médico pendente listado abaixo.</li>
-                        </ol>
 
                         <!-- Quem vai receber o convite: o operador precisa saber ANTES de clicar,
                              porque o e-mail sai na hora e vai para medicos de verdade. Mesmo
                              criterio do servidor (RegistroEnvioService.enviarConvitesAvaliadores /
                              ProcessoService.pareceresPendentesComEmail): so quem ainda nao votou. -->
-                        <div th:with="pendentes=${processo.pareceres.?[resultado == null]}"
-                             class="border rounded p-2 mb-2 bg-light">
+                        <div class="border rounded p-2 mb-2 bg-light">
                             <p class="small fw-semibold mb-1">
                                 <i class="bi bi-envelope-at"></i>
                                 O convite será enviado para
@@ -585,7 +576,8 @@
                         <div class="d-grid">
                             <form th:unless="${processo.status.finalizado}"
                                   th:action="@{/processos/{id}/registrar-envio(id=${processo.id})}" method="post"
-                                  data-lock-submit="Registrando envio...">
+                                  data-lock-submit="Registrando envio..."
+                                  th:attr="data-confirm-msg='Registrar o envio agora? O sistema vai gerar o PDF único carimbado (só iniciais do paciente), marcar o processo como Enviado e mandar o convite do Portal do Avaliador por e-mail para ' + ${#lists.size(pendentes)} + ' médico(s). Os e-mails saem na hora.'">
                                 <button class="btn btn-primary btn-lg w-100">
                                     <i class="bi bi-calendar-check"></i> Registrar envio e enviar convites
                                 </button>
