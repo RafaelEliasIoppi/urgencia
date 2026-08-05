@@ -2156,3 +2156,27 @@ nesta máquina), confirmando que a falha é pré-existente e não relacionada.
 Nenhuma regra de negócio, entidade ou endpoint mudou nesta sessão — só
 JS/CSS/CSP.
 
+## Confirmação antes de "Enviar Resposta ao Solicitante" (2026-08-04)
+
+O botão único da etapa 6 (`POST /processos/{id}/finalizar`,
+`processos/detalhe.html`) disparava o e-mail oficial de Deferido/Indeferido
+com o anexo obrigatório (comprovante SNT ou ofício) com um único clique, sem
+nenhuma barreira contra clique acidental — mesma classe de risco já coberta
+em excluir/reabrir/cancelar. Ganhou `data-confirm-msg`, reaproveitando o
+modal genérico já existente (`static/js/confirmar-acao.js` +
+`layout.html :: confirmModal`), sem nenhuma rota nova nem mudança de regra
+de negócio.
+
+Ajuste necessário no E2E: `ProcessoDetalhePage.
+passo5_confirmarRespostaAoSolicitante()` clicava só no botão do form; com o
+modal, precisa clicar também em `#btnConfirmarAcaoFinal` antes do
+`waitForLoadState()`. Suíte completa (773 testes) validada — a única
+falha vista foi a flakiness de precisão de timestamp já documentada acima
+(`ComprovanteSntPendenteQueriesIntegrationTest`/
+`LembreteAvaliadorTimestampIntegrationTest`, não relacionada). `.\e2e.ps1
+-Headless` chega até o passo 5 e falha na mesma linha pré-existente
+(`FluxoCompletoProcessoIT:228`, SMTP local indisponível nesta máquina —
+"EmailSender: remetente (from) nao configurado"), confirmando via log que a
+falha continua sendo a ausência de SMTP local, e não o modal novo (o clique
+em `#btnConfirmarAcaoFinal` completa sem timeout).
+
