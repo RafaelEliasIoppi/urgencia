@@ -441,31 +441,38 @@
                     </div>
 
                     <!-- ========== PASSO 1: Documentos clinicos ========== -->
-                    <div th:unless="${envioFeito}" class="border-start border-3 border-primary ps-3 mb-4">
-                        <h6 class="fw-bold text-primary mb-2 d-flex justify-content-between align-items-center">
-                            <span>
-                                <span class="badge bg-primary me-2 rounded-pill">1</span>
-                                Anexar documentos clínicos anonimizados
+                    <section th:unless="${envioFeito}" class="subpasso"
+                             th:classappend="${!documentosClinicos.isEmpty()} ? 'subpasso-ok' : 'subpasso-atual'">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num">
+                                <i class="bi bi-check-lg" th:if="${!documentosClinicos.isEmpty()}"></i>
+                                <span th:if="${documentosClinicos.isEmpty()}">1</span>
                             </span>
+                            <h3 class="h6 fw-bold mb-0">Documentos clínicos anonimizados</h3>
                             <span th:replace="~{layout :: status(${!documentosClinicos.isEmpty()})}"></span>
-                        </h6>
-                        <p class="small text-muted mb-2">
-                            Anexe o(s) documento(s) clínico(s) <strong>já anonimizados</strong> (sem o nome do
-                            paciente). Ao registrar o envio eles serão fundidos em um único PDF e cada página
-                            receberá um <strong>cabeçalho carimbado</strong> com o número do processo e as iniciais do
-                            paciente (sem alterar o conteúdo). A solicitação original NUNCA entra neste PDF
-                            (contem o nome completo). Apenas arquivos PDF entram na consolidação;
-                            <strong>e obrigatório ao menos um</strong> para registrar o envio.
+                        </header>
+                        <p class="mb-2">Anexe os documentos clínicos em <strong>PDF</strong>, já
+                            anonimizados. Pelo menos um é obrigatório.</p>
+                        <p class="subpasso-regra">
+                            <i class="bi bi-shield-exclamation"></i>
+                            <strong>Apague o nome do paciente de dentro do PDF.</strong>
+                            O carimbo do sistema é sobreposto — ele não apaga texto que já esteja no documento.
                         </p>
-                        <div class="alert alert-warning py-2 small mb-2">
-                            <i class="bi bi-exclamation-triangle-fill"></i>
-                            <strong>Anonimize o CORPO dos documentos, não so o nome do arquivo.</strong>
-                            O cabeçalho carimbado e apenas sobreposto - ele <em>não apaga</em> o nome do
-                            paciente que estiver escrito dentro do documento. Confira cada PDF e remova/oculte
-                            o nome completo antes de registrar o envio aos avaliadores. Documentos vindos do
-                            <strong>Portal do Solicitante</strong> chegam sem anonimização e ficam bloqueados
-                            acima até você confirmar a revisão &mdash; eles não aparecem nesta lista.
-                        </div>
+                        <details class="subpasso-ajuda mb-2">
+                            <summary>O que o sistema faz com estes arquivos</summary>
+                            <p class="small text-muted mb-0 mt-1">
+                                Ao registrar o envio, os PDFs são fundidos em um arquivo único e cada página
+                                recebe um cabeçalho com o número do processo e as <strong>iniciais</strong> do
+                                paciente, sem alterar o conteúdo. A solicitação original, que tem o nome
+                                completo, nunca entra nesse arquivo. Arquivos que não forem PDF são ignorados
+                                na consolidação.
+                            </p>
+                        </details>
+                        <p class="small text-muted mb-2" th:if="${!documentosPendentesAnonimizacao.isEmpty()}">
+                            <i class="bi bi-info-circle"></i>
+                            Documentos do Portal aguardando sua revisão aparecem no bloco vermelho acima e
+                            não entram nesta lista.
+                        </p>
                         <ul class="list-group list-group-flush mb-2" th:if="${!documentosClinicos.isEmpty()}">
                             <li class="list-group-item px-0 bg-transparent" th:each="doc : ${documentosClinicos}">
                                 <div class="d-flex justify-content-between align-items-center">
@@ -515,17 +522,16 @@
                             <i class="bi bi-info-circle"></i>
                             Anexe ao menos um documento clínico (PDF) para registrar o envio.
                         </p>
-                    </div>
+                    </section>
 
                     <!-- ========== PASSO 2: Registrar envio ========== -->
-                    <div th:unless="${envioFeito}" class="border-start border-3 border-success ps-3 mb-3">
-                        <h6 class="fw-bold text-success mb-2 d-flex justify-content-between align-items-center">
-                            <span>
-                                <span class="badge bg-success me-2 rounded-pill">2</span>
-                                Registrar envio
-                            </span>
+                    <section th:unless="${envioFeito}" class="subpasso"
+                              th:classappend="${!documentosClinicos.isEmpty()} ? 'subpasso-atual' : 'subpasso-bloqueado'">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num">2</span>
+                            <h3 class="h6 fw-bold mb-0">Registrar envio</h3>
                             <span th:replace="~{layout :: status(${envioFeito})}"></span>
-                        </h6>
+                        </header>
                         <p class="small text-muted mb-1">
                             Ao clicar, o sistema executa <strong>de uma vez</strong> as ações abaixo.
                             Revise antes de confirmar — os e-mails saem na hora.
@@ -585,7 +591,7 @@
                                 </button>
                             </form>
                         </div>
-                    </div>
+                    </section>
 
                     <!-- Finalizacao explicita da etapa -->
                     <div th:if="${envioFeito}" class="alert alert-success d-flex align-items-center justify-content-between py-3 mb-0">
