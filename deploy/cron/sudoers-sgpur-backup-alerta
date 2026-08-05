@@ -1,0 +1,15 @@
+# Instalar como /etc/sudoers.d/sgpur-backup-alerta (modo 0440, dono root:root).
+#
+# Permite que o usuario 'postgres' (que roda o backup diario) dispare APENAS o
+# script de alerta, e APENAS como o usuario 'sgpur'. Nada mais: nao e sudo para
+# root, nao e um shell, nao le nem escreve o sgpur.env.
+#
+# O objetivo e nao duplicar a senha SMTP institucional. Sem esta regra, a unica
+# forma de o backup avisar por e-mail seria copiar a credencial para um arquivo
+# legivel pelo postgres - mais um lugar guardando o mesmo segredo. Aqui o
+# arquivo continua sendo um so (/opt/sgpur/sgpur.env, 600, dono sgpur), e o
+# postgres ganha somente o direito de EXECUTAR o notificador.
+#
+# Validar ANTES de ativar (erro de sintaxe em sudoers pode travar o sudo):
+#   sudo visudo -c -f deploy/cron/sudoers-sgpur-backup-alerta
+postgres ALL=(sgpur) NOPASSWD: /opt/sgpur/notificar-falha-backup.sh

@@ -187,6 +187,90 @@ sudo cat /opt/sgpur/backups/.ultimo-offsite-ok     # deve ser a data de hoje
 sudo tail -5 /var/log/sgpur-backup.log             # deve terminar em offsite=1
 ```
 
+### Alerta por e-mail quando o backup falha
+
+Sem isto, a falha do backup offsite fica só numa linha de log que ninguém lê.
+Instalação (3 comandos, na VM):
+
+```bash
+sudo install -o sgpur -g sgpur -m 750 deploy/notificar-falha-backup.sh /opt/sgpur/notificar-falha-backup.sh
+sudo visudo -c -f deploy/cron/sudoers-sgpur-backup-alerta        # valida ANTES de ativar
+sudo install -o root -g root -m 440 deploy/cron/sudoers-sgpur-backup-alerta /etc/sudoers.d/sgpur-backup-alerta
+```
+
+E reinstale o `backup-db.sh` (a chamada do alerta vive nele):
+```bash
+sudo install -o postgres -g postgres -m 750 deploy/backup-db.sh /opt/sgpur/backup-db.sh
+```
+
+Teste sem esperar o cron — simula um `rclone` quebrado e deve chegar um e-mail:
+```bash
+sudo -u postgres mkdir -p /tmp/fakebin
+printf '#!/bin/bash\nexit 1\n' | sudo -u postgres tee /tmp/fakebin/rclone >/dev/null
+sudo -u postgres chmod 755 /tmp/fakebin/rclone
+cd /tmp && sudo -u postgres env PATH=/tmp/fakebin:$PATH /bin/bash /opt/sgpur/backup-db.sh
+sudo rm -rf /tmp/fakebin
+```
+Espere ver `Alerta por e-mail enviado.` e `offsite=0`, e o e-mail na caixa de
+entrada. Depois rode uma vez normalmente para restaurar o estado:
+`cd /tmp && sudo -u postgres /bin/bash /opt/sgpur/backup-db.sh` (deve terminar
+em `offsite=1`).
+
+**Por que o notificador roda como outro usuário.** O backup roda como
+`postgres`, que não lê (nem deve ler) o `sgpur.env` com a senha SMTP
+institucional. Em vez de copiar a senha para um segundo arquivo, a regra de
+sudo deixa o `postgres` **executar** o notificador como `sgpur` — e só isso. A
+credencial continua num único arquivo, `600`, dono `sgpur`.
+
+**O alerta nunca derruba o backup**: notificador ausente, sudo negado ou SMTP
+fora do ar viram uma linha de aviso no log e o backup segue. Coberto por teste
+dos três caminhos (notificador ok / ausente / quebrado).
+
+Destinatário: `SGPUR_BACKUP_ALERTA_EMAIL` no `sgpur.env`, se definido; senão
+`SGPUR_MAIL_FROM`.
+
+### Criar um `client_id` próprio para o rclone (PENDENTE, prazo: durante 2026)
+
+Enquanto isto não for feito, o backup offsite **vai parar** quando o Google
+desativar o `client_id` compartilhado do rclone. Exige navegador — não dá para
+fazer por SSH:
+
+1. Google Cloud Console (https://console.cloud.google.com) → criar/selecionar
+   um projeto.
+2. **APIs e serviços → Biblioteca** → habilitar a **Google Drive API**.
+3. **APIs e serviços → Tela de permissão OAuth** → tipo **Externo** →
+   preencher nome do app e e-mail → em *Usuários de teste*, adicionar a conta
+   Google que hospeda os backups.
+4. **APIs e serviços → Credenciais → Criar credenciais → ID do cliente OAuth**
+   → tipo **App para computador**. Guarde o **Client ID** e o **Client secret**.
+5. Na VM:
+   ```bash
+   sudo -u postgres rclone config
+   #   e (edit existing) → gdrive → informar client_id e client_secret
+   #   → manter scope drive.file → "Use auto config? n" (headless)
+   #   → abrir a URL exibida no seu navegador, autorizar, colar o código
+   ```
+6. Confirmar que voltou a funcionar:
+   ```bash
+   cd /tmp && sudo -u postgres /bin/bash /opt/sgpur/backup-db.sh   # espera offsite=1
+   sudo tail -3 /var/log/sgpur-backup.log                          # sem o NOTICE do client_id
+   ```
+
+### Reservar o IP público (PENDENTE — console Oracle)
+
+Se o IP for **efêmero**, parar a instância troca o endereço e derruba de uma
+vez o DuckDNS e o certificado. O `oci` CLI não está instalado na VM, então
+isto é feito no console:
+
+1. https://cloud.oracle.com → **Compute → Instances** → a instância do SAUR.
+2. **Resources → Attached VNICs** → clicar na VNIC principal.
+3. **IPv4 Addresses** → no IP público, **Edit** → tipo **Reserved**
+   (*"Reserve this public IP"*) → confirmar.
+4. Conferir que o endereço continua `163.176.163.213`. Se mudar, atualize o
+   DuckDNS e rode `sudo certbot renew --force-renewal`.
+
+Um IP reservado continua dentro do Always Free.
+
 > **Pendência conhecida (prazo: durante 2026):** o `rclone` desta VM usa o
 > `client_id` compartilhado do projeto rclone, que **será desativado**. O
 > aviso aparece em toda execução no log. Quando isso acontecer, o backup

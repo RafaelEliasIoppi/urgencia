@@ -49,6 +49,30 @@ MARCADOR="${BACKUP_DIR}/.ultimo-offsite-ok"
 
 log() { echo "[$(date +%F\ %T)] $*"; }
 
+# Alerta por e-mail. O notificador roda como 'sgpur' (via sudoers pontual), o
+# unico usuario que le a senha SMTP - o postgres nunca ve a credencial.
+#
+# TUDO AQUI E BEST-EFFORT, DE PROPOSITO: se o notificador nao estiver
+# instalado, se a regra de sudo nao existir ou se o proprio SMTP estiver fora
+# do ar, o backup NAO pode falhar por causa disso. A falha do alerta vira uma
+# linha no log e nada mais - o oposto seria um backup que para de rodar porque
+# o Gmail recusou uma conexao.
+NOTIFICADOR="/opt/sgpur/notificar-falha-backup.sh"
+alertar() {
+    local assunto="$1"
+    local corpo="$2"
+    if [ ! -x "${NOTIFICADOR}" ]; then
+        log "aviso: ${NOTIFICADOR} nao instalado - alerta por e-mail nao enviado."
+        return 0
+    fi
+    if printf '%s\n' "${corpo}" | sudo -n -u sgpur "${NOTIFICADOR}" "${assunto}" >/dev/null 2>&1; then
+        log "Alerta por e-mail enviado."
+    else
+        log "aviso: nao foi possivel enviar o alerta por e-mail (sudoers ou SMTP)."
+    fi
+    return 0
+}
+
 mkdir -p "${BACKUP_DIR}"
 cd "${BACKUP_DIR}"   # cwd previsivel: evita erro de permissao quando chamado de outro diretorio
 
@@ -61,6 +85,15 @@ chmod 600 "${ARQUIVO}"
 TAMANHO=$(stat -c%s "${ARQUIVO}")
 if [ "${TAMANHO}" -lt 1000 ]; then
     log "ERRO: dump gerado tem apenas ${TAMANHO} bytes - suspeito de falha do pg_dump. Arquivo mantido para inspecao."
+    alertar "[SAUR] FALHA no backup do banco" \
+"O backup diario do SAUR falhou em $(hostname) em $(date +%F\ %T).
+
+O dump gerado tem apenas ${TAMANHO} bytes, o que indica que o pg_dump nao
+terminou. O arquivo foi mantido em ${ARQUIVO} para inspecao.
+
+Nenhuma copia foi enviada ao Google Drive nesta execucao.
+
+Verifique: sudo tail -30 /var/log/sgpur-backup.log"
     exit 1
 fi
 
@@ -97,6 +130,29 @@ if [ "${OFFSITE_OK}" = "1" ] && [ -d "${ANEXOS_DIR}" ]; then
         log "ERRO: falha ao sincronizar os anexos para o Drive."
         OFFSITE_OK=0
     fi
+fi
+
+# ---------- Alerta por e-mail quando a copia offsite falhou ----------
+# Este e o unico caminho em que o backup LOCAL funciona e mesmo assim ha um
+# problema serio: sem copia remota, perder a VM e perder tudo. Antes disso, a
+# falha so aparecia numa linha de log que ninguem le.
+if [ "${OFFSITE_OK}" != "1" ]; then
+    ULTIMO_OK="(nunca confirmado)"
+    [ -f "${MARCADOR}" ] && ULTIMO_OK=$(cat "${MARCADOR}")
+    alertar "[SAUR] FALHA no backup offsite (Google Drive)" \
+"O backup diario do SAUR rodou em $(hostname) em $(date +%F\ %T), mas a copia
+para o Google Drive FALHOU.
+
+O backup LOCAL esta ok: ${ARQUIVO} ($((TAMANHO / 1024)) KB).
+Ultima copia offsite confirmada: ${ULTIMO_OK}
+
+Enquanto isso nao for resolvido, perder a VM significa perder os dados.
+
+Causa mais provavel: o rclone desta VM usa o client_id compartilhado do
+projeto rclone, que esta sendo desativado durante 2026. A correcao e criar um
+client_id proprio - ver deploy/README-deploy.md, secao de backup.
+
+Verifique: sudo tail -30 /var/log/sgpur-backup.log"
 fi
 
 # ---------- Alerta de copia offsite parada ----------
