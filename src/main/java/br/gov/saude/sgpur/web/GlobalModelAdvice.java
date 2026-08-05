@@ -1,6 +1,7 @@
 package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
+import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
@@ -67,15 +68,17 @@ public class GlobalModelAdvice {
         return solicitanteHabilitado;
     }
 
-    // @Transactional necessario: par.getProcesso() em pendentesDoMembro() e LAZY
-    // (Parecer.processo), e este @ModelAttribute de @ControllerAdvice roda fora
-    // do @Transactional do controller de destino. Sem isso,
-    // LazyInitializationException
-    // ("no session") em QUALQUER tela para um usuario AVALIADOR com pareceres
-    // pendentes - com open-in-view=false nao ha sessao Hibernate aberta aqui.
+    // @Transactional(readOnly = true) mantido por seguranca/consistencia com os
+    // demais @ModelAttribute deste advice (todos leem via repositorio), mas
+    // deixou de ser estritamente NECESSARIO aqui: desde a troca para
+    // countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus
+    // (query de COUNT direta no banco, sem carregar nenhuma entidade Parecer/
+    // Processo), nao sobra navegacao LAZY nenhuma neste metodo — o antigo
+    // comentario sobre LazyInitializationException valia para a versao anterior,
+    // que carregava as entidades e navegava par.getProcesso() em Java.
     @ModelAttribute("pendentesAvaliador")
     @Transactional(readOnly = true)
-    public int pendentesAvaliador() {
+    public long pendentesAvaliador() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !auth.isAuthenticated() || !temPapelAvaliador(auth)) {
             return 0;
@@ -84,8 +87,9 @@ public class GlobalModelAdvice {
         return usuarioRepo.findByUsername(auth.getName())
                 .map(Usuario::getMembro)
                 .map(MembroUrgenciaRenal::getId)
-                .map(membroId -> AvaliadorController.pendentesDoMembro(parecerRepo, membroId).size())
-                .orElse(0);
+                .map(membroId -> parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
+                        membroId, StatusProcesso.ENVIADO))
+                .orElse(0L);
     }
 
     /**

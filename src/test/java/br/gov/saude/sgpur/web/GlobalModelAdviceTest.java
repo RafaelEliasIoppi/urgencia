@@ -1,8 +1,6 @@
 package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
-import br.gov.saude.sgpur.domain.Parecer;
-import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.ParecerRepository;
@@ -17,7 +15,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.authentication.TestingAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 
-import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -91,7 +88,7 @@ class GlobalModelAdviceTest {
     }
 
     @Test
-    void contaSomentePareceresPendentesDeProcessosAtivosParaVotacao() {
+    void contaSomentePareceresPendentesDeProcessosAtivosParaVotacaoViaQueryDeCount() {
         SecurityContextHolder.getContext().setAuthentication(
             new TestingAuthenticationToken("aval1", "senha", "ROLE_AVALIADOR"));
 
@@ -101,13 +98,16 @@ class GlobalModelAdviceTest {
         usuario.setMembro(membro);
         when(usuarioRepo.findByUsername("aval1")).thenReturn(Optional.of(usuario));
 
-        Parecer pendenteEnviado1 = parecerComProcesso(StatusProcesso.ENVIADO);
-        Parecer pendenteEnviado2 = parecerComProcesso(StatusProcesso.ENVIADO);
-        Parecer pendenteFinalizado = parecerComProcesso(StatusProcesso.DEFERIDO);
-        when(parecerRepo.findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(7L))
-            .thenReturn(List.of(pendenteEnviado1, pendenteEnviado2, pendenteFinalizado));
+        // O calculo em si (resultado nulo + dataEnvio preenchida + processo em
+        // ENVIADO) e responsabilidade da query de count() no banco - aqui so
+        // verificamos que o advice delega ao repositorio com os parametros
+        // certos (membroId do usuario logado + StatusProcesso.ENVIADO) e
+        // devolve o valor tal como veio, sem carregar nenhuma entidade Parecer.
+        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
+                7L, StatusProcesso.ENVIADO))
+            .thenReturn(2L);
 
-        assertThat(advice.pendentesAvaliador()).isEqualTo(2);
+        assertThat(advice.pendentesAvaliador()).isEqualTo(2L);
     }
 
     @Test
@@ -151,14 +151,5 @@ class GlobalModelAdviceTest {
         when(solicitacaoOnlineService.contarPendentesTriagem()).thenReturn(5L);
 
         assertThat(advice.pendentesTriagemOnline()).isEqualTo(5L);
-    }
-
-    private Parecer parecerComProcesso(StatusProcesso status) {
-        Processo p = new Processo();
-        p.setStatus(status);
-        MembroUrgenciaRenal membro = new MembroUrgenciaRenal("HCPA", "Dr. Teste", null);
-        Parecer par = new Parecer(membro);
-        p.addParecer(par);
-        return par;
     }
 }
