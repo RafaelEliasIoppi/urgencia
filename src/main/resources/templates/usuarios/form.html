@@ -93,28 +93,7 @@
 </main>
 
 <script th:replace="~{layout :: scripts}"></script>
-<script>
-(function () {
-    var perfilSelect = document.getElementById('perfilSelect');
-    var membroBox = document.getElementById('membroBox');
-    var membroSelect = document.getElementById('membroSelect');
-    var equipeSolicitanteBox = document.getElementById('equipeSolicitanteBox');
-    var equipeSolicitanteInput = document.getElementById('equipeSolicitanteInput');
-
-    function atualizarMembro() {
-        var ehAvaliador = perfilSelect.value === 'AVALIADOR';
-        membroBox.style.display = ehAvaliador ? '' : 'none';
-        membroSelect.required = ehAvaliador;
-
-        var ehSolicitante = perfilSelect.value === 'SOLICITANTE';
-        equipeSolicitanteBox.style.display = ehSolicitante ? '' : 'none';
-        equipeSolicitanteInput.required = ehSolicitante;
-    }
-
-    perfilSelect.addEventListener('change', atualizarMembro);
-    atualizarMembro();
-})();
-</script>
+<script th:src="@{/js/usuario-form.js}"></script>
 <script th:src="@{/js/mostrar-senha.js}"></script>
 <div th:replace="~{layout :: footer}"></div>
 </body>

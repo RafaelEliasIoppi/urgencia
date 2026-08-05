@@ -152,6 +152,28 @@ class UsuarioControllerTest {
         verify(membroService).listarAtivos();
     }
 
+    /**
+     * Relatorio de clareza (2026-08-05), item 5.5: o JS que mostra/oculta os
+     * campos condicionais por perfil (Membro/Equipe solicitante) estava
+     * inline no template, contrariando a convencao do projeto ("JavaScript
+     * especifico fica em static/js/*.js, NUNCA inline" - CLAUDE.md). Extraido
+     * para static/js/usuario-form.js. Renderiza o template de verdade e
+     * confere que o script agora e carregado por src, sem nenhum bloco
+     * <script> solto com a logica antiga.
+     */
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void formularioDeUsuarioCarregaOJsDeCamposCondicionaisPorSrcSemInline() throws Exception {
+        String html = mvc.perform(get("/usuarios/novo"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        // Recurso com fingerprint de conteudo (ex. /js/usuario-form-<hash>.js) -
+        // mesmo padrao dos demais estaticos servidos pelo projeto.
+        org.assertj.core.api.Assertions.assertThat(html).containsPattern("src=\"/js/usuario-form(-[0-9a-f]+)?\\.js");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("perfilSelect.addEventListener");
+    }
+
     @Test
     @WithMockUser(roles = "ADMIN")
     void editarExibeFormularioComUsuarioExistenteEEdicaoVerdadeira() throws Exception {
