@@ -414,7 +414,7 @@
                                 <form th:unless="${processo.status.finalizado}"
                                       th:action="@{/processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao(id=${processo.id},anexoId=${doc.id})}"
                                       method="post" class="mt-2"
-                                      data-confirm-msg="Confirmar que este documento esta anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
+                                      data-confirm-msg="Confirmar que este documento está anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
                                     <div class="form-check small mb-2">
                                         <input class="form-check-input" type="checkbox" name="confirmo" value="true"
                                                th:id="'confirmo-anonimizacao-' + ${doc.id}" required>
@@ -608,7 +608,7 @@
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        Um(a) avaliador(a) pediu mais informações. O processo esta <strong>em pausa</strong>:
+                        Um(a) avaliador(a) pediu mais informações. O processo está <strong>em pausa</strong>:
                         a decisão fica bloqueada até o solicitante responder. O solicitante envia a
                         informação complementar diretamente pelo <strong>Portal do Solicitante</strong>
                         (ou, se preferir reforçar por e-mail, use o texto pronto
@@ -719,7 +719,7 @@
                                       class="d-block small"
                                       th:classappend="${diasAguardandoPorParecer.get(par.id) > prazoDiasAvaliador} ? 'text-danger fw-semibold' : 'text-muted'">
                                     <i class="bi bi-clock-history"></i>
-                                    Aguardando ha
+                                    Aguardando há
                                     <span th:text="${diasAguardandoPorParecer.get(par.id)}">0</span>
                                     <span th:text="${diasAguardandoPorParecer.get(par.id) == 1} ? 'dia' : 'dias'">dias</span>
                                 </span>
