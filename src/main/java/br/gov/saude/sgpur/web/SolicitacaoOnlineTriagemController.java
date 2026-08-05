@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.AuditoriaService;
+import br.gov.saude.sgpur.service.Iniciais;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -270,7 +271,7 @@ public class SolicitacaoOnlineTriagemController {
         try {
             service.devolver(id, observacoes);
             auditoria.registrar("SOLICITACAO_ONLINE_DEVOLVIDA",
-                    "Solicitacao " + id + " - " + s.identificacao());
+                    "Solicitacao " + id + " - " + Iniciais.de(s.getPacienteNome()));
             ra.addFlashAttribute("msg", "Solicitacao devolvida para o solicitante.");
             return "redirect:/processos/solicitacoes-online";
         } catch (IllegalStateException e) {

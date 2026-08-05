@@ -553,6 +553,42 @@ class ProcessoAnexoControllerTest {
 
     @Test
     @WithMockUser(roles = "OPERADOR")
+    void resumoIaRedigeDadosSensiveisAntesDeChamarGemini() throws Exception {
+        when(geminiService.isDisponivel()).thenReturn(true);
+        Path pdf = tempDir.resolve("laudo.pdf");
+        Files.write(pdf, pdfValido(
+            "Paciente Maria da Silva, CPF 123.456.789-00, nascida em 01/02/1980, "
+            + "RGCT AB1234, apresenta quadro renal grave."));
+        Anexo anexo = new Anexo();
+        anexo.setId(5L);
+        anexo.setContentType("application/pdf");
+        Processo processo = new Processo();
+        processo.setPacienteNome("Maria da Silva");
+        processo.setPacienteRgct("AB1234");
+        anexo.setProcesso(processo);
+        when(anexoStorage.buscar(5L)).thenReturn(anexo);
+        when(anexoStorage.resolverArquivo(anexo)).thenReturn(pdf);
+        when(geminiService.perguntar(anyString())).thenReturn(Optional.of("Resumo gerado pela IA."));
+
+        mvc.perform(get("/processos/anexos/5/resumo-ia"))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.texto").value("Resumo gerado pela IA."));
+
+        org.mockito.ArgumentCaptor<String> promptCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(geminiService).perguntar(promptCaptor.capture());
+        String prompt = promptCaptor.getValue();
+
+        org.assertj.core.api.Assertions.assertThat(prompt)
+            .doesNotContain("Maria")
+            .doesNotContain("Silva")
+            .doesNotContain("123.456.789-00")
+            .doesNotContain("01/02/1980")
+            .doesNotContain("AB1234")
+            .contains("[REDIGIDO]");
+    }
+
+    @Test
+    @WithMockUser(roles = "OPERADOR")
     void resumoIaRetornaErroQuandoGeminiFalha() throws Exception {
         when(geminiService.isDisponivel()).thenReturn(true);
         Path pdf = tempDir.resolve("laudo.pdf");

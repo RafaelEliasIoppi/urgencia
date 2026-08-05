@@ -304,6 +304,7 @@ class SolicitanteControllerTest {
         SolicitacaoOnline salva = new SolicitacaoOnline();
         salva.setId(60L);
         salva.setPacienteNome("Ciclano da Silva");
+        salva.setPacienteRgct("987654321-12345");
         when(solicitacaoService.criar(any(SolicitacaoOnline.class), eq(dono), any()))
             .thenReturn(salva);
 
@@ -321,7 +322,38 @@ class SolicitanteControllerTest {
             .andExpect(redirectedUrl("/solicitante"));
 
         verify(solicitacaoService).criar(any(SolicitacaoOnline.class), eq(dono), any());
-        verify(auditoria).registrar(eq("SOLICITACAO_ONLINE_ENVIADA"), any());
+        org.mockito.ArgumentCaptor<String> detalheCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(auditoria).registrar(eq("SOLICITACAO_ONLINE_ENVIADA"), detalheCaptor.capture());
+        String detalhe = detalheCaptor.getValue();
+        org.assertj.core.api.Assertions.assertThat(detalhe)
+            .doesNotContain("Ciclano")
+            .doesNotContain("Silva")
+            .doesNotContain("987654321-12345")
+            .contains("60")
+            .contains("C.S."); // iniciais de "Ciclano da Silva" (conector "da" ignorado)
+    }
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void enviarMensagemAuditaSomenteIniciaisDoPacienteSemNomeCompletoOuRgct() throws Exception {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        when(solicitacaoService.buscar(50L)).thenReturn(solicitacaoDoDono);
+
+        mvc.perform(post("/solicitante/50/mensagem")
+                .param("texto", "Ola, alguma novidade?")
+                .with(csrf()))
+            .andExpect(status().is3xxRedirection());
+
+        org.mockito.ArgumentCaptor<String> detalheCaptor = org.mockito.ArgumentCaptor.forClass(String.class);
+        verify(auditoria).registrar(eq("MENSAGEM_SOLICITANTE_ENVIADA"), detalheCaptor.capture());
+        String detalhe = detalheCaptor.getValue();
+        // solicitacaoDoDono: pacienteNome = "Fulano de Tal" (RGCT "123456789-12345")
+        org.assertj.core.api.Assertions.assertThat(detalhe)
+            .doesNotContain("Fulano")
+            .doesNotContain("Tal")
+            .doesNotContain("123456789-12345")
+            .contains("50")
+            .contains("F.T."); // "de" e conector, ignorado nas iniciais
     }
 
     @Test

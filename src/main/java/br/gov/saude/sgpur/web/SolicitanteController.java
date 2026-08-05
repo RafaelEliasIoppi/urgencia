@@ -14,6 +14,7 @@ import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.AnexoSolicitacaoOnlineStorageService;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
+import br.gov.saude.sgpur.service.Iniciais;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.RascunhoSolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
@@ -245,7 +246,7 @@ public class SolicitanteController {
         try {
             SolicitacaoOnline salva = solicitacaoService.criar(solicitacao, usuario, documentos);
             auditoria.registrar("SOLICITACAO_ONLINE_ENVIADA",
-                "Solicitacao " + salva.getId() + " - " + salva.identificacao());
+                "Solicitacao " + salva.getId() + " - " + Iniciais.de(salva.getPacienteNome()));
             // Envio efetivado: o rascunho (se havia) ja virou uma SolicitacaoOnline
             // de verdade, nao faz mais sentido mante-lo. Best-effort: uma falha
             // aqui nao pode desfazer o envio que ja foi commitado acima.
@@ -548,7 +549,7 @@ public class SolicitanteController {
         }
         mensagemService.enviar(s, texto, MensagemSolicitacao.RemetenteMensagem.SOLICITANTE, usuario.getId());
         auditoria.registrar("MENSAGEM_SOLICITANTE_ENVIADA",
-            "Solicitacao " + id + " - " + s.identificacao());
+            "Solicitacao " + id + " - " + Iniciais.de(s.getPacienteNome()));
         return "redirect:/solicitante/" + id;
     }
 
@@ -611,7 +612,7 @@ public class SolicitanteController {
         }
         mensagemService.enviar(s, texto, MensagemSolicitacao.RemetenteMensagem.SOLICITANTE, usuario.getId());
         auditoria.registrar("MENSAGEM_SOLICITANTE_ENVIADA",
-            "Solicitacao " + id + " - " + s.identificacao());
+            "Solicitacao " + id + " - " + Iniciais.de(s.getPacienteNome()));
         return ResponseEntity.ok(Map.of("ok", true));
     }
 

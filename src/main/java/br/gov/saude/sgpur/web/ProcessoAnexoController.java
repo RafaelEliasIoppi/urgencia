@@ -424,14 +424,12 @@ public class ProcessoAnexoController {
         if (texto.isBlank()) {
             return IaTextoResponse.erro("Nao foi possivel extrair texto deste PDF (pode ser uma imagem digitalizada).");
         }
-        // Redige o nome completo do paciente antes de enviar a API externa
-        // (Gemini/Google): documentos clinicos originais tipicamente contem o
-        // nome, e diferente do material aos avaliadores (so iniciais), aqui
-        // nao ha necessidade do nome para o resumo administrativo.
-        String pacienteNome = anexo.getProcesso() != null ? anexo.getProcesso().getPacienteNome() : null;
-        if (pacienteNome != null && !pacienteNome.isBlank()) {
-            texto = texto.replaceAll("(?i)" + java.util.regex.Pattern.quote(pacienteNome), "[PACIENTE]");
-        }
+        // Redige dados sensiveis do paciente antes de enviar a API externa
+        // (Gemini/Google): documentos clinicos originais tipicamente contem
+        // nome, RGCT, CPF e datas de nascimento - diferente do material aos
+        // avaliadores (so iniciais), aqui nao ha necessidade de nenhum desses
+        // dados para o resumo administrativo.
+        texto = redigirDadosSensiveis(texto, anexo.getProcesso());
         // Limita o tamanho enviado a API (documentos muito longos sao truncados).
         String textoLimitado = texto.length() > 20000 ? texto.substring(0, 20000) : texto;
         String prompt = "Voce e um assistente administrativo de um orgao publico de saude do Brasil. "
@@ -442,5 +440,55 @@ public class ProcessoAnexoController {
         return geminiService.perguntar(prompt)
                 .map(IaTextoResponse::sucesso)
                 .orElseGet(() -> IaTextoResponse.erro("Falha ao consultar a IA. Tente novamente."));
+    }
+
+    /**
+     * Reforca a redacao de dados sensiveis do paciente antes de enviar o
+     * texto extraido de um documento clinico a API externa do Gemini. O
+     * {@code replaceAll} literal do nome completo (protecao original)
+     * nao pega grafia diferente ("MARIA S. SILVA" quando o cadastro e
+     * "Maria Silva"), entao aqui a redacao roda por TOKEN do nome (nome +
+     * cada sobrenome separadamente), alem de padroes gerais que nao dependem
+     * do cadastro exato: CPF, data (potencial data de nascimento) e o RGCT
+     * do proprio processo (mesmo identificador usado em
+     * {@link Processo#identificacao()}).
+     */
+    private String redigirDadosSensiveis(String texto, Processo processo) {
+        String resultado = texto;
+
+        // 1) Nome do paciente, token a token (nome + sobrenomes), com
+        // word-boundary para nao redigir substring dentro de outra palavra
+        // (ex.: nao trocar "Ana" dentro de "Anamnese"). Cobre abreviacoes
+        // parciais do nome, ja que cada parte e tratada isoladamente.
+        String pacienteNome = processo != null ? processo.getPacienteNome() : null;
+        if (pacienteNome != null && !pacienteNome.isBlank()) {
+            for (String token : pacienteNome.trim().split("\\s+")) {
+                if (token.length() < 2) {
+                    continue; // token de 1 letra (ex.: iniciais soltas) geraria falso-positivo demais
+                }
+                resultado = resultado.replaceAll(
+                        "(?i)\\b" + java.util.regex.Pattern.quote(token) + "\\b", "[REDIGIDO]");
+            }
+        }
+
+        // 2) RGCT do paciente, se conhecido no processo - mesmo identificador
+        // sensivel usado em Processo.identificacao()/SolicitacaoOnline.identificacao().
+        String pacienteRgct = processo != null ? processo.getPacienteRgct() : null;
+        if (pacienteRgct != null && !pacienteRgct.isBlank()) {
+            resultado = resultado.replaceAll(
+                    "(?i)" + java.util.regex.Pattern.quote(pacienteRgct), "[REDIGIDO]");
+        }
+
+        // 3) CPF (com ou sem pontuacao) - documento pessoal, nunca relevante
+        // para o resumo clinico/administrativo.
+        resultado = resultado.replaceAll("\\d{3}\\.?\\d{3}\\.?\\d{3}-?\\d{2}", "[REDIGIDO]");
+
+        // 4) Datas no formato dd/mm/aaaa - cobre data de nascimento (o
+        // padrao mais provavel de aparecer num documento clinico), que nao
+        // e relevante para o resumo administrativo e nao vale o risco de
+        // reidentificacao combinada com outros dados.
+        resultado = resultado.replaceAll("\\d{2}/\\d{2}/\\d{4}", "[REDIGIDO]");
+
+        return resultado;
     }
 }
