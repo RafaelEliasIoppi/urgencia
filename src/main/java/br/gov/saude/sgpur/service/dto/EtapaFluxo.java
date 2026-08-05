@@ -29,7 +29,7 @@ public record EtapaFluxo(Chave chave, String titulo, String icone, Estado estado
      * titulo} e so o texto exibido (livre para acentuar, sem risco).</p>
      */
     public enum Chave {
-        RECEBIMENTO, ENVIO, RESPOSTAS, INFO_COMPLEMENTAR, DECISAO,
+        ENVIO, RESPOSTAS, INFO_COMPLEMENTAR, DECISAO,
         OFICIO, COMPROVANTE_SNT, RESPOSTA_SOLICITANTE
     }
 

@@ -18,6 +18,22 @@
         toggleMotivo();
     }
 
+    // Mensagem de confirmacao do modal generico (confirmar-acao.js) cita a
+    // decisao selecionada - lida no momento do submit (data-confirm-msg),
+    // entao basta manter o atributo atualizado a cada troca do select.
+    var formDecisao = document.getElementById('formDecisao');
+    if (sel && formDecisao) {
+        var atualizarMensagemConfirmacaoDecisao = function () {
+            var rotulo = sel.options[sel.selectedIndex]
+                ? sel.options[sel.selectedIndex].text : sel.value;
+            formDecisao.setAttribute('data-confirm-msg',
+                'Confirma o registro da decisão "' + rotulo + '" para este processo? ' +
+                'Esta ação é irreversível.');
+        };
+        sel.addEventListener('change', atualizarMensagemConfirmacaoDecisao);
+        atualizarMensagemConfirmacaoDecisao();
+    }
+
     // Avancar para a proxima aba do wizard (botoes "Avancar para X" de cada etapa concluida)
     document.querySelectorAll('[data-goto-pane]').forEach(function (btn) {
         btn.addEventListener('click', function () {

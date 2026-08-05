@@ -504,12 +504,11 @@ public class ProcessoDetalheController {
             .filter(a -> a.getTipo() == TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE)
             .findFirst();
         model.addAttribute("comprovanteEnvioSolicitante", comprovanteEnvioSolicitante.orElse(null));
-        // Gating das abas (passo 1..5): ate qual passo o operador pode
+        // Gating das abas (passo 1..4): ate qual passo o operador pode
         // navegar/agir. Calculo centralizado em FluxoProcessoService (mesma
         // fonte de verdade do checklist/wizard), fonte unica para nao
         // divergir da timeline.
         var gating = fluxoService.calcularGating(p);
-        model.addAttribute("liberadoRecebimento", gating.liberadoRecebimento());
         model.addAttribute("liberadoEnvio", gating.liberadoEnvio());
         model.addAttribute("liberadoRespostas", gating.liberadoRespostas());
         model.addAttribute("liberadoDecisao", gating.liberadoDecisao());
