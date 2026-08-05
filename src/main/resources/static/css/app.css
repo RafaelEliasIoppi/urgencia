@@ -91,7 +91,7 @@
 /* Area de rolagem do chat (Portal do Solicitante/processo) - substitui o
    style="max-height:250px;overflow-y:auto;" antes inline. */
 .chat-box {
-    max-height: 250px;
+    max-height: 350px;
     overflow-y: auto;
 }
 

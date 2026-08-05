@@ -55,7 +55,9 @@
         <div>
             <strong>Decisão registrada, mas o processo ainda não está concluído.</strong>
             A edição do envio e dos pareceres foi bloqueada, porém
-            ainda faltam etapas de conclusão na <a href="#finalizacao">aba Finalização</a>
+            ainda faltam etapas de conclusão na
+            <button type="button" class="alert-link btn btn-link p-0 align-baseline"
+                    data-goto-pane="pane-finalizacao">aba Finalização</button>
             (anexar o ofício/comprovante e enviar a resposta ao solicitante).
         </div>
     </div>
@@ -64,7 +66,7 @@
         <i class="bi bi-lock-fill fs-5"></i>
         <div>
             <strong>Processo encerrado.</strong>
-            Nenhuma alteração e permitida (anexos, pareceres, envio). Para voltar a
+            Nenhuma alteração é permitida (anexos, pareceres, envio). Para voltar a
             editar, um administrador precisa <em>reabrir</em> o processo.
         </div>
     </div>
@@ -150,7 +152,7 @@
                             </button>
                         </form>
                         <p class="text-muted small mb-0" th:if="${processo.status.finalizado}">
-                            <i class="bi bi-lock-fill"></i> Processo encerrado: não e
+                            <i class="bi bi-lock-fill"></i> Processo encerrado: não é
                             possível excluir.
                         </p>
                     </div>
@@ -215,37 +217,6 @@
                             </div>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- Chat com o solicitante (visivel apenas se veio do portal) -->
-            <div th:if="${solicitacaoOnlineOrigemId != null}" class="card mt-3 animate-fade-in-d1">
-                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1" role="button"
-                     data-bs-toggle="collapse" data-bs-target="#chatBodyProcesso" aria-expanded="true">
-                    <span><i class="bi bi-chat-dots"></i> Conversa com o solicitante</span>
-                    <span class="d-flex align-items-center gap-1">
-                        <span id="chatBadgeNaoLida" th:if="${msgNaoLidas > 0}" class="badge bg-warning text-dark"
-                              th:text="${msgNaoLidas} + ' nova(s)'">0</span>
-                        <span id="chatBadgeTotal" th:classappend="${#lists.size(mensagens) == 0} ? 'd-none'" class="badge bg-secondary ms-1"
-                              th:text="${#lists.size(mensagens)} + ' total'">0</span>
-                        <i class="bi bi-chevron-up chevron-collapse ms-2"></i>
-                    </span>
-                </div>
-                <div class="card-body collapse show" id="chatBodyProcesso">
-                    <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'" class="text-muted small text-center py-3">
-                        Nenhuma mensagem ainda.
-                    </div>
-                    <!-- Renderizado por chat-solicitacao.js (poll AJAX). -->
-                    <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3 chat-box"></div>
-                    <form id="chatForm" th:action="@{/processos/{id}/mensagem/ajax(id=${processo.id})}" method="post">
-                        <div class="input-group">
-                            <input type="text" name="texto" class="form-control" placeholder="Responder ao solicitante..."
-                                   required maxlength="2000">
-                            <button type="submit" class="btn btn-primary">
-                                <i class="bi bi-reply"></i> Responder
-                            </button>
-                        </div>
-                    </form>
                 </div>
             </div>
         </div>
@@ -356,7 +327,7 @@
                         Avaliador(es) aparentemente da mesma equipe/instituição do solicitante
                         (<span th:text="${processo.solicitanteEquipe}">equipe</span>):
                         <strong th:text="${#strings.listJoin(medicosMesmaEquipe, '; ')}">médicos</strong>.
-                        Confira antes de enviar &mdash; o envio não e bloqueado, apenas sinalizado.
+                        Confira antes de enviar &mdash; o envio não é bloqueado, apenas sinalizado.
                     </div>
 
                     <!-- Status do envio (se ja registrado) -->
@@ -390,7 +361,7 @@
                             avaliadores</strong> nem libera o registro do envio. Baixe, remova/oculte o nome
                             do paciente e reenvie o arquivo já anonimizado no passo 1 abaixo &mdash; ou, se
                             você já conferiu que este documento não identifica o paciente, confirme a
-                            anonimização para libera-lo.
+                            anonimização para liberá-lo.
                         </p>
                         <ul class="list-group list-group-flush mb-0">
                             <li class="list-group-item px-0 bg-transparent border-danger-subtle"
@@ -414,7 +385,7 @@
                                 <form th:unless="${processo.status.finalizado}"
                                       th:action="@{/processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao(id=${processo.id},anexoId=${doc.id})}"
                                       method="post" class="mt-2"
-                                      data-confirm-msg="Confirmar que este documento esta anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
+                                      data-confirm-msg="Confirmar que este documento está anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
                                     <div class="form-check small mb-2">
                                         <input class="form-check-input" type="checkbox" name="confirmo" value="true"
                                                th:id="'confirmo-anonimizacao-' + ${doc.id}" required>
@@ -499,8 +470,8 @@
                               enctype="multipart/form-data" class="row g-2 align-items-end"
                               data-lock-submit="Enviando documento...">
                             <div class="col-md-7">
-                                <label class="form-label small" for="arquivo">Documento clínico anonimizado (PDF)</label>
-                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required id="arquivo">
+                                <label class="form-label small" for="arquivoDocClinico">Documento clínico anonimizado (PDF)</label>
+                                <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf" required id="arquivoDocClinico">
                             </div>
                             <div class="col-md-5 d-flex align-items-end">
                                 <button class="btn btn-outline-primary btn-sm">
@@ -597,7 +568,7 @@
             <!-- Aviso quando o envio ainda nao foi registrado -->
             <div th:unless="${envioFeito}" class="alert alert-warning">
                 <i class="bi bi-hourglass-split"></i>
-                Registre o envio aos avaliadores (passo <strong>2. Envio</strong>) para que os médicos
+                Registre o envio aos avaliadores (aba <strong>Envio</strong>) para que os médicos
                 possam votar no Portal do Avaliador.
             </div>
 
@@ -608,7 +579,7 @@
                 </div>
                 <div class="card-body">
                     <p class="small text-muted mb-3">
-                        Um(a) avaliador(a) pediu mais informações. O processo esta <strong>em pausa</strong>:
+                        Um(a) avaliador(a) pediu mais informações. O processo está <strong>em pausa</strong>:
                         a decisão fica bloqueada até o solicitante responder. O solicitante envia a
                         informação complementar diretamente pelo <strong>Portal do Solicitante</strong>
                         (ou, se preferir reforçar por e-mail, use o texto pronto
@@ -636,8 +607,8 @@
                           data-lock-submit="Retomando análise..."
                           data-confirm-msg="Confirmar o recebimento da informação e retomar a análise? Os pareceres marcados como Solicita informação serão reabertos.">
                         <div class="col-md-8">
-                            <label class="form-label small fw-semibold" for="arquivo">Resposta com as informações complementares (opcional)</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg" id="arquivo">
+                            <label class="form-label small fw-semibold" for="arquivoInfoComplementar">Resposta com as informações complementares (opcional)</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" accept=".pdf,.eml,.msg" id="arquivoInfoComplementar">
                         </div>
                         <div class="col-md-4 d-flex align-items-end">
                             <button class="btn btn-success btn-sm w-100">
@@ -719,7 +690,7 @@
                                       class="d-block small"
                                       th:classappend="${diasAguardandoPorParecer.get(par.id) > prazoDiasAvaliador} ? 'text-danger fw-semibold' : 'text-muted'">
                                     <i class="bi bi-clock-history"></i>
-                                    Aguardando ha
+                                    Aguardando há
                                     <span th:text="${diasAguardandoPorParecer.get(par.id)}">0</span>
                                     <span th:text="${diasAguardandoPorParecer.get(par.id) == 1} ? 'dia' : 'dias'">dias</span>
                                 </span>
@@ -966,7 +937,7 @@
                                 <strong th:if="${processo.dataEnvioOficio != null}"
                                         th:text="${#temporals.format(processo.dataEnvioOficio,'dd/MM/yyyy')}">00/00/0000</strong>
                                 <span th:if="${processo.dataEnvioOficio == null}">
-                                    — registrada automaticamente ao enviar a resposta ao solicitante (passo 6).
+                                    — registrada automaticamente ao enviar a resposta ao solicitante (aba Finalização).
                                 </span>
                             </div>
                         </div>
@@ -976,12 +947,12 @@
                               enctype="multipart/form-data" class="row g-2 align-items-end mt-2"
                               data-lock-submit="Enviando ofício...">
                             <div class="col-md-8">
-                                <label class="form-label small" for="arquivo">
+                                <label class="form-label small" for="arquivoOficio">
                                     <span th:if="${oficioAnexo != null}">Substituir ofício (PDF)</span>
                                     <span th:unless="${oficioAnexo != null}">Anexar ofício manualmente (PDF)</span>
                                 </label>
                                 <input type="file" name="arquivo" class="form-control form-control-sm"
-                                       accept=".pdf" th:required="${oficioAnexo == null}" id="arquivo">
+                                       accept=".pdf" th:required="${oficioAnexo == null}" id="arquivoOficio">
                             </div>
                             <div class="col-md-4 d-flex align-items-end">
                                 <button class="btn btn-outline-danger btn-sm">
@@ -1051,15 +1022,31 @@
 
                     <hr class="my-4">
 
-                    <!-- Resposta ao solicitante (sempre visivel na finalizacao).
+                    <!-- Resposta ao solicitante: nao se aplica a Cancelado (cancelamento
+                         nao passa pelo fluxo de resposta formal por e-mail - ver
+                         FluxoProcessoService.respostaOk/CLAUDE.md). Sub-passo proprio,
+                         sem numero nem botao, para nao exibir "2" sem nenhum "1" antes
+                         e nao deixar um botao desabilitado sem nenhuma explicacao. -->
+                    <section class="subpasso subpasso-bloqueado" th:if="${processo.status.name() == 'CANCELADO'}">
+                        <header class="subpasso-head">
+                            <span class="subpasso-num"><i class="bi bi-dash-lg"></i></span>
+                            <h3 class="h6 mb-0">Resposta ao solicitante</h3>
+                            <span th:replace="~{layout :: statusNa('Não se aplica')}"></span>
+                        </header>
+                        <p class="small text-muted mb-0">
+                            Processo cancelado: não há resposta formal por e-mail a enviar
+                            ao solicitante.
+                        </p>
+                    </section>
+
+                    <!-- Resposta ao solicitante (Deferido/Indeferido).
                          bloqueado/motivoBloqueio pre-calculados aqui (regra do CLAUDE.md
                          contra ternario aninhado > 3 niveis em atributos Thymeleaf) e
                          reusados tanto no estado visual do sub-passo quanto no
                          th:disabled/title do botao - fonte unica, sem duplicar a condicao. -->
-                    <section class="subpasso"
+                    <section class="subpasso" th:if="${processo.status.name() != 'CANCELADO'}"
                              th:with="bloqueado=${(processo.status.name() == 'DEFERIDO' and comprovanteSnT == null)
-                                          or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)
-                                          or (processo.status.name() == 'CANCELADO')},
+                                          or (processo.status.name() == 'INDEFERIDO' and oficioAnexo == null)},
                                       motivoBloqueio=${processo.status.name() == 'DEFERIDO' and comprovanteSnT == null} ? 'Anexe o comprovante de inserção no SNT acima antes de enviar a resposta.' : (${processo.status.name() == 'INDEFERIDO' and oficioAnexo == null} ? 'Anexe o ofício de indeferimento acima antes de enviar a resposta.' : null)"
                              th:classappend="${processo.emailEnviadoSolicitante} ? 'subpasso-ok' : (${bloqueado} ? 'subpasso-bloqueado' : 'subpasso-atual')">
                         <header class="subpasso-head">
@@ -1099,8 +1086,10 @@
                             </div>
 
                             <!-- Botao unico de envio. A pendencia (comprovante/oficio faltando)
-                                 nao precisa mais de um alert proprio - o motivo ja esta no
-                                 title do botao desabilitado, que e a trava real (bloqueado). -->
+                                 fica no title do botao desabilitado (nao confiavel em toque/
+                                 celular nem em elemento desabilitado) E, agora, tambem num
+                                 paragrafo visivel logo abaixo (.subpasso-regra, mesma classe
+                                 ja usada para regras de negocio no restante da tela). -->
                             <form th:if="${processo.status.finalizado}"
                                   th:action="@{/processos/{id}/finalizar(id=${processo.id})}" method="post"
                                   data-lock-submit="Enviando resposta..."
@@ -1110,6 +1099,10 @@
                                     <i class="bi bi-envelope-check"></i> Enviar Resposta ao Solicitante
                                 </button>
                             </form>
+                            <p class="subpasso-regra" th:if="${motivoBloqueio != null}">
+                                <i class="bi bi-exclamation-triangle"></i>
+                                <span th:text="${motivoBloqueio}">motivo</span>
+                            </p>
                         </div>
                     </section>
 
@@ -1159,7 +1152,7 @@
                     <p class="text-muted small" th:if="${processo.anexos.isEmpty()}">Nenhum anexo ainda.</p>
 
                     <p class="text-muted small mb-0" th:if="${processo.status.finalizado}">
-                        <i class="bi bi-lock-fill"></i> Processo encerrado: não e possível
+                        <i class="bi bi-lock-fill"></i> Processo encerrado: não é possível
                         adicionar ou remover anexos.
                     </p>
 
@@ -1175,8 +1168,8 @@
                             </select>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label" for="arquivo">Arquivo</label>
-                            <input type="file" name="arquivo" class="form-control form-control-sm" required id="arquivo">
+                            <label class="form-label" for="arquivoAnexoGenerico">Arquivo</label>
+                            <input type="file" name="arquivo" class="form-control form-control-sm" required id="arquivoAnexoGenerico">
                         </div>
                         <div class="col-md-2">
                             <label class="form-label" for="descricao">Descrição</label>
@@ -1184,6 +1177,45 @@
                         </div>
                         <div class="col-md-2">
                             <button class="btn btn-primary btn-sm">Enviar</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Chat com o solicitante (visivel apenas se veio do portal). Em linha
+         propria, com coluna mais larga (col-lg-6, antes col-lg-3 dentro da
+         barra lateral) - o mesmo espaco que as outras duas telas de chat do
+         sistema (solicitante/detalhe.html, solicitacoes-online-detalhe.html)
+         ja usam, em vez de ficar espremido na largura da barra lateral. -->
+    <div class="row g-4 mt-0" th:if="${solicitacaoOnlineOrigemId != null}">
+        <div class="col-lg-6">
+            <div class="card animate-fade-in-d1">
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1" role="button"
+                     data-bs-toggle="collapse" data-bs-target="#chatBodyProcesso" aria-expanded="true">
+                    <span><i class="bi bi-chat-dots"></i> Conversa com o solicitante</span>
+                    <span class="d-flex align-items-center gap-1">
+                        <span id="chatBadgeNaoLida" th:if="${msgNaoLidas > 0}" class="badge bg-warning text-dark"
+                              th:text="${msgNaoLidas} + ' nova(s)'">0</span>
+                        <span id="chatBadgeTotal" th:classappend="${#lists.size(mensagens) == 0} ? 'd-none'" class="badge bg-secondary ms-1"
+                              th:text="${#lists.size(mensagens)} + ' total'">0</span>
+                        <i class="bi bi-chevron-up chevron-collapse ms-2"></i>
+                    </span>
+                </div>
+                <div class="card-body collapse show" id="chatBodyProcesso">
+                    <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'" class="text-muted small text-center py-3">
+                        Nenhuma mensagem ainda.
+                    </div>
+                    <!-- Renderizado por chat-solicitacao.js (poll AJAX). -->
+                    <div id="chatBox" th:classappend="${mensagens.isEmpty()} ? 'd-none'" class="mb-3 chat-box"></div>
+                    <form id="chatForm" th:action="@{/processos/{id}/mensagem/ajax(id=${processo.id})}" method="post">
+                        <div class="input-group">
+                            <input type="text" name="texto" class="form-control" placeholder="Responder ao solicitante..."
+                                   required maxlength="2000">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-reply"></i> Responder
+                            </button>
                         </div>
                     </form>
                 </div>
@@ -1216,7 +1248,7 @@
 
 <!-- Modal de confirmacao de envio de e-mail: NENHUM e-mail e enviado sem que
      este modal exiba antes os destinatarios e o conteudo completo. -->
-<div class="modal fade" id="modalConfirmaEmail" tabindex="-1" aria-hidden="true">
+<div class="modal fade" id="modalConfirmaEmail" tabindex="-1" aria-hidden="true" aria-labelledby="modalEmailTitulo">
     <div class="modal-dialog modal-lg modal-dialog-scrollable modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
@@ -1228,7 +1260,7 @@
             </div>
             <div class="modal-body">
                 <p class="small text-muted mb-3" id="modalEmailIntro">
-                    Confira os destinatários e o conteúdo abaixo. O e-mail so será
+                    Confira os destinatários e o conteúdo abaixo. O e-mail só será
                     enviado ao clicar em <strong>Confirmar envio</strong>.
                 </p>
                 <div id="modalEmailMensagens"></div>
