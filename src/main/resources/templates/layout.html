@@ -54,9 +54,9 @@
     <div class="d-flex flex-column lh-1">
         <div class="d-flex align-items-center gap-2">
             <span>SAUR</span>
-            <span class="badge rounded-pill bg-warning text-dark" style="font-size:.6rem;opacity:.8;">UR</span>
+            <span class="badge rounded-pill bg-warning text-dark" style="font-size:var(--saur-font-xs);opacity:.8;">UR</span>
         </div>
-        <small style="font-size:.55rem;font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
+        <small style="font-size:var(--saur-font-xs);font-weight:400;opacity:.7;white-space:nowrap;">Sistema de avaliação de urgência renal</small>
     </div>
 </a>
 <th:block th:fragment="navbar">
@@ -144,11 +144,11 @@
                         <i class="bi bi-inbox-fill"></i> Solicitações online
                         <span th:if="${pendentesTriagemOnline > 0}"
                               class="badge rounded-pill bg-danger"
-                              style="font-size:.65rem;"
+                              style="font-size:var(--saur-font-xs);"
                               th:text="${pendentesTriagemOnline}">0</span>
                         <span id="navBadgeMsgNaoLida" th:if="${mensagensNaoLidasOperador > 0}"
                               class="badge rounded-pill bg-warning text-dark"
-                              style="font-size:.65rem;"
+                              style="font-size:var(--saur-font-xs);"
                               th:text="${mensagensNaoLidasOperador}">0</span>
                     </a>
                 </li>
@@ -420,7 +420,7 @@
     <!--/* Sem opacity:.7 aqui: empilhada sobre o cinza do rodape, derrubava o
            contraste para 3.55:1 (WCAG AA exige 4.5:1). Sem ela fica 5.71:1,
            com a mesma hierarquia visual - o texto ja e menor que o de cima. */-->
-    <small class="d-block text-muted" style="font-size:.7rem;">Produzido por Rafael Elias Ioppi</small>
+    <small class="d-block text-muted" style="font-size:var(--saur-font-xs);">Produzido por Rafael Elias Ioppi</small>
 </div>
 
 <!-- Modal generico de confirmacao de acao destrutiva (excluir/reabrir/cancelar).
