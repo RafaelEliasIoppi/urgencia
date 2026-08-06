@@ -59,7 +59,12 @@
             </button>
         </div>
         <div class="col">
-            <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
+            <!-- Recalibrado (V5 do redesign visual, 2026-08-06, M4(ii)/
+                 decisão 1 do §10): azul informativo, não âmbar - "aguardando
+                 triagem" é espera normal, não pendência do solicitante. O
+                 dourado volta a significar só "você precisa agir" (ver
+                 "Devolvidas" abaixo, que continua âmbar de propósito). -->
+            <button type="button" class="stat-card stat-card-portal stat-card-membros stat-card-filtro w-100 border-0 text-start"
                     data-filtro="aguardando">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${resumo.aguardandoTriagem()}">0</span>
@@ -70,7 +75,9 @@
             </button>
         </div>
         <div class="col">
-            <button type="button" class="stat-card stat-card-portal stat-card-andamento stat-card-filtro w-100 border-0 text-start"
+            <!-- Mesma recalibração acima - "em análise" também não exige
+                 nenhuma ação do solicitante. -->
+            <button type="button" class="stat-card stat-card-portal stat-card-membros stat-card-filtro w-100 border-0 text-start"
                     data-filtro="analise">
                 <div class="d-flex align-items-center justify-content-between">
                     <span class="stat-number" th:text="${resumo.emAnalise()}">0</span>
@@ -128,8 +135,10 @@
         </div>
     </div>
 
-    <!-- Desktop/tablet: tabela (>=768px, breakpoint md do Bootstrap) -->
-    <div class="card d-none d-md-block">
+    <!-- Desktop/tablet: tabela (>=768px, breakpoint md do Bootstrap). elev-2
+         (M3, V5 do redesign visual) só quando a lista está vazia - é o único
+         cartão que "importa" na tela nesse caso (regra do M3). -->
+    <div class="card d-none d-md-block" th:classappend="${solicitacoes.isEmpty()} ? ' elev-2' : ''">
         <div class="table-responsive">
             <table class="table table-hover align-middle mb-0" id="tabelaSolicitacoes">
                 <thead class="table-light">
@@ -208,7 +217,7 @@
          nativo pra quem acessa do celular fora do hospital. Mesmos dados/
          atributos do model que a tabela acima, só a apresentação muda. -->
     <div class="d-md-none">
-        <div th:if="${solicitacoes.isEmpty()}" class="card">
+        <div th:if="${solicitacoes.isEmpty()}" class="card elev-2">
             <div class="estado-vazio">
                 <div class="estado-vazio-icone ev-info"><i class="bi bi-send-plus"></i></div>
                 <h3>Você ainda não enviou nenhuma solicitação</h3>

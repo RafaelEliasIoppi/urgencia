@@ -1713,3 +1713,17 @@ tr.linha-inativa > td:first-child {
 }
 .btn-resultado-danger:hover,
 .btn-resultado-danger:focus { background: var(--rs-red-dark); color: #fff; filter: brightness(1.1); }
+
+/* === V5 - M4(ii) + M3: faixa de resumo (lista.html) === */
+/* O numero do card de resumo (1.75rem) competia com --saur-font-xl do
+   .pagina-titulo (mesmo tamanho do nome da tela). Escopo restrito a
+   .stat-card-portal (usada só no Portal do Solicitante) - não mexe no
+   .stat-card genérico compartilhado com o Painel/outras telas do operador
+   (decisão 6 do §10, aprovada: mudança restrita ao Portal do Solicitante
+   por ora). */
+.stat-card-portal .stat-number { font-size: 1.5rem; }
+
+/* Utilitário genérico de elevação (M3): usado no ÚNICO cartão que "importa"
+   quando ele é a única coisa na tela (o card de estado vazio de
+   lista.html, quando o solicitante ainda não tem nenhuma solicitação). */
+.elev-2 { box-shadow: var(--saur-elev-2); }
