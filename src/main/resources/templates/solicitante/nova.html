@@ -5,9 +5,20 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<main id="conteudo" class="container my-4 container-narrow">
-    <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
-    <p class="small text-muted">* Campo obrigatório</p>
+<main id="conteudo">
+    <!-- Faixa de cabecalho (V3 do redesign visual, 2026-08-06, variante
+         SUAVE - M1(a)), mesmo tratamento de lista.html. -->
+    <div class="pagina-cabecalho">
+        <div class="pc-marca" aria-hidden="true"><svg th:replace="~{layout :: marcaSvg}"></svg></div>
+        <div class="pc-inner container-narrow">
+            <div>
+                <h1 class="pagina-titulo"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
+                <p class="pagina-contexto mb-0">* Campo obrigatório</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-4 container-narrow">
 
     <!--/* Retorno com erro de validacao: o texto digitado volta preenchido (o
            @ModelAttribute preserva), mas os ARQUIVOS nao - nenhum navegador
@@ -42,7 +53,7 @@
           enctype="multipart/form-data" class="card" data-lock-submit="Enviando solicitação..."
           th:attr="data-rascunho-url=@{/solicitante/nova/rascunho}">
         <div class="card-body">
-            <h2 class="h6 text-muted">Equipe solicitante</h2>
+            <h2 class="secao-titulo">Equipe solicitante</h2>
             <div class="row g-3 mb-2">
                 <div class="col-md-8">
                     <label class="form-label" for="equipeSolicitanteInfo">Equipe / hospital</label>
@@ -61,7 +72,7 @@
             </p>
 
             <hr>
-            <h2 class="h6 text-muted">Paciente</h2>
+            <h2 class="secao-titulo">Paciente</h2>
             <div class="row g-3">
                 <div class="col-md-8">
                     <label class="form-label" th:for="pacienteNome">Nome do paciente *</label>
@@ -149,6 +160,7 @@
             </div>
         </div>
     </form>
+    </div>
 </main>
 
 <script th:replace="~{layout :: scripts}"></script>

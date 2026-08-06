@@ -1484,3 +1484,94 @@ tr.linha-inativa > td:first-child {
     font-size: var(--saur-font-md);
     margin-bottom: .2rem;
 }
+
+/* === V3 - M1(a): faixa de cabecalho de pagina, variante SUAVE ===
+   Fundo --saur-surface-info (azul institucional bem claro) com texto na
+   variante -on (azul solido, 7,08:1 de contraste - ver Anexo C do
+   relatorio). Usada em lista.html e nova.html; detalhe.html ganha a
+   variante SOLIDA na fase V4, junto com o cartao de resultado (M6) - ver
+   .pagina-cabecalho-solida mais abaixo. O container real (largura maxima)
+   fica a cargo de quem inclui o fragmento, via .container-portal/
+   .container-narrow aplicada junto de .pc-inner - nao duplicar o valor de
+   max-width aqui. */
+.pagina-cabecalho {
+    position: relative;
+    overflow: hidden;
+    background: var(--saur-surface-info);
+    border-bottom: 1px solid rgba(var(--rs-blue-rgb), .18);
+}
+.pagina-cabecalho .pc-inner {
+    margin: 0 auto;
+    padding: 1.6rem 1rem 1.4rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    z-index: 1;
+}
+/* Marca d'agua (decisao 5 do §10, aprovada): o SVG de layout::marcaSvg,
+   grande e quase transparente, alinhado ao canto superior direito da
+   faixa - nunca compete com o titulo (z-index 0, atras do .pc-inner). */
+.pagina-cabecalho .pc-marca {
+    position: absolute;
+    right: -14px;
+    top: -26px;
+    width: 170px;
+    height: 170px;
+    opacity: .06;
+    pointer-events: none;
+    z-index: 0;
+    color: var(--rs-blue);
+}
+/* O <svg> em si vem de layout::marcaSvg sem width/height (th:replace troca a
+   tag inteira - um class="..." no elemento chamador seria descartado junto,
+   por isso o dimensionamento/posicionamento vive no <div> acima, envolvendo
+   um <svg> "puro"). Sem isso o SVG cai no tamanho replaced-element padrao do
+   navegador (300x150, ou maior dentro de um flex container) - bug real visto
+   na 1a captura de tela desta fase, uma gota solida cobrindo quase a tela
+   inteira. */
+.pagina-cabecalho .pc-marca svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+}
+.pagina-titulo {
+    font-size: var(--saur-font-xl);
+    font-weight: 700;
+    letter-spacing: -.02em;
+    color: var(--saur-on-info);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .55rem;
+    line-height: 1.15;
+    margin: 0;
+}
+.pagina-contexto {
+    font-size: var(--saur-font-sm);
+    color: var(--rs-blue-dark);
+    opacity: .85;
+    margin-top: .2rem;
+}
+
+/* === V3 - M2: escala tipografica de verdade ===
+   Titulo de secao saia de h6 text-muted (1rem cinza, igual ao corpo) para
+   estes dois degraus - o rotulo (opcional, maiusculas pequenas) so entra
+   em templates que precisarem dele (ex.: fase V4 de detalhe.html); o
+   titulo sozinho ja resolve a maior parte do achado (§4.1 do relatorio). */
+.secao-rotulo {
+    font-size: var(--saur-font-xs);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--rs-gray-600);
+    margin-bottom: .35rem;
+}
+.secao-titulo {
+    font-size: var(--saur-font-lg);
+    font-weight: 600;
+    color: var(--rs-gray-800);
+    margin-bottom: .6rem;
+}

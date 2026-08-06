@@ -91,7 +91,7 @@
          vive exclusivamente no cartão de situação acima. -->
     <div class="card mb-3">
         <div class="card-body">
-            <h2 class="h6 text-muted mb-3">Andamento do pedido</h2>
+            <h2 class="secao-titulo">Andamento do pedido</h2>
             <div class="timeline">
                 <div class="timeline-item concluida">
                     <div class="timeline-dot"><i class="bi bi-check"></i></div>
@@ -156,7 +156,7 @@
         </div>
     </div>
 
-    <h2 class="h6 text-muted">Documentos anexados</h2>
+    <h2 class="secao-titulo">Documentos anexados</h2>
     <ul class="list-group mb-3">
         <li class="list-group-item" th:each="a : ${solicitacao.anexos}"
             th:with="ext=${#strings.toLowerCase(a.nomeArquivo)},
