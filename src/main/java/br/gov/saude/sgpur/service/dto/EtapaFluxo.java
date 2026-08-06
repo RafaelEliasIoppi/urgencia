@@ -58,7 +58,7 @@ public record EtapaFluxo(Chave chave, String titulo, String icone, EstadoEtapa e
         return switch (estado) {
             case CONCLUIDA -> "ok";
             case ATUAL -> "attention";
-            case PENDENTE -> "neutral";
+            case BLOQUEADA -> "neutral";
         };
     }
 }
