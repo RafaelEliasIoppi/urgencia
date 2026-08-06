@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', function () {
     var linhasTabela = document.querySelectorAll('#tabelaSolicitacoes tbody tr[data-categoria]');
     var cardsLista = document.querySelectorAll('.d-md-none a.card[data-categoria]');
     var vazioAviso = document.getElementById('listaVaziaFiltro');
+    var btnLimparFiltroVazio = document.getElementById('btnLimparFiltroVazio');
 
     if (!cards.length) return;
 
@@ -58,5 +59,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (busca) {
         busca.addEventListener('input', aplicarFiltro);
+    }
+
+    // Estado vazio do filtro (V2 do redesign visual, 2026-08-06): volta pro
+    // card "Total enviadas" e limpa a busca, num unico clique.
+    if (btnLimparFiltroVazio) {
+        btnLimparFiltroVazio.addEventListener('click', function () {
+            cards.forEach(function (c) { c.classList.remove('active'); });
+            var cardTotal = document.querySelector('#cardsFiltro .stat-card-filtro[data-filtro="total"]');
+            if (cardTotal) cardTotal.classList.add('active');
+            filtroAtivo = 'total';
+            if (busca) busca.value = '';
+            aplicarFiltro();
+        });
     }
 });

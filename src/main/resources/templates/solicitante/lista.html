@@ -110,10 +110,16 @@
                    placeholder="Buscar por nome do paciente ou RGCT...">
         </div>
     </div>
-    <p id="listaVaziaFiltro" class="text-muted text-center py-4 d-none">
-        <i class="bi bi-funnel fs-3 d-block mb-2"></i>
-        Nenhuma solicitação encontrada com esse filtro/busca.
-    </p>
+    <div id="listaVaziaFiltro" class="card d-none">
+        <div class="estado-vazio estado-vazio-compacto">
+            <div class="estado-vazio-icone"><i class="bi bi-funnel"></i></div>
+            <h3>Nenhuma solicitação encontrada com esse filtro/busca</h3>
+            <p>Tente outro termo de busca ou volte para o card "Total enviadas".</p>
+            <button type="button" id="btnLimparFiltroVazio" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-x-lg"></i> Limpar filtro
+            </button>
+        </div>
+    </div>
 
     <!-- Desktop/tablet: tabela (>=768px, breakpoint md do Bootstrap) -->
     <div class="card d-none d-md-block">
@@ -174,9 +180,16 @@
                         </td>
                     </tr>
                     <tr th:if="${solicitacoes.isEmpty()}">
-                        <td colspan="6" class="text-center text-muted py-5">
-                            <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                            Você ainda não enviou nenhuma solicitação.
+                        <td colspan="6" class="p-0">
+                            <div class="estado-vazio">
+                                <div class="estado-vazio-icone ev-info"><i class="bi bi-send-plus"></i></div>
+                                <h3>Você ainda não enviou nenhuma solicitação</h3>
+                                <p>Quando enviar um pedido de urgência renal, ele aparece aqui com o
+                                    andamento atualizado a cada etapa — da triagem até a decisão da equipe.</p>
+                                <a th:href="@{/solicitante/nova}" class="btn btn-primary btn-lg">
+                                    <i class="bi bi-plus-lg"></i> Enviar minha primeira solicitação
+                                </a>
+                            </div>
                         </td>
                     </tr>
                 </tbody>
@@ -189,9 +202,14 @@
          atributos do model que a tabela acima, só a apresentação muda. -->
     <div class="d-md-none">
         <div th:if="${solicitacoes.isEmpty()}" class="card">
-            <div class="card-body text-center text-muted py-5">
-                <i class="bi bi-inbox fs-2 d-block mb-2"></i>
-                Você ainda não enviou nenhuma solicitação.
+            <div class="estado-vazio">
+                <div class="estado-vazio-icone ev-info"><i class="bi bi-send-plus"></i></div>
+                <h3>Você ainda não enviou nenhuma solicitação</h3>
+                <p>Quando enviar um pedido de urgência renal, ele aparece aqui com o andamento
+                    atualizado a cada etapa — da triagem até a decisão da equipe.</p>
+                <a th:href="@{/solicitante/nova}" class="btn btn-primary btn-lg">
+                    <i class="bi bi-plus-lg"></i> Enviar minha primeira solicitação
+                </a>
             </div>
         </div>
         <a th:each="s : ${solicitacoes}" th:href="@{/solicitante/{id}(id=${s.id})}"

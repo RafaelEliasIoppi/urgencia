@@ -1419,3 +1419,68 @@ tr.linha-inativa > td:first-child {
 .text-rs-red  { color: var(--rs-red); }
 
 .min-vh-60 { min-height: 60vh; }
+
+/* ============================================================================
+   === Redesign visual do Portal do Solicitante (2026-08-06) ===
+   docs/RELATORIO-REDESIGN-VISUAL-SOLICITANTE-2026-08.md - plano faseado V1-V6.
+   V1 (tokens) fica no bloco :root, no topo do arquivo. Daqui pra baixo: as
+   classes de componente de cada fase seguinte, na ordem em que foram
+   implementadas. ============================================================
+   ============================================================================ */
+
+/* === V2 - M5: estados vazios desenhados, com acao ===
+   Mesma estrutura que indisponivel.html ja provava funcionar: icone grande
+   dentro de um circulo tintado, titulo, uma linha de orientacao e a acao
+   (quando existir). Substitui os 4 tratamentos divergentes (um <td> cinza
+   sem icone, um <p> com icone fs-3, dois blocos so de texto) por um unico
+   padrao. Nenhum asset novo - bootstrap-icons dentro de um token circular,
+   o mesmo mecanismo que .stat-card .stat-icon ja usa. */
+.estado-vazio {
+    text-align: center;
+    padding: 3rem 1.5rem;
+}
+.estado-vazio-icone {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    margin: 0 auto 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.75rem;
+    background: var(--ev-bg, var(--rs-gray-100));
+    color: var(--ev-ic, var(--rs-gray-500));
+}
+/* Variante tintada de azul - usada no estado vazio PRINCIPAL da tela (ex.:
+   "voce ainda nao enviou nenhuma solicitacao"), quando ha uma acao primaria
+   associada. A cinza (default) e para estados vazios secundarios/neutros
+   (filtro sem resultado, sem documentos, sem mensagens). */
+.estado-vazio-icone.ev-info { --ev-bg: var(--saur-surface-info); --ev-ic: var(--saur-on-info); }
+.estado-vazio h3 {
+    font-size: var(--saur-font-lg);
+    font-weight: 600;
+    margin-bottom: .35rem;
+}
+.estado-vazio p {
+    color: var(--rs-gray-600);
+    font-size: var(--saur-font-sm);
+    max-width: 44ch;
+    margin: 0 auto 1.1rem;
+}
+
+/* Variante compacta - estados vazios secundarios DENTRO de um cartao que ja
+   tem outro conteudo ao redor (documentos/mensagens em detalhe.html), sem
+   competir visualmente com o estado vazio principal da tela. */
+.estado-vazio-compacto {
+    padding: 1.25rem .5rem;
+}
+.estado-vazio-compacto .estado-vazio-icone {
+    width: 56px;
+    height: 56px;
+    font-size: 1.35rem;
+    margin-bottom: .6rem;
+}
+.estado-vazio-compacto h3 {
+    font-size: var(--saur-font-md);
+    margin-bottom: .2rem;
+}

@@ -172,10 +172,14 @@
                 <i class="bi bi-download text-muted"></i>
             </a>
         </li>
-        <li class="list-group-item text-muted" th:if="${solicitacao.anexos.isEmpty()}">
-            Nenhum documento anexado.
-        </li>
     </ul>
+    <div class="card mb-3" th:if="${solicitacao.anexos.isEmpty()}">
+        <div class="estado-vazio estado-vazio-compacto">
+            <div class="estado-vazio-icone"><i class="bi bi-paperclip"></i></div>
+            <h3>Nenhum documento anexado</h3>
+            <p>Os exames enviados junto ao pedido aparecem nesta lista.</p>
+        </div>
+    </div>
 
     <!-- Conversa com a equipe -->
     <div class="card mb-3">
@@ -191,8 +195,11 @@
             </span>
         </div>
         <div class="card-body collapse show" id="chatBody">
-            <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'" class="text-muted small text-center py-3">
-                Nenhuma mensagem ainda. Use o campo abaixo para enviar uma mensagem à equipe.
+            <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'"
+                 class="estado-vazio estado-vazio-compacto">
+                <div class="estado-vazio-icone"><i class="bi bi-chat-dots"></i></div>
+                <h3>Nenhuma mensagem ainda</h3>
+                <p>Use o campo abaixo para enviar uma mensagem à equipe.</p>
             </div>
             <!-- Renderizado por chat-solicitacao.js (poll AJAX); o conteudo inicial
                  e so pra nao ter flash de vazio antes do 1o poll rodar. -->
