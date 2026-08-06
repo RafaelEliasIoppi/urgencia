@@ -10,7 +10,7 @@
     <!-- Cabecalho -->
     <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
         <div>
-            <h1 class="h3 fw-bold" style="color: var(--rs-gray-800);">Painel da Urgência Renal</h1>
+            <h1 class="h3 fw-bold text-rs-gray-800">Painel da Urgência Renal</h1>
             <p class="text-muted small mb-0">Dados do ano corrente
                 (<span th:text="${anoCorrente}">2026</span>): acompanhe para quais médicos cada
                 solicitação foi enviada e a situação de cada parecer.</p>
@@ -22,8 +22,7 @@
          boot; some sozinho quando o ALTER TABLE for executado e o app reiniciar. -->
     <div sec:authorize="hasRole('ADMIN')"
          th:if="${enumCheckDivergencias != null and !enumCheckDivergencias.isEmpty()}"
-         class="alert alert-danger border-0 shadow-sm mb-4" role="alert"
-         style="border-left:5px solid var(--rs-red, #dc3545) !important;">
+         class="alert alert-danger border-0 shadow-sm mb-4 alert-border-start-red" role="alert">
         <div class="d-flex align-items-start gap-2">
             <i class="bi bi-database-exclamation fs-4"></i>
             <div class="flex-grow-1">
@@ -43,8 +42,7 @@
                         Valor(es) recusado(s) pelo banco:
                         <span class="fw-semibold" th:text="${#strings.listJoin(d.valoresFaltando, ', ')}">X, Y</span>
                     </div>
-                    <pre class="small bg-white border rounded p-2 mb-0"
-                         style="white-space:pre-wrap;word-break:break-word;"
+                    <pre class="small bg-white border rounded p-2 mb-0 pre-wrap-break"
                          th:text="${d.sqlCorrecao}">ALTER TABLE ...</pre>
                 </div>
             </div>
@@ -156,19 +154,19 @@
     <!-- Planilha de processos -->
     <section class="card shadow-sm">
         <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
-            <h2 class="h6 mb-0 d-flex align-items-center gap-2" style="color:var(--rs-gray-700);">
-                <i class="bi bi-table" style="color:var(--rs-blue);"></i>
+            <h2 class="h6 mb-0 d-flex align-items-center gap-2 text-rs-gray-700">
+                <i class="bi bi-table text-rs-blue"></i>
                 Solicitações e situação dos pareceres
             </h2>
             <div class="d-flex flex-wrap align-items-center gap-3 small text-muted">
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-green);"></span>Favorável</span>
+                    <span class="rounded-circle legend-dot legend-dot-favoravel"></span>Favorável</span>
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-red);"></span>Desfavorável</span>
+                    <span class="rounded-circle legend-dot legend-dot-desfavoravel"></span>Desfavorável</span>
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-gold);"></span>Aguardando</span>
+                    <span class="rounded-circle legend-dot legend-dot-aguardando"></span>Aguardando</span>
                 <span class="d-inline-flex align-items-center gap-1">
-                    <span class="rounded-circle d-inline-block" style="width:10px;height:10px;background:var(--rs-gray-300);"></span>Sem médico</span>
+                    <span class="rounded-circle legend-dot legend-dot-sem-medico"></span>Sem médico</span>
             </div>
         </div>
 
@@ -187,23 +185,23 @@
                 </thead>
                 <tbody class="border-top">
                     <tr th:each="l : ${linhas}"
-                        style="transition:var(--rs-transition);">
+                        class="tr-transition">
                         <td class="text-nowrap align-top">
                             <a th:href="@{/processos/{id}(id=${l.processo.id})}"
                                class="fw-semibold link-primary text-decoration-none"
                                th:text="${l.processo.numero}">00/0000</a>
-                            <div class="text-muted" style="font-size:.75rem;"
+                            <div class="text-muted text-detail-xs"
                                  th:text="${#temporals.format(l.processo.dataCadastro, 'dd/MM/yyyy')}">data</div>
                         </td>
-                        <td class="align-top" style="max-width:16rem;">
+                        <td class="align-top mw-16rem">
                             <div class="fw-medium text-truncate"
                                  th:text="${l.processo.pacienteNome}"
                                  th:title="${l.processo.pacienteNome}">Paciente</div>
-                            <div class="text-muted text-truncate" style="font-size:.75rem;"
+                            <div class="text-muted text-truncate text-detail-xs"
                                  th:text="${l.processo.solicitanteEquipe}"
                                  th:title="${l.processo.solicitanteEquipe}">Solicitante</div>
                         </td>
-                        <td class="align-top" style="max-width:10rem;">
+                        <td class="align-top mw-10rem">
                             <span class="badge rounded-pill text-wrap"
                                   th:classappend="${l.processo.status.bootstrapBadge}">
                                 <i class="bi" th:classappend="'bi-' + ${l.processo.status.badgeIcone}"></i>
@@ -217,13 +215,13 @@
                                  completa (o que falta de verdade) fica reservada pro title, em vez
                                  de competir por espaco na tabela / ser cortada sem reticencias. -->
                             <div th:if="${pendencias.containsKey(l.processo.id)}"
-                                 class="mt-1 text-muted fst-italic text-truncate" style="font-size:.7rem;max-width:12rem;"
+                                 class="mt-1 text-muted fst-italic text-truncate text-detail-xs mw-12rem"
                                  th:text="${pendencias.get(l.processo.id).titulo()}"
                                  th:title="${pendencias.get(l.processo.id).titulo()} + ': ' + ${pendencias.get(l.processo.id).detalhe()}">o que falta</div>
                         </td>
-                        <td class="align-top" style="min-width:9rem;max-width:12rem;" th:each="c : ${l.medicos}">
+                        <td class="align-top mw-9-12rem" th:each="c : ${l.medicos}">
                             <th:block th:if="${c.definido}">
-                                <div class="fw-medium text-truncate" style="font-size:.8rem;max-width:12rem;"
+                                <div class="fw-medium text-truncate text-detail-sm mw-12rem"
                                      th:text="${c.medico}" th:title="${c.medico}">Médico</div>
                                 <!-- Mapeamento cor logica (CelulaMedico.cor) -> classe Bootstrap via
                                      th:switch, em vez de ternarios aninhados em th:classappend (regra
@@ -252,7 +250,7 @@
                                 </th:block>
                             </th:block>
                             <th:block th:unless="${c.definido}">
-                                <span class="fst-italic text-muted" style="font-size:.75rem;">— não definido —</span>
+                                <span class="fst-italic text-muted text-detail-xs">— não definido —</span>
                             </th:block>
                         </td>
                         <td class="align-top text-center text-nowrap">
@@ -264,7 +262,7 @@
                     </tr>
                     <tr th:if="${linhas.isEmpty()}">
                         <td colspan="7" class="text-center py-5 text-muted">
-                            <i class="bi bi-inbox d-block mb-1" style="font-size:2rem;"></i>
+                            <i class="bi bi-inbox d-block mb-1 fs-2"></i>
                             Nenhum processo cadastrado ainda.
                         </td>
                     </tr>

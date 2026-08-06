@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<main id="conteudo" class="container my-4" style="max-width: 480px;">
+<main id="conteudo" class="container my-4 container-narrow">
     <h1 class="h3 mb-3">Trocar minha senha</h1>
 
     <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
@@ -45,7 +45,7 @@
                         <i class="bi bi-eye"></i>
                     </button>
                 </div>
-                <div class="text-danger small" id="msgConfere" style="display:none;">
+                <div class="text-danger small d-none" id="msgConfere">
                     A confirmação não confere com a nova senha.
                 </div>
             </div>
@@ -80,7 +80,7 @@
     document.getElementById('formSenha').addEventListener('submit', function (e) {
         if (nova.value !== conf.value) {
             e.preventDefault();
-            msg.style.display = '';
+            msg.classList.remove('d-none');
             conf.focus();
         }
     });

@@ -1157,3 +1157,104 @@ tr.linha-inativa > td:first-child {
 
     a[href]::after { content: ""; }   /* nao poluir com a URL de cada link */
 }
+
+/* === Utilitarios extraidos de style= inline (lote UI operador/admin,
+   2026-08-05: dashboard, listas e formularios do painel do operador,
+   EXCETO processos/detalhe.html). Aditivo ao final do arquivo para nao
+   colidir com o lote em paralelo que tambem mexe neste CSS. Usa os tokens
+   --saur-font-*/--saur-space-*/--saur-radius-* definidos por esse outro
+   lote quando o padrao repete em 2+ lugares; senao o valor ficou inline
+   por ser genuinamente unico. */
+
+/* Texto auxiliar bem pequeno (datas, legendas, "nao definido"), repetido
+   varias vezes no Painel com o mesmo valor de font-size inline. */
+.text-detail-xs { font-size: var(--saur-font-xs); }
+.text-detail-sm { font-size: var(--saur-font-sm); }
+
+/* Truncamento de celula de tabela com largura maxima fixa (Painel):
+   cada coluna tem sua propria largura, mas o par text-truncate+max-width
+   inline se repetia identico em varias celulas. */
+.mw-9rem  { max-width: 9rem; }
+.mw-10rem { max-width: 10rem; }
+.mw-12rem { max-width: 12rem; }
+.mw-14rem { max-width: 14rem; }
+.mw-15rem { max-width: 15rem; }
+.mw-16rem { max-width: 16rem; }
+.mw-9-12rem { min-width: 9rem; max-width: 12rem; }
+
+/* Legenda de cor da tabela do Painel (bolinha de 10px por situacao do
+   parecer) - 4 ocorrencias identicas na estrutura, so a cor muda. */
+.legend-dot {
+    width: 10px;
+    height: 10px;
+    display: inline-block;
+}
+.legend-dot-favoravel   { background: var(--rs-green); }
+.legend-dot-desfavoravel{ background: var(--rs-red); }
+.legend-dot-aguardando  { background: var(--rs-gold); }
+.legend-dot-sem-medico  { background: var(--rs-gray-300); }
+
+/* <select> compacto usado nos filtros de ano/avaliador dos relatorios
+   (relatorios/anual.html, relatorios/avaliador.html) - mesmo valor
+   220px repetido nas duas telas. */
+.select-compact-220 { max-width: 220px; }
+
+/* Bloco de texto que preserva quebras de linha digitadas pelo usuario
+   (justificativa clinica, SQL de correcao de CHECK constraint no Painel). */
+.text-pre-wrap { white-space: pre-wrap; }
+.pre-wrap-break { white-space: pre-wrap; word-break: break-word; }
+
+/* Cor de texto em cinza/azul do design system, para substituir
+   style="color:var(--rs-gray-800)" etc. repetido em titulos do Painel. */
+.text-rs-gray-800 { color: var(--rs-gray-800); }
+.text-rs-gray-700 { color: var(--rs-gray-700); }
+.text-rs-blue     { color: var(--rs-blue); }
+
+/* Borda de destaque de 5px a esquerda de um alerta (usada no aviso tecnico
+   de CHECK constraint desatualizada, so ADMIN, Painel). */
+.alert-border-start-red { border-left: 5px solid var(--rs-red, #dc3545) !important; }
+
+/* Transicao suave ao passar o mouse sobre uma linha de tabela hover
+   (Painel) - mesmo token --rs-transition ja usado no restante do design
+   system, so que aqui precisava ser aplicado por linha via th:each. */
+.tr-transition { transition: var(--rs-transition); }
+
+/* Tela de login/esqueci-senha: paleta de fundo em gradiente + cartao
+   translucido, repetidos IDENTICOS inline em login.html e
+   esqueci-senha.html - extraidos para nao divergir entre as duas telas. */
+.auth-page-bg {
+    background: linear-gradient(135deg, var(--rs-blue) 0%, var(--rs-blue-dark) 50%, var(--rs-blue-darker) 100%);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.auth-page-wrap {
+    max-width: 420px;
+    padding: 2rem;
+}
+.auth-icon-badge {
+    width: 72px;
+    height: 72px;
+    border-radius: 20px;
+    background: rgba(255, 255, 255, .12);
+    backdrop-filter: blur(4px);
+}
+.auth-heading { letter-spacing: -.02em; }
+.auth-subtitle { letter-spacing: .02em; }
+.auth-card {
+    border: none;
+    border-radius: 16px;
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, .95);
+}
+.text-tiny-70 { font-size: .7rem; }
+.text-tiny-75 { font-size: .75rem; }
+
+/* Icone grande de status na pagina de erro (error.html) - mesmo tamanho
+   para os 4 casos, so a cor muda por faixa de status HTTP. */
+.error-icon { font-size: 3rem; }
+.text-rs-gold { color: var(--rs-gold); }
+.text-rs-red  { color: var(--rs-red); }
+
+.min-vh-60 { min-height: 60vh; }

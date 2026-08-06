@@ -9,7 +9,7 @@
 <main id="conteudo" class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in">
         <div>
-            <h1 class="h4 fw-bold mb-1"><i class="bi bi-archive me-2"></i>Arquivo</h1>
+            <h1 class="h3 fw-bold mb-1"><i class="bi bi-archive me-2"></i>Arquivo</h1>
             <p class="text-muted small mb-0">
                 Processos encerrados (Deferido, Indeferido, Cancelado)
                 <span th:if="${totalEncerrados > 0}">
@@ -85,7 +85,7 @@
                 </tr>
                 <tr th:if="${processos.isEmpty()}">
                     <td colspan="5" class="text-center text-muted py-5">
-                        <i class="bi bi-archive" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                        <i class="bi bi-archive fs-2 d-block mb-2"></i>
                         Nenhum processo encerrado encontrado
                     </td>
                 </tr>

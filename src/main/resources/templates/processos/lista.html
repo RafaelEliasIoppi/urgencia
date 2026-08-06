@@ -8,7 +8,7 @@
 <main id="conteudo" class="container my-4">
     <div class="d-flex justify-content-between align-items-center mb-4 animate-fade-in">
         <div>
-            <h1 class="h4 fw-bold mb-1">Processos</h1>
+            <h1 class="h3 fw-bold mb-1">Processos</h1>
             <p class="text-muted small mb-0">Gerencie as solicitações de urgência renal</p>
         </div>
     </div>
@@ -86,7 +86,7 @@
                     <!-- Relatorio de clareza (2026-08-05), item 5.1: so o titulo curto da
                          etapa pendente na celula; a frase completa fica no title, sem
                          empurrar as demais colunas nem cortar sem reticencias. -->
-                    <td class="small text-muted text-truncate" style="max-width:14rem;"
+                    <td class="small text-muted text-truncate mw-14rem"
                         th:if="${pendencias.containsKey(p.id)}"
                         th:text="${pendencias.get(p.id).titulo()}"
                         th:title="${pendencias.get(p.id).titulo()} + ': ' + ${pendencias.get(p.id).detalhe()}">pendência</td>
@@ -109,7 +109,7 @@
                 </tr>
                 <tr th:if="${processos.isEmpty()}">
                     <td colspan="4" class="text-center text-muted py-5">
-                        <i class="bi bi-inbox" style="font-size:2rem;display:block;margin-bottom:.5rem;"></i>
+                        <i class="bi bi-inbox fs-2 d-block mb-2"></i>
                         Nenhum processo encontrado
                     </td>
                 </tr>
