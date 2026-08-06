@@ -394,12 +394,11 @@
                          Cores validadas (colorblind-safe, node scripts/validate_palette.js) -
                          identidade nunca depende so da cor, os numeros/icones abaixo repetem
                          a mesma informacao (ver dataviz skill). -->
-                    <div th:if="${totalAvaliados} > 0" class="d-flex" role="img"
-                         th:aria-label="'Favorável ' + ${favoraveis} + ', Não favorável ' + ${naoFavoraveis} + ', Solicita informação ' + ${solicitaInfo}"
-                         style="height:8px;border-radius:4px;overflow:hidden;background:var(--rs-gray-200);gap:2px;">
-                        <div th:if="${favoraveis} > 0" th:style="'flex:' + ${favoraveis} + ';background:var(--rs-green-bright);'"></div>
-                        <div th:if="${naoFavoraveis} > 0" th:style="'flex:' + ${naoFavoraveis} + ';background:var(--rs-red);'"></div>
-                        <div th:if="${solicitaInfo} > 0" th:style="'flex:' + ${solicitaInfo} + ';background:var(--rs-chart-blue);'"></div>
+                    <div th:if="${totalAvaliados} > 0" class="d-flex grafico-barra-votos" role="img"
+                         th:aria-label="'Favorável ' + ${favoraveis} + ', Não favorável ' + ${naoFavoraveis} + ', Solicita informação ' + ${solicitaInfo}">
+                        <div th:if="${favoraveis} > 0" class="barra-favoravel" th:style="'flex:' + ${favoraveis} + ';'"></div>
+                        <div th:if="${naoFavoraveis} > 0" class="barra-nao-favoravel" th:style="'flex:' + ${naoFavoraveis} + ';'"></div>
+                        <div th:if="${solicitaInfo} > 0" class="barra-solicita-info" th:style="'flex:' + ${solicitaInfo} + ';'"></div>
                     </div>
                     <div th:unless="${totalAvaliados} > 0" class="text-center text-muted small py-1">Sem votos ainda</div>
                     <div class="d-flex justify-content-around small mt-2">

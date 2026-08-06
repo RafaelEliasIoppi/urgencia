@@ -51,7 +51,7 @@
                     <div th:if="${!pdfsAvaliador.isEmpty()}">
                         <div th:each="pdf, iterStat : ${pdfsAvaliador}" th:class="${!iterStat.last} ? 'mb-4' : ''">
                             <div class="d-flex flex-wrap justify-content-between align-items-center mb-2 gap-2">
-                                <span class="small fw-semibold text-truncate flex-grow-1" style="min-width:0;" th:text="${pdf.nomeArquivo}">processo.pdf</span>
+                                <span class="small fw-semibold text-truncate flex-grow-1 min-w-0" th:text="${pdf.nomeArquivo}">processo.pdf</span>
                                 <div class="d-flex gap-2 flex-shrink-0">
                                     <button type="button" class="btn btn-outline-secondary btn-sm btn-tela-cheia"
                                             th:attr="data-iframe-alvo='pdfFrame' + ${iterStat.index}"
@@ -96,7 +96,7 @@
 
     <!-- Coluna direita: contexto + voto, sticky (acompanha a rolagem do PDF) -->
     <div class="col-lg-5">
-    <div class="sticky-lg-top" style="top: 1rem;">
+    <div class="sticky-lg-top sticky-offset-top">
 
     <!-- Identificacao do processo — SOMENTE iniciais, sem dados do solicitante -->
     <div class="card mb-3">
