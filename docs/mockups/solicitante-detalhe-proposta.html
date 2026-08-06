@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — Portal do Solicitante: detalhe do pedido (antes × depois)</title>
+<!--
+  ============================================================================
+  MOCKUP ESTÁTICO — NÃO É CÓDIGO DO SISTEMA. NÃO IMPORTAR NADA DAQUI.
+  Acompanha docs/RELATORIO-REDESIGN-VISUAL-SOLICITANTE-2026-08.md
+  Abrir com duplo clique. Não precisa do SAUR rodando, não faz requisição.
+
+  Mesmas limitações declaradas no outro mockup: Bootstrap/bootstrap-icons vivem
+  em WebJars dentro do JAR e não podem ser carregados de um arquivo solto, então
+  o CSS foi reescrito de forma condensada e os ícones são <svg> inline
+  simplificados. A paleta --rs-* é copiada VERBATIM de app.css. Os textos de
+  cada estado foram copiados de SolicitanteController.montarSituacaoPedido —
+  este mockup não inventa copy.
+  ============================================================================
+-->
+<style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:400;font-display:swap;
+  src:url('../../src/main/resources/static/fonts/inter-400.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:600;font-display:swap;
+  src:url('../../src/main/resources/static/fonts/inter-600.woff2') format('woff2');}
+@font-face{font-family:'Inter';font-style:normal;font-weight:700;font-display:swap;
+  src:url('../../src/main/resources/static/fonts/inter-700.woff2') format('woff2');}
+
+:root{
+  --rs-blue:#1a4d8f;--rs-blue-rgb:26,77,143;--rs-blue-light:#e3edf7;--rs-blue-dark:#0f3163;
+  --rs-gold:#f5a623;--rs-gold-light:#fef3e2;--rs-gold-dark:#755a12;
+  --rs-green:#2d8546;--rs-green-light:#e8f5ed;--rs-green-dark:#1f6b36;
+  --rs-red:#c62828;--rs-red-light:#fce8e8;--rs-red-dark:#8b1a1a;
+  --rs-gray-50:#f8fafc;--rs-gray-100:#f1f5f9;--rs-gray-200:#e2e8f0;--rs-gray-300:#cbd5e1;
+  --rs-gray-400:#94a3b8;--rs-gray-500:#64748b;--rs-gray-600:#475569;--rs-gray-700:#334155;--rs-gray-800:#1e293b;
+  --rs-shadow:0 1px 3px rgba(0,0,0,.1),0 1px 2px rgba(0,0,0,.06);
+  --rs-shadow-md:0 4px 6px -1px rgba(0,0,0,.1),0 2px 4px -2px rgba(0,0,0,.1);
+  --saur-radius-sm:8px;--saur-radius-md:12px;--saur-radius-lg:16px;--saur-radius-pill:999px;
+  --saur-font-xs:.75rem;--saur-font-sm:.875rem;--saur-font-md:1rem;--saur-font-lg:1.25rem;
+  --saur-font-xl:1.75rem;--saur-font-2xl:2.25rem;
+  --saur-elev-0:none;--saur-elev-1:var(--rs-shadow);--saur-elev-2:var(--rs-shadow-md);
+  --saur-surface-ok:var(--rs-green-light);--saur-on-ok:var(--rs-green-dark);
+  --saur-surface-danger:var(--rs-red-light);--saur-on-danger:var(--rs-red-dark);
+  --saur-surface-attention:var(--rs-gold-light);--saur-on-attention:var(--rs-gold-dark);
+  --saur-surface-info:var(--rs-blue-light);--saur-on-info:var(--rs-blue);
+}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:'Inter',system-ui,-apple-system,sans-serif;color:var(--rs-gray-800);
+  background:linear-gradient(135deg,var(--rs-gray-50) 0%,var(--rs-gray-100) 100%);line-height:1.5}
+h1,h2,h3,p,ul,dl,dt,dd{margin:0}
+
+/* ===== chrome do mockup ===== */
+.mk-bar{position:sticky;top:0;z-index:50;background:#0f172a;color:#e2e8f0;padding:.6rem 1rem;
+  display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;font-size:.8rem}
+.mk-bar strong{color:#fff}
+.mk-bar a{color:#93c5fd;text-decoration:none;border:1px solid #334155;padding:.2rem .6rem;border-radius:999px}
+.mk-bar a:hover{background:#1e293b}
+.mk-sec{padding:2.5rem 1rem .5rem;max-width:1100px;margin:0 auto}
+.mk-label{display:inline-flex;align-items:center;gap:.5rem;font-size:.7rem;font-weight:700;
+  text-transform:uppercase;letter-spacing:.1em;padding:.35rem .8rem;border-radius:999px}
+.mk-label.antes{background:#e2e8f0;color:#475569}
+.mk-label.depois{background:#dcfce7;color:#166534}
+.mk-sec h2{font-size:1.4rem;margin:.6rem 0 .2rem;letter-spacing:-.02em}
+.mk-sec p.mk-desc{color:#475569;font-size:.9rem;max-width:74ch}
+.mk-nota{max-width:1100px;margin:1rem auto;padding:.7rem 1rem;border-left:4px solid #f59e0b;
+  background:#fffbeb;color:#78350f;font-size:.82rem;border-radius:0 8px 8px 0}
+.mk-nota code{background:#fef3c7;padding:.05rem .3rem;border-radius:4px}
+.mk-tela{max-width:1100px;margin:1rem auto;border:1px solid var(--rs-gray-300);border-radius:14px;
+  overflow:hidden;box-shadow:0 12px 30px -12px rgba(15,23,42,.35);
+  background:linear-gradient(135deg,var(--rs-gray-50),var(--rs-gray-100))}
+.mk-tela.recorte{padding-bottom:1.5rem}
+
+.ic{width:1em;height:1em;stroke:currentColor;fill:none;stroke-width:1.9;
+  stroke-linecap:round;stroke-linejoin:round;vertical-align:-.125em;flex:none}
+
+/* ===== base "produto" ===== */
+.navbar{background:linear-gradient(135deg,var(--rs-blue) 0%,var(--rs-blue-dark) 100%);
+  box-shadow:0 2px 8px rgba(var(--rs-blue-rgb),.35);border-bottom:2px solid var(--rs-gold);
+  padding:.55rem 1rem;display:flex;align-items:center;gap:1.25rem;color:#fff}
+.brand{display:flex;align-items:flex-start;gap:.5rem;font-weight:700;color:#fff;text-decoration:none}
+.brand small{display:block;font-size:.75rem;font-weight:400;opacity:.7;white-space:nowrap}
+.brand .ur{background:var(--rs-gold);color:#1e293b;border-radius:999px;font-size:.7rem;
+  padding:0 .45rem;margin-left:.4rem;opacity:.85;font-weight:700}
+.navlinks{margin-left:auto;display:flex;gap:1.1rem;font-size:.9rem;color:rgba(255,255,255,.85)}
+
+.container-narrow{max-width:760px;margin:0 auto;padding:1.5rem 1rem}
+.card{background:#fff;border:1px solid transparent;border-radius:var(--saur-radius-md);
+  box-shadow:var(--rs-shadow);margin-bottom:1rem}
+.card-body{padding:1rem}
+.text-muted{color:var(--rs-gray-500)}
+.small{font-size:var(--saur-font-sm)}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+.btn{display:inline-flex;align-items:center;gap:.4rem;border-radius:var(--saur-radius-sm);
+  padding:.44rem .85rem;font-size:.95rem;font-weight:500;border:1px solid transparent;
+  cursor:pointer;text-decoration:none;line-height:1.4}
+.btn-primary{background:var(--rs-blue);border-color:var(--rs-blue);color:#fff}
+.btn-success{background:#198754;border-color:#198754;color:#fff}
+.btn-danger{background:#dc3545;border-color:#dc3545;color:#fff}
+.btn-warning{background:#ffc107;border-color:#ffc107;color:#1e293b}
+.btn-outline-secondary{border-color:var(--rs-gray-300);color:var(--rs-gray-600);background:#fff}
+.btn-outline-danger{border-color:#dc3545;color:#dc3545;background:#fff}
+.btn-lg{padding:.7rem 1.3rem;font-size:1.05rem}
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:.75rem;font-weight:600;
+  padding:.32em .62em;border-radius:var(--saur-radius-pill)}
+.badge.fs6{font-size:1rem;padding:.4em .7em}
+.bg-primary{background:var(--rs-blue);color:#fff}
+.bg-success{background:#198754;color:#fff}
+.bg-danger{background:#dc3545;color:#fff}
+.bg-warning{background:#ffc107;color:#1e293b}
+.list-group{border:1px solid var(--rs-gray-200);border-radius:var(--saur-radius-md);
+  overflow:hidden;background:#fff;margin-bottom:1rem}
+.list-group-item{padding:.65rem .9rem;border-bottom:1px solid var(--rs-gray-200);
+  display:flex;align-items:center;gap:.6rem;font-size:.92rem}
+.list-group-item:last-child{border-bottom:0}
+.input-group{display:flex;border:1px solid var(--rs-gray-300);border-radius:var(--saur-radius-sm);overflow:hidden}
+.input-group input{border:0;outline:0;padding:.5rem .75rem;flex:1;font:inherit;font-size:.92rem}
+
+/* timeline (copiada em espírito de app.css) */
+.timeline{position:relative;padding-left:2rem}
+.timeline::before{content:'';position:absolute;left:11px;top:8px;bottom:8px;width:2px;background:var(--rs-gray-200)}
+.timeline-item{position:relative;padding-bottom:1.25rem;padding-left:.15rem}
+.timeline-item:last-child{padding-bottom:0}
+.timeline-dot{position:absolute;left:-1.65rem;top:3px;width:24px;height:24px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;font-size:.75rem;border:2px solid var(--rs-gray-200);
+  background:#fff;color:var(--rs-gray-400)}
+.timeline-item.concluida .timeline-dot{background:var(--rs-green);border-color:var(--rs-green);color:#fff}
+.timeline-item.atual .timeline-dot{background:var(--rs-blue);border-color:var(--rs-blue);color:#fff;
+  box-shadow:0 0 0 3px rgba(var(--rs-blue-rgb),.2)}
+.timeline-item.pendente .timeline-dot{background:var(--rs-gray-100)}
+.timeline-title{font-weight:600;font-size:.85rem;margin-bottom:.15rem}
+.timeline-item.concluida .timeline-title{color:var(--rs-green)}
+.timeline-item.atual .timeline-title{color:var(--rs-blue)}
+.timeline-item.pendente .timeline-title{color:var(--rs-gray-600)}
+.timeline-desc{font-size:.75rem;color:var(--rs-gray-500)}
+
+dl.row{display:grid;grid-template-columns:1fr 2fr;gap:.35rem .75rem;font-size:.92rem}
+dl.row dt{font-weight:600}
+dl.row dd{color:var(--rs-gray-700)}
+
+/* ===================== CLASSES PROPOSTAS ===================== */
+.pagina-cabecalho{position:relative;overflow:hidden;
+  background:linear-gradient(135deg,var(--rs-blue) 0%,var(--rs-blue-dark) 100%);color:#fff}
+.pagina-cabecalho .pc-inner{max-width:760px;margin:0 auto;padding:1.5rem 1rem 1.4rem;position:relative;z-index:1}
+.pagina-cabecalho .pc-marca{position:absolute;right:-10px;top:-30px;width:180px;height:180px;
+  opacity:.10;color:#fff;pointer-events:none;z-index:0}
+.pagina-titulo{font-size:var(--saur-font-xl);font-weight:700;letter-spacing:-.02em;line-height:1.15;
+  display:flex;flex-wrap:wrap;align-items:center;gap:.6rem}
+.pagina-contexto{font-size:var(--saur-font-sm);color:rgba(255,255,255,.78);margin-top:.35rem}
+.chip-protocolo{display:inline-flex;align-items:center;gap:.35rem;
+  font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9rem;font-weight:700;
+  background:rgba(255,255,255,.16);color:#fff;padding:.18rem .6rem;border-radius:var(--saur-radius-pill);
+  border:1px solid rgba(255,255,255,.28)}
+.chip-protocolo.claro{background:#fff;color:var(--rs-gray-700);border-color:var(--rs-gray-200)}
+
+.secao-rotulo{font-size:var(--saur-font-xs);font-weight:700;text-transform:uppercase;
+  letter-spacing:.06em;color:var(--rs-gray-600);margin-bottom:.4rem}
+.secao-titulo{font-size:var(--saur-font-lg);font-weight:600;color:var(--rs-gray-800);margin-bottom:.7rem}
+.superficie-apoio{background:var(--rs-gray-50);border:1px solid var(--rs-gray-200);
+  border-radius:var(--saur-radius-md);box-shadow:var(--saur-elev-0);margin-bottom:1rem}
+
+/* M6 — cartão de resultado */
+.cartao-resultado{border-radius:var(--saur-radius-lg);box-shadow:var(--saur-elev-2);
+  padding:1.6rem;margin-bottom:1.25rem;display:flex;gap:1.25rem;align-items:flex-start;
+  background:var(--r-bg);border:1px solid var(--r-bd);color:var(--r-tx)}
+.cartao-resultado-icone{width:64px;height:64px;border-radius:50%;flex:none;display:flex;
+  align-items:center;justify-content:center;font-size:2rem;background:rgba(255,255,255,.75);color:var(--r-tx)}
+.cartao-resultado h2{font-size:var(--saur-font-xl);font-weight:700;letter-spacing:-.015em;
+  line-height:1.2;margin-bottom:.5rem}
+.cartao-resultado p{font-size:1rem;margin-bottom:.9rem}
+.cartao-resultado .detalhe{background:rgba(255,255,255,.72);border:1px solid var(--r-bd);
+  border-radius:var(--saur-radius-sm);padding:.7rem .85rem;font-size:.9rem;margin-bottom:1rem;white-space:pre-wrap}
+.r-ok{--r-bg:var(--saur-surface-ok);--r-bd:rgba(45,133,70,.35);--r-tx:var(--saur-on-ok)}
+.r-danger{--r-bg:var(--saur-surface-danger);--r-bd:rgba(198,40,40,.3);--r-tx:var(--saur-on-danger)}
+.r-attention{--r-bg:var(--saur-surface-attention);--r-bd:var(--rs-gold);--r-tx:var(--saur-on-attention)}
+.r-info{--r-bg:var(--saur-surface-info);--r-bd:rgba(var(--rs-blue-rgb),.32);--r-tx:var(--saur-on-info)}
+.btn-resultado-ok{background:var(--rs-green-dark);border-color:var(--rs-green-dark);color:#fff}
+.btn-resultado-danger{background:var(--rs-red-dark);border-color:var(--rs-red-dark);color:#fff}
+
+@media (max-width:820px){
+  .navlinks{display:none}
+  .cartao-resultado{flex-direction:column;gap:.9rem}
+  dl.row{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m8 12.5 2.5 2.5L16 9.5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="m9 9 6 6M15 9l-6 6"/></symbol>
+  <symbol id="i-hourglass" viewBox="0 0 24 24"><path d="M7 3h10M7 21h10M8 3v3.5c0 2 4 3.5 4 5.5s-4 3.5-4 5.5V21M16 3v3.5c0 2-4 3.5-4 5.5s4 3.5 4 5.5V21"/></symbol>
+  <symbol id="i-download" viewBox="0 0 24 24"><path d="M12 3v12M7.5 10.5 12 15l4.5-4.5"/><path d="M4 19.5h16"/></symbol>
+  <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3.5 22 20H2z"/><path d="M12 10v4.2M12 17.3v.1"/></symbol>
+  <symbol id="i-chat" viewBox="0 0 24 24"><path d="M20 15a3 3 0 0 1-3 3H8l-4 3V6a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3z"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5"/><path d="m11 6-6 6 6 6"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24"><path d="M21.5 2.5 2.5 10l8 3.5 3.5 8z"/><path d="M21.5 2.5 10.5 13.5"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24"><path d="M12 16V4M7.5 8.5 12 4l4.5 4.5"/><path d="M4 20h16"/></symbol>
+  <symbol id="i-gota" viewBox="0 0 100 100">
+    <path d="M52 10C34 32 20 52 20 66c0 18 14 28 30 28s30-10 30-28C80 52 66 32 52 10z" fill="currentColor" stroke="none"/>
+    <rect x="40" y="44" width="18" height="30" rx="3" fill="#fff" stroke="none" opacity=".5"/>
+    <rect x="32" y="54" width="34" height="12" rx="3" fill="#fff" stroke="none" opacity=".5"/>
+  </symbol>
+</svg>
+
+<div class="mk-bar">
+  <strong>MOCKUP</strong> — Portal do Solicitante · tela de acompanhamento do pedido
+  <a href="#antes-analise">↓ Antes: em análise</a>
+  <a href="#antes-deferido">↓ Antes: deferido</a>
+  <a href="#depois-analise">↓ Depois: em análise</a>
+  <a href="#depois-deferido">↓ Depois: deferido</a>
+  <a href="#depois-indeferido">↓ Depois: indeferido</a>
+</div>
+
+<!-- ======================================================================= -->
+<div class="mk-sec" id="antes-analise">
+  <span class="mk-label antes">Antes — como está hoje em produção</span>
+  <h2>Pedido em análise</h2>
+  <p class="mk-desc">Reprodução fiel de <code>templates/solicitante/detalhe.html</code>, estado
+    “Em análise”. Conte os cartões: <strong>situação, andamento, dados, documentos e conversa</strong> —
+    cinco caixas brancas com <strong>exatamente a mesma sombra e o mesmo raio</strong>. O único
+    diferenciador do cartão que importa é uma borda esquerda de 4px. Todos os títulos de seção
+    (“Andamento do pedido”, “Documentos anexados”) são <code>h6 text-muted</code>: 1rem cinza —
+    o mesmo tamanho do parágrafo ao lado.</p>
+</div>
+
+<div class="mk-tela">
+  <div class="navbar">
+    <a class="brand" href="#antes-analise">
+      <svg class="ic" style="width:28px;height:28px;color:var(--rs-gold)"><use href="#i-gota"/></svg>
+      <span>SAUR<span class="ur">UR</span><small>Sistema de avaliação de urgência renal</small></span></a>
+    <div class="navlinks"><span>Minhas solicitações</span><span>Nova solicitação</span><span>Maria S. ▾</span></div>
+  </div>
+  <div class="container-narrow">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h1 style="font-size:1.75rem;font-weight:700">Joana Ribeiro Machado
+        <span class="text-muted mono" style="font-size:1.25rem">#12/2026</span></h1>
+      <span class="badge fs6 bg-primary">Em análise</span>
+    </div>
+    <p class="text-muted small" style="margin-bottom:1.25rem">Enviada em 28/07/2026 16:40 — 9 dias desde o envio.</p>
+
+    <div class="card" style="border-left:4px solid var(--rs-blue)">
+      <div class="card-body" style="display:flex;gap:.9rem;align-items:flex-start">
+        <svg class="ic" style="font-size:2rem;color:var(--rs-blue)"><use href="#i-hourglass"/></svg>
+        <div>
+          <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:.25rem">Em análise</h2>
+          <p style="margin-bottom:.6rem">Seu pedido virou um processo oficial e está em análise pelos médicos avaliadores.</p>
+          <div style="background:var(--rs-gray-100);border:1px solid var(--rs-gray-200);border-radius:6px;padding:.5rem;font-size:.875rem">
+            Previsão baseada no histórico: normalmente decidido em torno de 6 dias após o envio para
+            análise (não é um prazo formal, só uma referência).</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card"><div class="card-body">
+      <h2 class="text-muted" style="font-size:1rem;font-weight:600;margin-bottom:.75rem">Andamento do pedido</h2>
+      <div class="timeline">
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Solicitação enviada</div>
+          <div class="timeline-desc">Recebemos seu pedido em 28/07/2026 16:40.</div></div>
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Em análise pela equipe de Urgência Renal</div>
+          <div class="timeline-desc">A equipe confere os dados e os documentos anexados antes de prosseguir.</div></div>
+        <div class="timeline-item atual"><div class="timeline-dot"><svg class="ic"><use href="#i-hourglass"/></svg></div>
+          <div class="timeline-title">Em análise</div>
+          <div class="timeline-desc">Veja os detalhes no cartão de situação acima.</div></div>
+      </div>
+    </div></div>
+
+    <div class="card"><div class="card-body">
+      <dl class="row">
+        <dt>RGCT / SNT</dt><dd>884120375-11042</dd>
+        <dt>Data de solicitação da urgência renal</dt><dd>26/07/2026</dd>
+        <dt>Enviada em</dt><dd>28/07/2026 16:40</dd>
+        <dt>Justificativa clínica</dt><dd>Paciente em hemodiálise há 6 anos, com esgotamento de acessos
+          vasculares e duas internações no último mês por hipercalemia refratária.</dd>
+      </dl>
+    </div></div>
+
+    <h2 class="text-muted" style="font-size:1rem;font-weight:600;margin-bottom:.5rem">Documentos anexados</h2>
+    <div class="list-group">
+      <div class="list-group-item"><svg class="ic" style="color:var(--rs-red)"><use href="#i-file"/></svg>
+        <span>relatorio-nefrologia-jrm.pdf</span><span class="text-muted small" style="margin-left:auto">28/07/2026</span>
+        <svg class="ic text-muted"><use href="#i-download"/></svg></div>
+      <div class="list-group-item"><svg class="ic" style="color:var(--rs-red)"><use href="#i-file"/></svg>
+        <span>exames-laboratoriais-julho.pdf</span><span class="text-muted small" style="margin-left:auto">28/07/2026</span>
+        <svg class="ic text-muted"><use href="#i-download"/></svg></div>
+    </div>
+
+    <div class="card"><div class="card-body">
+      <div style="display:flex;justify-content:space-between;align-items:center;font-size:.875rem;font-weight:600;margin-bottom:.75rem">
+        <span><svg class="ic"><use href="#i-chat"/></svg> Conversa com a equipe de Urgência Renal</span>
+        <span class="badge" style="background:#6c757d;color:#fff">0 total</span></div>
+      <p class="text-muted small" style="text-align:center;padding:.6rem 0">
+        Nenhuma mensagem ainda. Use o campo abaixo para enviar uma mensagem à equipe.</p>
+      <div class="input-group"><input placeholder="Digite sua mensagem...">
+        <button class="btn btn-primary" style="border-radius:0"><svg class="ic"><use href="#i-send"/></svg> Enviar</button></div>
+    </div></div>
+
+    <div style="display:flex;justify-content:space-between">
+      <a class="btn btn-outline-secondary"><svg class="ic"><use href="#i-back"/></svg> Voltar</a>
+      <a class="btn btn-outline-danger"><svg class="ic"><use href="#i-x"/></svg> Cancelar processo</a>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<div class="mk-sec" id="antes-deferido">
+  <span class="mk-label antes">Antes — o desfecho</span>
+  <h2>Pedido deferido (hoje)</h2>
+  <p class="mk-desc"><strong>Compare com o bloco anterior.</strong> “Deferido — Urgência renal
+    reconhecida” usa <em>exatamente a mesma estrutura</em> de “Em análise”: mesmo cartão, mesma borda
+    esquerda de 4px, mesmo ícone de 2rem, mesmo <code>h5</code>, mesmo parágrafo. Só o matiz muda.
+    O resultado que uma família esperou semanas chega com o mesmo peso visual de
+    “não é necessário fazer nada agora”.</p>
+</div>
+
+<div class="mk-tela recorte">
+  <div class="container-narrow">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.75rem">
+      <h1 style="font-size:1.75rem;font-weight:700">Rosa Maria Beltrão
+        <span class="text-muted mono" style="font-size:1.25rem">#07/2026</span></h1>
+      <span class="badge fs6 bg-success">Deferido</span>
+    </div>
+    <p class="text-muted small" style="margin-bottom:1.25rem">Enviada em 11/07/2026 10:25 — 26 dias desde o envio.</p>
+
+    <div class="card" style="border-left:4px solid var(--rs-green)">
+      <div class="card-body" style="display:flex;gap:.9rem;align-items:flex-start">
+        <svg class="ic" style="font-size:2rem;color:var(--rs-green)"><use href="#i-check"/></svg>
+        <div>
+          <h2 style="font-size:1.25rem;font-weight:600;margin-bottom:.25rem">Deferido — Urgência renal reconhecida</h2>
+          <p style="margin-bottom:.6rem">Seu pedido (processo 07/2026) foi analisado e DEFERIDO pela
+            Central de Transplantes do Estado do Rio Grande do Sul, resultando no reconhecimento da
+            urgência renal. A resposta oficial foi enviada por e-mail à sua equipe
+            (nefrologia@hcpa.edu.br), contendo o comprovante de inserção no Sistema Nacional de
+            Transplantes (SNT) em anexo.</p>
+          <a class="btn" style="background:#198754;color:#fff"><svg class="ic"><use href="#i-download"/></svg>
+            Baixar comprovante de inserção no SNT</a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<div class="mk-sec" id="depois-analise">
+  <span class="mk-label depois">Depois — proposta (fases V3 e V4)</span>
+  <h2>Pedido em análise</h2>
+  <p class="mk-desc">
+    <strong>M1</strong> faixa de cabeçalho sólida (variante “b”, recomendada só para esta tela):
+    carrega o nome do paciente, o <strong>chip de protocolo</strong> — a chave que a equipe usa ao
+    telefone, hoje um texto cinza discreto — e a situação. <strong>M2</strong> os títulos de seção
+    saem de 1rem cinza para rótulo em maiúsculas + título 1,25rem em cor de texto real.
+    <strong>M3</strong> dados cadastrais, documentos e conversa deixam de ser “mais três cartões
+    brancos” e viram <em>superfícies de apoio</em> (sem sombra, fundo afundado): a contagem de caixas
+    brancas idênticas cai de 5 para 1, sem remover nenhuma informação.
+  </p>
+</div>
+
+<div class="mk-tela">
+  <div class="navbar">
+    <a class="brand" href="#depois-analise">
+      <svg class="ic" style="width:28px;height:28px;color:var(--rs-gold)"><use href="#i-gota"/></svg>
+      <span>SAUR<span class="ur">UR</span><small>Sistema de avaliação de urgência renal</small></span></a>
+    <div class="navlinks"><span>Minhas solicitações</span><span>Nova solicitação</span><span>Maria S. ▾</span></div>
+  </div>
+
+  <div class="pagina-cabecalho">
+    <svg class="pc-marca"><use href="#i-gota"/></svg>
+    <div class="pc-inner">
+      <a href="#depois-analise" style="color:rgba(255,255,255,.75);text-decoration:none;font-size:.85rem">
+        <svg class="ic"><use href="#i-back"/></svg> Minhas solicitações</a>
+      <div class="pagina-titulo" style="margin-top:.5rem">Joana Ribeiro Machado
+        <span class="chip-protocolo">Processo 12/2026</span></div>
+      <div class="pagina-contexto">Enviada em 28/07/2026 16:40 · 9 dias desde o envio · RGCT 884120375-11042</div>
+    </div>
+  </div>
+
+  <div class="container-narrow">
+    <div class="cartao-resultado r-info">
+      <div class="cartao-resultado-icone"><svg class="ic"><use href="#i-hourglass"/></svg></div>
+      <div>
+        <h2 style="font-size:var(--saur-font-lg)">Em análise pelos médicos avaliadores</h2>
+        <p style="margin-bottom:.75rem">Seu pedido virou um processo oficial e está em análise.
+          <strong>Não é necessário fazer nada agora</strong> — avisaremos por e-mail assim que houver decisão.</p>
+        <div class="detalhe">Previsão baseada no histórico: normalmente decidido em torno de 6 dias
+          após o envio para análise (não é um prazo formal, só uma referência).</div>
+      </div>
+    </div>
+
+    <div class="secao-rotulo">Acompanhamento</div>
+    <div class="secao-titulo">Andamento do pedido</div>
+    <div class="superficie-apoio" style="padding:1.1rem 1.1rem 1.1rem 0">
+      <div class="timeline" style="margin-left:1.6rem">
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Solicitação enviada</div>
+          <div class="timeline-desc">Recebemos seu pedido em 28/07/2026 16:40.</div></div>
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Em análise pela equipe de Urgência Renal</div>
+          <div class="timeline-desc">A equipe confere os dados e os documentos anexados antes de prosseguir.</div></div>
+        <div class="timeline-item atual"><div class="timeline-dot"><svg class="ic"><use href="#i-hourglass"/></svg></div>
+          <div class="timeline-title">Em análise</div>
+          <div class="timeline-desc">Veja os detalhes no cartão acima.</div></div>
+      </div>
+    </div>
+
+    <div class="secao-rotulo">O que você enviou</div>
+    <div class="secao-titulo">Dados do pedido</div>
+    <div class="superficie-apoio" style="padding:1.1rem">
+      <dl class="row">
+        <dt>RGCT / SNT</dt><dd class="mono">884120375-11042</dd>
+        <dt>Data da urgência</dt><dd>26/07/2026</dd>
+        <dt>Enviada em</dt><dd>28/07/2026 16:40</dd>
+        <dt>Justificativa clínica</dt><dd>Paciente em hemodiálise há 6 anos, com esgotamento de acessos
+          vasculares e duas internações no último mês por hipercalemia refratária.</dd>
+      </dl>
+    </div>
+
+    <div class="secao-titulo" style="margin-top:1.4rem">Documentos anexados <span class="chip-protocolo claro">2</span></div>
+    <div class="superficie-apoio" style="overflow:hidden">
+      <div class="list-group" style="border:0;margin:0;background:transparent">
+        <div class="list-group-item" style="background:transparent">
+          <svg class="ic" style="color:var(--rs-red);font-size:1.15rem"><use href="#i-file"/></svg>
+          <span>relatorio-nefrologia-jrm.pdf</span>
+          <span class="text-muted small" style="margin-left:auto">28/07/2026</span>
+          <svg class="ic" style="color:var(--rs-blue)"><use href="#i-download"/></svg></div>
+        <div class="list-group-item" style="background:transparent;border-bottom:0">
+          <svg class="ic" style="color:var(--rs-red);font-size:1.15rem"><use href="#i-file"/></svg>
+          <span>exames-laboratoriais-julho.pdf</span>
+          <span class="text-muted small" style="margin-left:auto">28/07/2026</span>
+          <svg class="ic" style="color:var(--rs-blue)"><use href="#i-download"/></svg></div>
+      </div>
+    </div>
+
+    <div class="secao-titulo" style="margin-top:1.4rem">Conversa com a equipe de Urgência Renal</div>
+    <div class="superficie-apoio" style="padding:1.1rem">
+      <div style="text-align:center;padding:.6rem 0 1rem">
+        <div style="width:64px;height:64px;border-radius:50%;margin:0 auto .7rem;display:flex;
+             align-items:center;justify-content:center;font-size:1.6rem;
+             background:var(--rs-gray-100);color:var(--rs-gray-500)">
+          <svg class="ic"><use href="#i-chat"/></svg></div>
+        <div style="font-weight:600">Nenhuma mensagem ainda</div>
+        <p class="text-muted small" style="margin-top:.2rem">Tem alguma dúvida sobre este pedido?
+          Escreva para a equipe — a resposta aparece aqui.</p>
+      </div>
+      <div class="input-group" style="background:#fff"><input placeholder="Digite sua mensagem...">
+        <button class="btn btn-primary" style="border-radius:0"><svg class="ic"><use href="#i-send"/></svg> Enviar</button></div>
+    </div>
+
+    <div style="display:flex;justify-content:space-between;margin-top:1.25rem">
+      <a class="btn btn-outline-secondary"><svg class="ic"><use href="#i-back"/></svg> Voltar</a>
+      <a class="btn btn-outline-danger"><svg class="ic"><use href="#i-x"/></svg> Cancelar processo</a>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<div class="mk-sec" id="depois-deferido">
+  <span class="mk-label depois">Depois — o momento de destaque (fase V4, M6)</span>
+  <h2>Pedido deferido</h2>
+  <p class="mk-desc">
+    Superfície tintada em largura total, ícone de 64px em token circular, título em <strong>1,75rem</strong>
+    e o botão de download como âncora visual do cartão. O texto usa <code>--rs-green-dark</code>,
+    <strong>não</strong> <code>--rs-green</code>: sobre <code>--rs-green-light</code> o verde base dá
+    <strong>4,11:1</strong> e reprova em WCAG AA (Anexo C do relatório); a variante escura dá 5,82:1.
+    Nenhuma animação nova — reuso de <code>animate-fade-in</code>, que
+    <code>prefers-reduced-motion</code> já neutraliza.
+  </p>
+</div>
+
+<div class="mk-tela recorte">
+  <div class="pagina-cabecalho">
+    <svg class="pc-marca"><use href="#i-gota"/></svg>
+    <div class="pc-inner">
+      <a href="#depois-deferido" style="color:rgba(255,255,255,.75);text-decoration:none;font-size:.85rem">
+        <svg class="ic"><use href="#i-back"/></svg> Minhas solicitações</a>
+      <div class="pagina-titulo" style="margin-top:.5rem">Rosa Maria Beltrão
+        <span class="chip-protocolo">Processo 07/2026</span></div>
+      <div class="pagina-contexto">Enviada em 11/07/2026 10:25 · decidida em 06/08/2026 · RGCT 551209384-77120</div>
+    </div>
+  </div>
+  <div class="container-narrow">
+    <div class="cartao-resultado r-ok">
+      <div class="cartao-resultado-icone"><svg class="ic"><use href="#i-check"/></svg></div>
+      <div style="flex:1">
+        <h2>Deferido — Urgência renal reconhecida</h2>
+        <p>Seu pedido foi analisado e <strong>DEFERIDO</strong> pela Central de Transplantes do Estado
+          do Rio Grande do Sul, resultando no reconhecimento da urgência renal. A resposta oficial foi
+          enviada por e-mail à sua equipe (nefrologia@hcpa.edu.br), contendo o comprovante de inserção
+          no Sistema Nacional de Transplantes (SNT) em anexo.</p>
+        <a class="btn btn-lg btn-resultado-ok"><svg class="ic"><use href="#i-download"/></svg>
+          Baixar comprovante de inserção no SNT</a>
+      </div>
+    </div>
+    <div class="secao-rotulo">Acompanhamento</div>
+    <div class="secao-titulo">Andamento do pedido</div>
+    <div class="superficie-apoio" style="padding:1.1rem 1.1rem 1.1rem 0">
+      <div class="timeline" style="margin-left:1.6rem">
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Solicitação enviada</div>
+          <div class="timeline-desc">Recebemos seu pedido em 11/07/2026 10:25.</div></div>
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Em análise pela equipe de Urgência Renal</div>
+          <div class="timeline-desc">A equipe conferiu os dados e os documentos anexados.</div></div>
+        <div class="timeline-item concluida"><div class="timeline-dot"><svg class="ic"><use href="#i-check"/></svg></div>
+          <div class="timeline-title">Deferido</div>
+          <div class="timeline-desc">Veja os detalhes no cartão acima.</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ======================================================================= -->
+<div class="mk-sec" id="depois-indeferido">
+  <span class="mk-label depois">Depois — simetria estrutural (decisão 2 do §10)</span>
+  <h2>Pedido indeferido, e um pedido pausado</h2>
+  <p class="mk-desc">
+    A proposta é <strong>simetria estrutural com assimetria cromática</strong>: Deferido e Indeferido
+    usam exatamente o mesmo layout, mudando só cor e ícone. Nada de confete, emoji ou “Parabéns!” —
+    a dignidade do Indeferido é o teto do Deferido. <strong>Esta calibragem precisa do aval do dono
+    do produto.</strong> Abaixo, o terceiro caso: quando um avaliador pede informação complementar, o
+    formulário de resposta continua <em>dentro</em> do cartão (item 6.3 da Fase 6, que não muda) —
+    ganha só o peso visual que faltava.
+  </p>
+</div>
+
+<div class="mk-tela recorte">
+  <div class="pagina-cabecalho">
+    <svg class="pc-marca"><use href="#i-gota"/></svg>
+    <div class="pc-inner">
+      <div class="pagina-titulo">Paulo Henrique Krause <span class="chip-protocolo">Processo 09/2026</span></div>
+      <div class="pagina-contexto">Enviada em 03/07/2026 08:12 · decidida em 24/07/2026</div>
+    </div>
+  </div>
+  <div class="container-narrow">
+    <div class="cartao-resultado r-danger">
+      <div class="cartao-resultado-icone"><svg class="ic"><use href="#i-x"/></svg></div>
+      <div style="flex:1">
+        <h2>Indeferido — Urgência renal não reconhecida</h2>
+        <p>Seu pedido foi analisado e <strong>INDEFERIDO</strong> pela Central de Transplantes do
+          Estado do Rio Grande do Sul. O ofício com os detalhes foi enviado por e-mail à sua equipe
+          (nefrologia@hcpa.edu.br).</p>
+        <div class="detalhe">Motivo informado: quadro clínico atual não caracteriza a situação de
+          urgência prevista na regulamentação vigente; o paciente permanece na lista em situação regular.</div>
+        <a class="btn btn-lg btn-resultado-danger"><svg class="ic"><use href="#i-download"/></svg>
+          Baixar ofício de indeferimento</a>
+      </div>
+    </div>
+
+    <div class="cartao-resultado r-attention" style="margin-top:1.5rem">
+      <div class="cartao-resultado-icone"><svg class="ic"><use href="#i-alert"/></svg></div>
+      <div style="flex:1">
+        <h2>Informação complementar necessária</h2>
+        <p>Um(a) avaliador(a) da Urgência Renal pediu mais informações sobre este pedido.
+          <strong>Enquanto isso, a análise fica pausada.</strong> Envie os documentos ou dados
+          solicitados para que ela possa continuar.</p>
+        <div style="background:rgba(255,255,255,.72);border:1px dashed var(--rs-gold);
+             border-radius:var(--saur-radius-md);padding:1.1rem;text-align:center;margin-bottom:.9rem">
+          <svg class="ic" style="font-size:1.8rem;color:var(--rs-gold-dark)"><use href="#i-upload"/></svg>
+          <div style="font-weight:600;margin-top:.4rem">Selecione os arquivos com as informações pedidas</div>
+          <div class="small" style="color:var(--rs-gold-dark);opacity:.85">PDF, imagem ou cópia de e-mail · até 25 MB cada</div>
+        </div>
+        <a class="btn btn-lg btn-warning"><svg class="ic"><use href="#i-upload"/></svg>
+          Enviar informações complementares</a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="mk-nota" style="margin-bottom:4rem">
+  <strong>O que estes mockups NÃO propõem:</strong> nenhuma mudança de fluxo, de ordem das etapas, de
+  timeline, de <code>SituacaoPedidoView</code>, de endpoint ou de regra de negócio. O cartão continua
+  consumindo apenas <code>${situacao.*}</code>; o download continua com a whitelist de
+  <code>TipoAnexo</code>; <code>podeCancelar</code> continua sendo fonte única do botão de
+  cancelamento; o chat e seus 3 endpoints AJAX não são tocados. É acabamento visual sobre a estrutura
+  que as Fases 1–10 já entregaram.
+</div>
+
+</body>
+</html>
