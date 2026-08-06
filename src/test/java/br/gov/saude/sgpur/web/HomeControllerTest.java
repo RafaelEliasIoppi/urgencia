@@ -9,6 +9,7 @@ import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import br.gov.saude.sgpur.web.dto.PainelLinha;
 import org.junit.jupiter.api.Test;
@@ -127,9 +128,9 @@ class HomeControllerTest {
         when(processoRepository.findByAnoComPareceres(ano))
             .thenReturn(List.of(emAndamento, decididoIncompleto, concluido));
         EtapaFluxo etapaDecisao = new EtapaFluxo(EtapaFluxo.Chave.DECISAO, "Decisão final", "hammer",
-            EtapaFluxo.Estado.ATUAL, "aguardando os pareceres");
+            EstadoEtapa.ATUAL, "aguardando os pareceres");
         EtapaFluxo etapaSnt = new EtapaFluxo(EtapaFluxo.Chave.COMPROVANTE_SNT, "Comprovante SNT", "clipboard2-check-fill",
-            EtapaFluxo.Estado.ATUAL, "anexe o comprovante");
+            EstadoEtapa.ATUAL, "anexe o comprovante");
         when(fluxoService.pendenciaAberta(emAndamento)).thenReturn(java.util.Optional.of(etapaDecisao));
         when(fluxoService.pendenciaAberta(decididoIncompleto)).thenReturn(java.util.Optional.of(etapaSnt));
         when(fluxoService.pendenciaAberta(concluido)).thenReturn(java.util.Optional.empty());
@@ -160,7 +161,7 @@ class HomeControllerTest {
         when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of(p));
         when(fluxoService.pendenciaAberta(p)).thenReturn(java.util.Optional.of(
             new EtapaFluxo(EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
-                EtapaFluxo.Estado.ATUAL, "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.")));
+                EstadoEtapa.ATUAL, "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.")));
         when(membroService.contarAtivos()).thenReturn(0L);
         when(tempoRespostaService.calcular()).thenReturn(
             new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));

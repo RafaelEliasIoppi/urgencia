@@ -9,10 +9,14 @@ package br.gov.saude.sgpur.service.dto;
  *                 livremente desde 2026-08-05; ver relatorio de clareza,
  *                 item 4.13b)
  * @param icone    classe do bootstrap-icon (sem o "bi-")
- * @param estado   CONCLUIDA, ATUAL ou PENDENTE
+ * @param estado   {@link EstadoEtapa#CONCLUIDA}, {@link EstadoEtapa#ATUAL} ou
+ *                 {@link EstadoEtapa#BLOQUEADA} - vocabulario compartilhado
+ *                 com {@link PassoWizard} desde 2026-08-05 (item D3 do
+ *                 relatorio de redesign; ver javadoc de {@link EstadoEtapa}).
+ *                 Chamado de {@code PENDENTE} nesta classe ate entao.
  * @param detalhe  mensagem do que falta ou do que ja foi feito
  */
-public record EtapaFluxo(Chave chave, String titulo, String icone, Estado estado, String detalhe) {
+public record EtapaFluxo(Chave chave, String titulo, String icone, EstadoEtapa estado, String detalhe) {
 
     /**
      * Identidade estavel de cada etapa do fluxo, para casar por CODIGO em vez
@@ -33,16 +37,12 @@ public record EtapaFluxo(Chave chave, String titulo, String icone, Estado estado
         OFICIO, COMPROVANTE_SNT, RESPOSTA_SOLICITANTE
     }
 
-    public enum Estado {
-        CONCLUIDA, ATUAL, PENDENTE
-    }
-
     public boolean isConcluida() {
-        return estado == Estado.CONCLUIDA;
+        return estado == EstadoEtapa.CONCLUIDA;
     }
 
     public boolean isAtual() {
-        return estado == Estado.ATUAL;
+        return estado == EstadoEtapa.ATUAL;
     }
 
     /**

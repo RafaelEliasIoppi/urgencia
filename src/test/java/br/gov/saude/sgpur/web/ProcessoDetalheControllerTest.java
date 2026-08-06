@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.service.MembroUrgenciaRenalService;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.*;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -89,7 +90,7 @@ class ProcessoDetalheControllerTest {
         // sobrescreve com uma lista nao-vazia quando precisar.
         when(fluxoService.montarEtapas(any())).thenReturn(List.of());
         when(fluxoService.montarPassosWizard(any())).thenReturn(List.of(
-            new PassoWizard(1, "Envio", "pane-envio", PassoWizard.Estado.ATUAL, "")));
+            new PassoWizard(1, "Envio", "pane-envio", EstadoEtapa.ATUAL, "")));
         // Gating/subrotulo agora vem de FluxoProcessoService (extraido do
         // controller) - como o service e mockado aqui, o default e "nada
         // liberado" e sem subrotulo; cada teste que precisa de outro cenario

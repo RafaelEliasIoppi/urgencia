@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.ProcessoRepository;
 import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
@@ -107,7 +108,7 @@ class FluxoProcessoServiceTest {
         List<EtapaFluxo> etapas = fluxo().montarEtapas(processoComTresPareceres());
         assertThat(etapas).isNotEmpty();
         assertThat(etapas.get(0).chave()).isEqualTo(Chave.ENVIO);
-        assertThat(etapas.get(0).estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(etapas.get(0).estado()).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     @Test
@@ -116,7 +117,7 @@ class FluxoProcessoServiceTest {
         p.getPareceres().forEach(par -> par.setDataEnvio(LocalDate.now()));
         EtapaFluxo envio = fluxo().montarEtapas(p).stream()
                 .filter(e -> e.chave() == Chave.ENVIO).findFirst().orElseThrow();
-        assertThat(envio.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(envio.estado()).isEqualTo(EstadoEtapa.CONCLUIDA);
     }
 
     @Test
@@ -150,13 +151,13 @@ class FluxoProcessoServiceTest {
 
         EtapaFluxo info = etapas.stream()
                 .filter(e -> e.chave() == Chave.INFO_COMPLEMENTAR).findFirst().orElseThrow();
-        assertThat(info.estado()).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(info.estado()).isNotEqualTo(EstadoEtapa.CONCLUIDA);
 
         // a decisao fica bloqueada (nunca CONCLUIDA, e nem ATUAL, pois a info pausa o
         // fluxo)
         EtapaFluxo decisao = etapas.stream()
                 .filter(e -> e.chave() == Chave.DECISAO).findFirst().orElseThrow();
-        assertThat(decisao.estado()).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(decisao.estado()).isEqualTo(EstadoEtapa.BLOQUEADA);
     }
 
     @Test
@@ -178,14 +179,14 @@ class FluxoProcessoServiceTest {
 
         EtapaFluxo respostas = fluxo().montarEtapas(p).stream()
                 .filter(e -> e.chave() == Chave.RESPOSTAS).findFirst().orElseThrow();
-        assertThat(respostas.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(respostas.estado()).isEqualTo(EstadoEtapa.CONCLUIDA);
         assertThat(respostas.detalhe()).doesNotContain("Faltam");
         assertThat(respostas.detalhe()).contains("Maioria formada");
 
         // e a Decisao final fica como etapa ATUAL (liberada), nao PENDENTE.
         EtapaFluxo decisao = fluxo().montarEtapas(p).stream()
                 .filter(e -> e.chave() == Chave.DECISAO).findFirst().orElseThrow();
-        assertThat(decisao.estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(decisao.estado()).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     @Test
@@ -210,7 +211,7 @@ class FluxoProcessoServiceTest {
 
         EtapaFluxo sntSem = fluxo().montarEtapas(p).stream()
                 .filter(e -> e.chave() == Chave.COMPROVANTE_SNT).findFirst().orElseThrow();
-        assertThat(sntSem.estado()).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(sntSem.estado()).isNotEqualTo(EstadoEtapa.CONCLUIDA);
 
         Anexo comprovante = new Anexo();
         comprovante.setTipo(TipoAnexo.COMPROVANTE_SNT);
@@ -218,7 +219,7 @@ class FluxoProcessoServiceTest {
 
         EtapaFluxo sntCom = fluxo().montarEtapas(p).stream()
                 .filter(e -> e.chave() == Chave.COMPROVANTE_SNT).findFirst().orElseThrow();
-        assertThat(sntCom.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(sntCom.estado()).isEqualTo(EstadoEtapa.CONCLUIDA);
     }
 
     @Test
@@ -241,12 +242,12 @@ class FluxoProcessoServiceTest {
 
         EtapaFluxo snt = etapas.stream()
                 .filter(e -> e.chave() == Chave.COMPROVANTE_SNT).findFirst().orElseThrow();
-        assertThat(snt.estado()).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(snt.estado()).isNotEqualTo(EstadoEtapa.CONCLUIDA);
 
         EtapaFluxo resposta = etapas.stream()
                 .filter(e -> e.chave() == Chave.RESPOSTA_SOLICITANTE).findFirst().orElseThrow();
-        assertThat(resposta.estado()).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(resposta.estado()).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(resposta.estado()).isNotEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(resposta.estado()).isEqualTo(EstadoEtapa.BLOQUEADA);
     }
 
     // ----------------------------------------------------------------
@@ -263,39 +264,39 @@ class FluxoProcessoServiceTest {
         // comeca ATUAL desde o primeiro momento (nao ha mais um passo manual
         // de "completar o recebimento" antes de liberar o Envio).
         List<EtapaFluxo> e0 = fluxo().montarEtapas(p);
-        assertThat(estado(e0, Chave.ENVIO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
-        assertThat(estado(e0, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
-        assertThat(estado(e0, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(e0, Chave.ENVIO)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(e0, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.BLOQUEADA);
+        assertThat(estado(e0, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         // etapa 2 completa -> etapa 3 fica ATUAL
         registrarEnvioCompleto(p);
         p.setStatus(StatusProcesso.ENVIADO);
         List<EtapaFluxo> e2 = fluxo().montarEtapas(p);
-        assertThat(estado(e2, Chave.ENVIO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e2, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.ATUAL);
-        assertThat(estado(e2, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(e2, Chave.ENVIO)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e2, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(e2, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         // etapa 3 completa (maioria favoravel) -> Decisao fica ATUAL
         registrarMaioria(p, ResultadoParecer.FAVORAVEL);
         List<EtapaFluxo> e3 = fluxo().montarEtapas(p);
-        assertThat(estado(e3, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e3, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(e3, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e3, Chave.DECISAO)).isEqualTo(EstadoEtapa.ATUAL);
 
         // decisao tomada (Deferido) -> Comprovante SNT fica ATUAL, Resposta ao
         // solicitante ainda PENDENTE
         p.setStatus(StatusProcesso.DEFERIDO);
         List<EtapaFluxo> e4 = fluxo().montarEtapas(p);
-        assertThat(estado(e4, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e4, Chave.COMPROVANTE_SNT)).isEqualTo(EtapaFluxo.Estado.ATUAL);
-        assertThat(estado(e4, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(e4, Chave.DECISAO)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e4, Chave.COMPROVANTE_SNT)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(e4, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         // comprovante SNT anexado -> Resposta ao solicitante fica ATUAL
         Anexo comprovanteSnt = new Anexo();
         comprovanteSnt.setTipo(TipoAnexo.COMPROVANTE_SNT);
         p.addAnexo(comprovanteSnt);
         List<EtapaFluxo> e5 = fluxo().montarEtapas(p);
-        assertThat(estado(e5, Chave.COMPROVANTE_SNT)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e5, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(e5, Chave.COMPROVANTE_SNT)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e5, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.ATUAL);
 
         // e-mail + comprovante de envio -> Resposta ao solicitante CONCLUIDA, e
         // e a UNICA etapa concluida ao final: todas as demais tambem devem
@@ -305,7 +306,7 @@ class FluxoProcessoServiceTest {
         comprovanteEnvio.setTipo(TipoAnexo.COMPROVANTE_ENVIO_SOLICITANTE);
         p.addAnexo(comprovanteEnvio);
         List<EtapaFluxo> eFinal = fluxo().montarEtapas(p);
-        assertThat(eFinal).allSatisfy(e -> assertThat(e.estado()).isEqualTo(EtapaFluxo.Estado.CONCLUIDA));
+        assertThat(eFinal).allSatisfy(e -> assertThat(e.estado()).isEqualTo(EstadoEtapa.CONCLUIDA));
         assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
     }
 
@@ -322,16 +323,16 @@ class FluxoProcessoServiceTest {
 
         // decisao concluida, oficio ainda pendente/atual, sem etapa Comprovante SNT
         List<EtapaFluxo> e0 = fluxo().montarEtapas(p);
-        assertThat(estado(e0, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e0, Chave.OFICIO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(e0, Chave.DECISAO)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e0, Chave.OFICIO)).isEqualTo(EstadoEtapa.ATUAL);
         assertThat(e0.stream().anyMatch(e -> e.chave() == Chave.COMPROVANTE_SNT)).isFalse();
-        assertThat(estado(e0, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(e0, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         // oficio parcialmente preenchido (so o motivo) -> continua nao concluido
         p.setMotivoIndeferimento("Documentacao incompleta");
         List<EtapaFluxo> e1 = fluxo().montarEtapas(p);
-        assertThat(estado(e1, Chave.OFICIO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
-        assertThat(estado(e1, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(e1, Chave.OFICIO)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(e1, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         // oficio completo (motivo + anexo + data) -> libera Resposta ao solicitante
         Anexo oficio = new Anexo();
@@ -339,8 +340,8 @@ class FluxoProcessoServiceTest {
         p.addAnexo(oficio);
         p.setDataEmissaoOficio(LocalDate.now());
         List<EtapaFluxo> e2 = fluxo().montarEtapas(p);
-        assertThat(estado(e2, Chave.OFICIO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(e2, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(e2, Chave.OFICIO)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(e2, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     // ----------------------------------------------------------------
@@ -367,7 +368,7 @@ class FluxoProcessoServiceTest {
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
         assertThat(etapas.stream().anyMatch(e -> e.chave() == Chave.OFICIO)).isFalse();
-        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     @Test
@@ -389,8 +390,8 @@ class FluxoProcessoServiceTest {
         p.addAnexo(comprovanteEnvio);
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
-        assertThat(estado(etapas, Chave.OFICIO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
-        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(etapas, Chave.OFICIO)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.BLOQUEADA);
     }
 
     // ----------------------------------------------------------------
@@ -413,10 +414,10 @@ class FluxoProcessoServiceTest {
         p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
-        assertThat(estado(etapas, Chave.ENVIO)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(etapas, Chave.RESPOSTAS)).isNotEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
-        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(etapas, Chave.ENVIO)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(etapas, Chave.RESPOSTAS)).isNotEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.BLOQUEADA);
+        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
     }
 
     @Test
@@ -436,10 +437,10 @@ class FluxoProcessoServiceTest {
         p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
 
         List<EtapaFluxo> pausado = fluxo().montarEtapas(p);
-        assertThat(estado(pausado, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(pausado, Chave.INFO_COMPLEMENTAR)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(pausado, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(pausado, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.ATUAL);
         // Decisao continua bloqueada mesmo com maioria formada: a pausa vence.
-        assertThat(estado(pausado, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(pausado, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
         assertThat(fluxo().resumoPendencia(p)).startsWith("Informação complementar");
 
         // Retoma: ProcessoService.retomarAposInformacao volta o status para
@@ -463,8 +464,8 @@ class FluxoProcessoServiceTest {
         assertThat(apos.stream().anyMatch(e -> e.chave() == Chave.INFO_COMPLEMENTAR)).isFalse();
         // A maioria dos 2 favoraveis originais continua de pe: Respostas
         // permanece concluida e a Decisao fica liberada (ATUAL) imediatamente.
-        assertThat(estado(apos, Chave.RESPOSTAS)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
-        assertThat(estado(apos, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(apos, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(apos, Chave.DECISAO)).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     // ----------------------------------------------------------------
@@ -488,12 +489,12 @@ class FluxoProcessoServiceTest {
         p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
-        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EtapaFluxo.Estado.PENDENTE);
+        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
 
         List<PassoWizard> passos = fluxo().montarPassosWizard(p);
         PassoWizard passoDecisao = passos.stream()
                 .filter(passo -> passo.numero() == 3).findFirst().orElseThrow();
-        assertThat(passoDecisao.estado()).isEqualTo(PassoWizard.Estado.BLOQUEADA);
+        assertThat(passoDecisao.estado()).isEqualTo(EstadoEtapa.BLOQUEADA);
     }
 
     // ----------------------------------------------------------------
@@ -512,7 +513,7 @@ class FluxoProcessoServiceTest {
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
         long concluidasEsperadas = etapas.stream()
-                .filter(e -> e.estado() == EtapaFluxo.Estado.CONCLUIDA).count();
+                .filter(e -> e.estado() == EstadoEtapa.CONCLUIDA).count();
 
         // Envio, Respostas, Decisao, Comprovante SNT = 4 concluidas;
         // Resposta ao solicitante fica ATUAL (nao concluida). Total de etapas = 5
@@ -520,7 +521,7 @@ class FluxoProcessoServiceTest {
         // sem Recebimento, fundido em Envio desde 2026-08-05).
         assertThat(etapas).hasSize(5);
         assertThat(concluidasEsperadas).isEqualTo(4);
-        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     // ----------------------------------------------------------------
@@ -540,7 +541,7 @@ class FluxoProcessoServiceTest {
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
 
-        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.CONCLUIDA);
+        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.CONCLUIDA);
         assertThat(etapas.stream()
             .filter(e -> e.chave() == Chave.RESPOSTA_SOLICITANTE).findFirst().orElseThrow()
             .detalhe()).contains("Cancelamento nao exige envio de resposta formal");
@@ -553,7 +554,7 @@ class FluxoProcessoServiceTest {
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
         long concluidas = etapas.stream()
-            .filter(e -> e.estado() == EtapaFluxo.Estado.CONCLUIDA).count();
+            .filter(e -> e.estado() == EstadoEtapa.CONCLUIDA).count();
 
         // Nao ha etapa de oficio nem de comprovante SNT em processo cancelado:
         // sobram Envio, Respostas, Decisao e Resposta ao solicitante - todas
@@ -570,7 +571,7 @@ class FluxoProcessoServiceTest {
         PassoWizard finalizacao = fluxo().montarPassosWizard(p).stream()
             .filter(passo -> passo.numero() == 4).findFirst().orElseThrow();
 
-        assertThat(finalizacao.estado()).isEqualTo(PassoWizard.Estado.CONCLUIDA);
+        assertThat(finalizacao.estado()).isEqualTo(EstadoEtapa.CONCLUIDA);
     }
 
     @Test
@@ -586,7 +587,7 @@ class FluxoProcessoServiceTest {
 
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
 
-        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.ATUAL);
     }
 
     // ----------------------------------------------------------------
@@ -665,7 +666,7 @@ class FluxoProcessoServiceTest {
         FluxoProcessoService fluxo = fluxo();
         EtapaFluxo primeiraEtapa = fluxo.montarEtapas(p).get(0);
         assertThat(primeiraEtapa.chave()).isEqualTo(Chave.ENVIO);
-        assertThat(primeiraEtapa.estado()).isEqualTo(EtapaFluxo.Estado.ATUAL);
+        assertThat(primeiraEtapa.estado()).isEqualTo(EstadoEtapa.ATUAL);
 
         FluxoProcessoService.GatingAbas gating = fluxo.calcularGating(p);
         assertThat(gating.liberadoEnvio()).isTrue();
@@ -678,7 +679,7 @@ class FluxoProcessoServiceTest {
         assertThat(fluxo().veioDoPortal(p)).isFalse();
     }
 
-    private EtapaFluxo.Estado estado(List<EtapaFluxo> etapas, EtapaFluxo.Chave chave) {
+    private EstadoEtapa estado(List<EtapaFluxo> etapas, EtapaFluxo.Chave chave) {
         return etapas.stream()
                 .filter(e -> e.chave() == chave)
                 .findFirst()

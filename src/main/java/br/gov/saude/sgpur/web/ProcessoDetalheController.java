@@ -16,6 +16,7 @@ import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
 import br.gov.saude.sgpur.repository.AnexoRepository;
 import br.gov.saude.sgpur.repository.ProcessoRepository;
@@ -527,7 +528,7 @@ public class ProcessoDetalheController {
         // tem dataEnvio - ver javadoc de envioRegistrado).
         model.addAttribute("envioFeito", fluxoService.envioRegistrado(p));
         String abaAtivaPaneId = passosWizard.stream()
-            .filter(passo -> passo.estado() != PassoWizard.Estado.CONCLUIDA)
+            .filter(passo -> passo.estado() != EstadoEtapa.CONCLUIDA)
             .findFirst()
             .map(PassoWizard::paneId)
             .orElse(passosWizard.get(passosWizard.size() - 1).paneId());

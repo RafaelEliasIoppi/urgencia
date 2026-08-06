@@ -378,6 +378,12 @@ tr.linha-inativa > td:first-child {
     z-index: 0;
 }
 
+/* Badge de contagem (favoraveis) dentro do passo 2 do wizard horizontal.
+   Substitui o style="font-size:.55rem" inline que existia em
+   processos/detalhe.html (item D3/Passo 5 do relatorio de redesign,
+   2026-08-05) - mesmo padrao ja usado para .badge-encerramento-xs acima. */
+.wizard-badge-count { font-size: .55rem; }
+
 .wizard-step {
     position: relative;
     z-index: 1;

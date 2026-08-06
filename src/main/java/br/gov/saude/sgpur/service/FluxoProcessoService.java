@@ -2,9 +2,9 @@ package br.gov.saude.sgpur.service;
 
 import br.gov.saude.sgpur.domain.*;
 import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave;
-import br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
 import org.springframework.stereotype.Service;
 
@@ -264,16 +264,16 @@ public class FluxoProcessoService {
     private boolean adicionarPasso(java.util.List<PassoWizard> passos, int numero, String titulo,
                                     String paneId, boolean concluido, boolean anteriorConcluido,
                                     String tooltipBloqueado, String tooltipLivre) {
-        PassoWizard.Estado estado;
+        EstadoEtapa estado;
         String tooltip;
         if (concluido && anteriorConcluido) {
-            estado = PassoWizard.Estado.CONCLUIDA;
+            estado = EstadoEtapa.CONCLUIDA;
             tooltip = tooltipLivre;
         } else if (anteriorConcluido) {
-            estado = PassoWizard.Estado.ATUAL;
+            estado = EstadoEtapa.ATUAL;
             tooltip = tooltipLivre;
         } else {
-            estado = PassoWizard.Estado.BLOQUEADA;
+            estado = EstadoEtapa.BLOQUEADA;
             tooltip = tooltipBloqueado;
         }
         passos.add(new PassoWizard(numero, titulo, paneId, estado, tooltip));
@@ -404,7 +404,7 @@ public class FluxoProcessoService {
             return Optional.empty();
         }
         for (EtapaFluxo e : montarEtapas(p)) {
-            if (e.estado() == Estado.ATUAL) {
+            if (e.estado() == EstadoEtapa.ATUAL) {
                 return Optional.of(e);
             }
         }
@@ -418,13 +418,13 @@ public class FluxoProcessoService {
         // propria condicao satisfeita (ex.: resposta ao solicitante marcada
         // antes do comprovante SNT ser anexado). Timeline le como progressao
         // sequencial, entao a cor precisa respeitar essa ordem.
-        Estado estado;
+        EstadoEtapa estado;
         if (concluida && anterioresConcluidas) {
-            estado = Estado.CONCLUIDA;
+            estado = EstadoEtapa.CONCLUIDA;
         } else if (anterioresConcluidas) {
-            estado = Estado.ATUAL;
+            estado = EstadoEtapa.ATUAL;
         } else {
-            estado = Estado.PENDENTE;
+            estado = EstadoEtapa.BLOQUEADA;
         }
         return new EtapaFluxo(chave, titulo, icone, estado, detalhe);
     }
