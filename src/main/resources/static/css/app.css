@@ -1207,6 +1207,32 @@ tr.linha-inativa > td:first-child {
 .subpasso-ajuda summary { cursor: pointer; color: var(--rs-blue); }
 .subpasso-ajuda summary:hover { text-decoration: underline; }
 
+/* === Portal do Avaliador: eliminacao de style= inline (2026-08-05) === */
+
+/* Mini grafico de barra empilhada dos votos pessoais (avaliador/lista.html).
+   As larguras individuais de cada segmento continuam via th:style (flex
+   dinamico calculado no servidor a partir da contagem de votos) - so a
+   estrutura fixa e as cores dos 3 resultados viraram classe. */
+.grafico-barra-votos {
+    height: 8px;
+    border-radius: var(--saur-radius-sm, 4px);
+    overflow: hidden;
+    background: var(--rs-gray-200);
+    gap: var(--saur-space-1, 2px);
+}
+.grafico-barra-votos .barra-favoravel { background: var(--rs-green-bright); }
+.grafico-barra-votos .barra-nao-favoravel { background: var(--rs-red); }
+.grafico-barra-votos .barra-solicita-info { background: var(--rs-chart-blue); }
+
+/* Bootstrap nao tem utilitaria de min-width:0 - necessaria para o
+   text-truncate funcionar dentro de um flex item (avaliador/votar.html,
+   nome do PDF anonimizado no cabecalho de cada material de analise). */
+.min-w-0 { min-width: 0; }
+
+/* Offset do painel de voto sticky (avaliador/votar.html), acompanhando a
+   rolagem do PDF na coluna ao lado. */
+.sticky-offset-top { top: var(--saur-space-4, 1rem); }
+
 /* === Impressao ===
    Fluxo de trabalho com oficio e protocolo: imprimir a tela de um processo e
    comum. Ate 2026-08-04 nao havia nenhuma regra de impressao, entao saia tudo -
