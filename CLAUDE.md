@@ -519,6 +519,32 @@ não fazia sentido manter "legado só leitura". Ver detalhe da remoção em
   breakpoints em 576px, 768px e 992px. Ver `docs/AJUSTES-UI.md` para histórico
   completo de correções.
 
+## Design system — régua de tokens (2026-08-05)
+Camada semântica sobre os primitivos `--rs-*` (paleta), em `app.css`,
+`:root`: `--saur-surface`/`--saur-surface-sunken`, `--saur-text`/
+`--saur-text-muted`, `--saur-border`, `--saur-action`, `--saur-state-ok`/
+`-danger`/`-attention`/`-neutral`, escalas `--saur-space-1..6`,
+`--saur-radius-sm/md/lg/pill` e `--saur-font-xs/sm/md/lg/xl`. **Leva de
+infraestrutura apenas** — os componentes existentes ainda não foram
+migrados em massa (só alguns `border-radius`/`font-size` do próprio
+`app.css`, ver comentários no arquivo); migrar `style=` inline dos
+templates é trabalho de uma leva futura, à parte. `DesignSystemFontSizeInlineTest`
+guarda essa limpeza (falha até o último `style="font-size:..."` fora da
+escala ser migrado — falha esperada e documentada, não um bug).
+- **Densidade por portal**: `<html data-densidade="operacional|confortavel">`,
+  setado via script inline em `layout.html :: navbar` a partir de
+  `GlobalModelAdvice.densidadeAtual()` (`th:inline="javascript"`
+  obrigatório). ADMIN/OPERADOR = `operacional` (mais compacto);
+  AVALIADOR/SOLICITANTE/anônimo = `confortavel`. `[data-densidade="..."]`
+  redefine `--saur-font-md`/`--saur-space-4`/`--saur-radius-md`.
+- **Tom em vez de classe Bootstrap**: vocabulário fixo `"ok"|"danger"|
+  "attention"|"neutral"`, exposto por `StatusProcesso.getTom()`,
+  `SituacaoPedidoView.tom()`, `PainelLinha.CelulaMedico.tom()` e
+  `EtapaFluxo.tom()` (os antigos `getBootstrapBadge()`/`classeCor()`/`cor()`
+  continuam funcionando, só `@Deprecated`). Fragment
+  `layout :: tomBadge(tom, texto, icone)` traduz para Bootstrap — nenhum
+  template migrado a consumi-lo ainda nesta leva.
+
 ## Organização do repositório (limpeza de 2026-07-29)
 A raiz só tem o essencial: `pom.xml`, `CLAUDE.md`, `README.md`, os scripts de
 uso diário (`start.ps1`/`start.sh`, `test.ps1`/`test.sh`, `e2e.ps1`) e os

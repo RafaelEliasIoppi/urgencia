@@ -44,4 +44,21 @@ public record EtapaFluxo(Chave chave, String titulo, String icone, Estado estado
     public boolean isAtual() {
         return estado == Estado.ATUAL;
     }
+
+    /**
+     * Tom semantico do design system para {@link #estado}, sem nenhuma
+     * classe Bootstrap literal (diferente de {@code StatusProcesso.
+     * getBootstrapBadge}/{@code PainelLinha.CelulaMedico.cor}, que ja nascem
+     * com nome de classe - este record nunca teve isso, entao nao ha nada
+     * pra depreciar aqui): {@code "ok"} (concluida), {@code "attention"}
+     * (etapa atual - precisa de acao agora) ou {@code "neutral"} (pendente).
+     * Ver fragment {@code layout :: tomBadge}.
+     */
+    public String tom() {
+        return switch (estado) {
+            case CONCLUIDA -> "ok";
+            case ATUAL -> "attention";
+            case PENDENTE -> "neutral";
+        };
+    }
 }
