@@ -279,7 +279,14 @@ class PdfRelatorioBuilder {
 
             String textoResultadoPar;
             Color corResultadoPar = Color.BLACK;
-            if (par.getResultado() != null) {
+            // Impedido (conflito de interesse - avaliador e o proprio
+            // solicitante do processo) e um estado diferente de "sem voto
+            // ainda"/"dispensado pela maioria" e precisa de rotulo proprio -
+            // ver o mesmo tratamento em RelatorioService, secao "2. Pareceres".
+            if (par.isImpedido()) {
+                textoResultadoPar = "Impedido (conflito de interesse)";
+                corResultadoPar = CINZA;
+            } else if (par.getResultado() != null) {
                 textoResultadoPar = par.getResultado().getDescricao();
                 if (par.getResultado().name().equals("FAVORAVEL")) {
                     corResultadoPar = VERDE_ESCURO;

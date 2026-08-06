@@ -2,6 +2,7 @@ package br.gov.saude.sgpur.service;
 
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
+import br.gov.saude.sgpur.domain.OrigemParecer;
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
@@ -189,6 +190,137 @@ class RelatorioServiceTest {
         assertThat(texto.toString())
             .contains("Anexo (formato nao-PDF)")
             .contains("comprovante.png");
+    }
+
+    /** Extrai o texto de todas as paginas do PDF, na ordem, concatenado. */
+    private static String extrairTexto(byte[] pdf) throws Exception {
+        PdfReader reader = new PdfReader(pdf);
+        StringBuilder texto = new StringBuilder();
+        for (int i = 1; i <= reader.getNumberOfPages(); i++) {
+            texto.append(new PdfTextExtractor(reader).getTextFromPage(i));
+        }
+        reader.close();
+        return texto.toString();
+    }
+
+    // -----------------------------------------------------------------------
+    // Frente 1 - correcoes de conteudo (docs/RELATORIO-REFORMULACAO-RELATORIO-FINAL-PDF-2026-08.md)
+    // -----------------------------------------------------------------------
+
+    @Test
+    void gerarNaoMostraStatusDeTramitacaoComoSeFosseADecisaoQuandoProcessoAindaNaoFoiDecidido() throws Exception {
+        // Processo ENVIADO, ainda sem nenhum parecer respondido: a secao "3.
+        // Decisao final" nao pode anunciar "Resultado: ENVIADO" (em destaque,
+        // CAIXA ALTA) como se ENVIADO fosse uma decisao - a mesma
+        // contradicao que a capa do mesmo documento ja evita corretamente.
+        Processo p = processoBase(StatusProcesso.ENVIADO);
+        p.getPareceres().get(0).setResultado(null);
+        p.getPareceres().get(0).setDataResposta(null);
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(0L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        // linhaDestaque() sempre imprime o valor em CAIXA ALTA - "ENVIADO" so
+        // pode aparecer assim se o bug antigo (status impresso como decisao,
+        // sem checar isFinalizado()) tivesse voltado.
+        assertThat(texto).doesNotContain("ENVIADO");
+        assertThat(texto).contains("Em andamento");
+    }
+
+    @Test
+    void gerarExplicaAExcecaoDoCoordenadorEmVezDaFraseGenericaDaRegra() throws Exception {
+        // Deferido pelo voto isolado do Coordenador da CET-RS (1 favoravel
+        // basta - ProcessoValidator.favoraveisNecessariosParaDeferir). O
+        // texto fixo "Favoraveis: 1 (regra: 2 de 3 defere o processo)" ao
+        // lado de "DEFERIDO" sugeria que a propria regra citada foi violada.
+        Processo p = processoBase(StatusProcesso.DEFERIDO);
+        MembroUrgenciaRenal coordenador = p.getPareceres().get(0).getMembro();
+        coordenador.setCoordenador(true);
+        coordenador.setNome("Dra. Coordenadora");
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(1L);
+        when(processoService.deferidoPeloCoordenador(any())).thenReturn(true);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("Coordenador da CET-RS");
+        assertThat(texto).contains("Dra. Coordenadora");
+        assertThat(texto).contains("excecao regimental");
+        assertThat(texto).doesNotContain("regra: 2 de 3 defere o processo");
+    }
+
+    @Test
+    void gerarMantemAFraseDaRegraNoDeferimentoPorMaioriaNormalSemAExcecaoDoCoordenador() throws Exception {
+        // Caminho comum (2 de 3 favoraveis, sem coordenador envolvido) NAO
+        // pode regredir: o texto "regra: 2 de 3" continua correto aqui.
+        Processo p = processoBase(StatusProcesso.DEFERIDO);
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(2L);
+        when(processoService.deferidoPeloCoordenador(any())).thenReturn(false);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("Favoraveis: 2 (regra: 2 de 3 defere o processo)");
+        assertThat(texto).doesNotContain("Coordenador da CET-RS");
+    }
+
+    @Test
+    void gerarMostraRotuloProprioParaParecerImpedidoEmVezDePendente() throws Exception {
+        // Impedido (avaliador e o proprio solicitante do processo) e um
+        // estado diferente de "sem voto ainda" - nao pode compartilhar o
+        // mesmo rotulo "Pendente".
+        Processo p = processoBase(StatusProcesso.ENVIADO);
+        p.getPareceres().get(0).setResultado(null);
+        p.getPareceres().get(0).setDataResposta(null);
+        p.getPareceres().get(0).setImpedido(true);
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(0L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("Impedido");
+        assertThat(texto).contains("conflito de interesse");
+        assertThat(texto).doesNotContain("Pendente");
+    }
+
+    @Test
+    void gerarIncluiATrilhaDeAuditoriaDoVotoDoAvaliador() throws Exception {
+        // votadoPor/dataHoraVoto/origem substituiram formalmente o antigo
+        // anexo comprobatorio do parecer (2026-07-27) - o documento de
+        // arquivo precisa carregar essa prova, nao so a dataResposta.
+        Processo p = processoBase(StatusProcesso.DEFERIDO);
+        Parecer par = p.getPareceres().get(0);
+        par.setDataHoraVoto(LocalDateTime.of(2026, 1, 5, 14, 30));
+        par.setVotadoPor("avaliador1");
+        par.setOrigem(OrigemParecer.AVALIADOR_SISTEMA);
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(1L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("avaliador1");
+        assertThat(texto).contains("05/01/2026 14:30");
+        assertThat(texto).contains(OrigemParecer.AVALIADOR_SISTEMA.getDescricao());
+    }
+
+    @Test
+    void gerarIncluiNumeroDoOficioEDataDeEnvioAoSnt() throws Exception {
+        // numeroOficio e dataEnvioSnt existem em Processo desde 2026-08-04 e
+        // sao os identificadores de protocolo do desfecho - nao apareciam em
+        // lugar nenhum do relatorio.
+        Processo p = processoBase(StatusProcesso.DEFERIDO);
+        p.setNumeroOficio("0142/2026");
+        p.setDataEnvioSnt(LocalDate.of(2026, 1, 10));
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(1L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("Numero do oficio");
+        assertThat(texto).contains("0142/2026");
+        assertThat(texto).contains("Data de envio ao SNT");
+        assertThat(texto).contains("10/01/2026");
     }
 
     /** PDF minimo valido contendo o texto informado, para simular um anexo real no disco. */
