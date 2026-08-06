@@ -14,7 +14,7 @@
        AVALIADOR ou SOLICITANTE caia num 403, que renderizava esta mesma pagina,
        com o mesmo botao. Agora o destino vem de inicioDoPerfil
        (GlobalModelAdvice), calculado a partir do papel de quem esta logado. */-->
-<main id="conteudo" class="container py-5" style="min-height:60vh;">
+<main id="conteudo" class="container py-5 min-vh-60">
     <div class="row justify-content-center">
         <div class="col-md-7 col-lg-6">
             <div class="card text-center shadow-sm animate-fade-in">
@@ -23,8 +23,8 @@
                     <th:block th:switch="${status != null} ? ${status.toString()} : '0'">
                         <!-- 404: endereco inexistente -->
                         <th:block th:case="'404'">
-                            <div style="font-size:3rem;color:var(--rs-blue);"><i class="bi bi-compass"></i></div>
-                            <h1 class="h4 mt-3">Página não encontrada</h1>
+                            <div class="error-icon text-rs-blue"><i class="bi bi-compass"></i></div>
+                            <h1 class="h3 mt-3">Página não encontrada</h1>
                             <p class="text-muted">
                                 O endereço acessado não existe ou foi removido. Se você
                                 chegou aqui por um link antigo, use o menu para continuar.
@@ -32,8 +32,8 @@
                         </th:block>
                         <!-- 403: autenticado, mas sem permissao -->
                         <th:block th:case="'403'">
-                            <div style="font-size:3rem;color:var(--rs-gold);"><i class="bi bi-shield-lock"></i></div>
-                            <h1 class="h4 mt-3">Acesso não permitido</h1>
+                            <div class="error-icon text-rs-gold"><i class="bi bi-shield-lock"></i></div>
+                            <h1 class="h3 mt-3">Acesso não permitido</h1>
                             <p class="text-muted">
                                 Seu perfil não tem permissão para abrir esta área do sistema.
                                 Se você precisa desse acesso, fale com um administrador.
@@ -41,16 +41,16 @@
                         </th:block>
                         <!-- 401: sessao expirada -->
                         <th:block th:case="'401'">
-                            <div style="font-size:3rem;color:var(--rs-gold);"><i class="bi bi-box-arrow-in-right"></i></div>
-                            <h1 class="h4 mt-3">Sessão encerrada</h1>
+                            <div class="error-icon text-rs-gold"><i class="bi bi-box-arrow-in-right"></i></div>
+                            <h1 class="h3 mt-3">Sessão encerrada</h1>
                             <p class="text-muted">
                                 Sua sessão expirou por inatividade. Entre novamente para continuar.
                             </p>
                         </th:block>
                         <!-- demais (5xx e afins): falha do sistema -->
                         <th:block th:case="*">
-                            <div style="font-size:3rem;color:var(--rs-red);"><i class="bi bi-exclamation-triangle"></i></div>
-                            <h1 class="h4 mt-3">Algo deu errado</h1>
+                            <div class="error-icon text-rs-red"><i class="bi bi-exclamation-triangle"></i></div>
+                            <h1 class="h3 mt-3">Algo deu errado</h1>
                             <p class="text-muted">
                                 O sistema não conseguiu concluir esta operação. Tente novamente;
                                 se continuar, avise a equipe responsável informando o horário.

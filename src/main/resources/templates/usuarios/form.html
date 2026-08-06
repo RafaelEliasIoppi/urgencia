@@ -5,7 +5,7 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<main id="conteudo" class="container my-4" style="max-width: 640px;">
+<main id="conteudo" class="container my-4 container-narrow">
     <h1 class="h3 mb-3" th:text="${edicao} ? 'Editar usuário' : 'Novo usuário'">Usuário</h1>
 
     <div th:if="${erro}" class="alert alert-danger" th:text="${erro}"></div>
