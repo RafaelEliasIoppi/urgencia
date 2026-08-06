@@ -282,7 +282,7 @@ public class ExportacaoProcessoService {
             String marca = switch (e.estado()) {
                 case CONCLUIDA -> "[CONCLUIDA]";
                 case ATUAL -> "[EM ANDAMENTO]";
-                case PENDENTE -> "[PENDENTE]";
+                case BLOQUEADA -> "[PENDENTE]";
             };
             sb.append(marca).append(' ').append(e.titulo()).append('\n')
               .append("    ").append(e.detalhe()).append('\n');

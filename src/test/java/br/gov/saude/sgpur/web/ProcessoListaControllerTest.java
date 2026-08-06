@@ -64,7 +64,7 @@ class ProcessoListaControllerTest {
         when(processoService.buscar(isNull(), isNull(), eq(PageRequest.of(0, 15)))).thenReturn(pagina);
         br.gov.saude.sgpur.service.dto.EtapaFluxo etapaEnvio = new br.gov.saude.sgpur.service.dto.EtapaFluxo(
             br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
-            br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado.ATUAL, "Falta o Envio");
+            br.gov.saude.sgpur.service.dto.EstadoEtapa.ATUAL, "Falta o Envio");
         when(fluxoService.pendenciaAberta(processo)).thenReturn(java.util.Optional.of(etapaEnvio));
 
         mvc.perform(get("/processos"))
@@ -90,7 +90,7 @@ class ProcessoListaControllerTest {
         when(fluxoService.pendenciaAberta(processo)).thenReturn(java.util.Optional.of(
             new br.gov.saude.sgpur.service.dto.EtapaFluxo(
                 br.gov.saude.sgpur.service.dto.EtapaFluxo.Chave.ENVIO, "Envio aos 3 médicos", "send-fill",
-                br.gov.saude.sgpur.service.dto.EtapaFluxo.Estado.ATUAL,
+                br.gov.saude.sgpur.service.dto.EstadoEtapa.ATUAL,
                 "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.")));
 
         String html = mvc.perform(get("/processos"))

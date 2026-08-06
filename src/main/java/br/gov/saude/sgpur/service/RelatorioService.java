@@ -203,7 +203,7 @@ public class RelatorioService {
             String marca = switch (e.estado()) {
                 case CONCLUIDA -> "[X]";
                 case ATUAL -> "[>]";
-                case PENDENTE -> "[ ]";
+                case BLOQUEADA -> "[ ]";
             };
             pdfBuilder.celula(t4, marca, Element.ALIGN_CENTER, false);
             pdfBuilder.celula(t4, e.titulo(), Element.ALIGN_LEFT, false);

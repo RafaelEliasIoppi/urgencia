@@ -95,8 +95,14 @@
 
                     <!-- Timeline visual -->
                     <div class="timeline">
+                        <!-- Classe CSS derivada de EstadoEtapa.cssClasse('timeline') - MESMO
+                             enum que alimenta o wizard horizontal (fonte unica de estado,
+                             ver service/dto/EstadoEtapa.java). Cada widget continua com seu
+                             proprio vocabulario visual (aqui 'concluida'/'atual'/'pendente';
+                             no wizard, 'concluida'/'atual'/'bloqueada') - so o DADO de origem
+                             passou a ser compartilhado, nao a aparencia. -->
                         <div th:each="etapa : ${etapas}" class="timeline-item"
-                             th:classappend="${etapa.estado.name() == 'CONCLUIDA'} ? 'concluida' : (${etapa.estado.name() == 'ATUAL'} ? 'atual' : 'pendente')">
+                             th:classappend="${etapa.estado.cssClasse('timeline')}">
                             <div class="timeline-dot">
                                 <i class="bi" th:classappend="${etapa.estado.name() == 'CONCLUIDA'} ? 'bi-check' : (${etapa.estado.name() == 'ATUAL'} ? 'bi-play-fill' : '')"></i>
                             </div>
@@ -298,9 +304,13 @@
                          barrado no processo-detalhe.js (o preventDefault tem que rodar
                          antes do handler do Bootstrap). Ate aqui o passo so tinha
                          "cursor: not-allowed" no CSS e abria normalmente ao clique. -->
+                    <!-- Classe CSS derivada de EstadoEtapa.cssClasse('wizard') - MESMO
+                         enum que alimenta a timeline vertical (fonte unica de estado, ver
+                         service/dto/EstadoEtapa.java e o comentario equivalente na
+                         timeline acima). -->
                     <a class="wizard-step" th:each="passo : ${passosWizard}"
                        th:id="'tab-' + ${#strings.replace(passo.paneId, 'pane-', '')}"
-                       th:classappend="${passo.estado.name() == 'CONCLUIDA'} ? 'concluida' : (${passo.estado.name() == 'ATUAL'} ? 'atual' : 'bloqueada')"
+                       th:classappend="${passo.estado.cssClasse('wizard')}"
                        data-bs-toggle="tab" th:href="'#' + ${passo.paneId}" role="tab"
                        th:attr="aria-controls=${passo.paneId},
                                 aria-selected=${abaAtivaPaneId == passo.paneId},
@@ -317,8 +327,8 @@
                              <i th:case="*" class="bi bi-flag"></i>
                         </div>
                         <span class="wizard-label" th:text="${passo.titulo}">Passo</span>
-                        <span class="badge bg-success ms-1" th:if="${passo.numero == 2 and envioFeito and favoraveis > 0}"
-                              th:text="${favoraveis}" style="font-size:.55rem;">0</span>
+                        <span class="badge bg-success ms-1 wizard-badge-count" th:if="${passo.numero == 2 and envioFeito and favoraveis > 0}"
+                              th:text="${favoraveis}">0</span>
                     </a>
                 </div><!-- /wizard -->
                 </div><!-- /wizard-wrapper -->
