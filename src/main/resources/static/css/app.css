@@ -73,6 +73,62 @@
     --rs-shadow-lg: 0 10px 15px -3px rgba(0,0,0,.1), 0 4px 6px -4px rgba(0,0,0,.1);
     /* Lista explicita (nao 'all') para nao animar propriedades de layout */
     --rs-transition: color .2s ease, background-color .2s ease, border-color .2s ease, box-shadow .2s ease, transform .2s ease, opacity .2s ease;
+
+    /* === Design system - tokens semanticos (2026-08-05) ===
+       Nivel 2: intencao, nao cor. Cada token aponta para um primitivo --rs-*
+       ja existente acima - trocar a paleta algum dia exige mudar so os
+       --rs-* (nivel 1), esses tokens continuam validos. Ver secao "Design
+       system - regua de tokens" no CLAUDE.md. Infraestrutura desta leva:
+       ainda NAO consumidos em massa pelos componentes existentes (isso e
+       trabalho de uma leva futura, template a template) - so os poucos
+       lugares reescritos abaixo (border-radius/font-size) passaram a usar. */
+    --saur-surface: #fff;
+    --saur-surface-sunken: var(--rs-gray-50);
+    --saur-text: var(--rs-gray-800);
+    /* gray-600, nao gray-400/500: e o unico dos tres ja validado com 7.58:1
+       de contraste sobre branco (ver comentario em .timeline-item.pendente
+       .timeline-title mais abaixo, WCAG AA exige 4.5:1). */
+    --saur-text-muted: var(--rs-gray-600);
+    --saur-border: var(--rs-gray-200);
+    --saur-action: var(--rs-blue);
+    --saur-state-ok: var(--rs-green);
+    --saur-state-attention: var(--rs-gold);
+    --saur-state-danger: var(--rs-red);
+    --saur-state-neutral: var(--rs-gray-500);
+
+    /* Nivel 3: escalas discretas (espacamento/raio/fonte) */
+    --saur-space-1: .25rem;
+    --saur-space-2: .5rem;
+    --saur-space-3: .75rem;
+    --saur-space-4: 1rem;
+    --saur-space-5: 1.5rem;
+    --saur-space-6: 2rem;
+    --saur-radius-sm: 8px;
+    --saur-radius-md: 12px;
+    --saur-radius-lg: 16px;
+    --saur-radius-pill: 999px;
+    --saur-font-xs: .75rem;
+    --saur-font-sm: .875rem;
+    --saur-font-md: 1rem;
+    --saur-font-lg: 1.25rem;
+    --saur-font-xl: 1.75rem;
+}
+
+/* === Densidade por portal (design system, 2026-08-05) ===
+   layout.html seta data-densidade no <html> via GlobalModelAdvice.
+   densidadeAtual() + o script inline no inicio do fragment navbar. Redefine
+   so os tokens de nivel 3 mais sensiveis a volume de informacao por tela -
+   os componentes que ja usam esses tokens (novos ou migrados numa leva
+   futura) reagem automaticamente, sem CSS extra por componente. */
+[data-densidade="operacional"] {
+    --saur-font-md: .875rem;
+    --saur-space-4: .75rem;
+    --saur-radius-md: 8px;
+}
+[data-densidade="confortavel"] {
+    --saur-font-md: 1rem;
+    --saur-space-4: 1.25rem;
+    --saur-radius-md: 12px;
 }
 
 /* Container estreito para formularios/detalhes de leitura focada (ex.: Portal
@@ -159,13 +215,16 @@ body {
     align-items: center;
     gap: .3rem;
     padding: .2rem .6rem;
-    border-radius: 999px;
-    font-size: .8rem;
+    border-radius: var(--saur-radius-pill);
+    font-size: var(--saur-font-xs);
 }
 .status-mark.text-danger { background: var(--rs-red-light); }
 .status-mark.text-success { background: var(--rs-green-light); }
 .status-mark.text-secondary { background: var(--rs-gray-100); }
 .status-mark i {
+    /* 1.05rem: sem token proximo o bastante (entre md=1rem e lg=1.25rem,
+       mais perto de md, mas o icone precisa ficar visivelmente maior que o
+       texto ao lado dele - manter literal). */
     font-size: 1.05rem;
     vertical-align: -0.1em;
     line-height: 1;
@@ -173,7 +232,7 @@ body {
 /* O "x" (pendente) do bootstrap-icons e visualmente mais fino que o "check":
    engrossa o traco com text-shadow (icone de fonte nao tem variante bold). */
 .status-mark .bi-x-lg {
-    font-size: 1.2rem;
+    font-size: var(--saur-font-lg);
     text-shadow: 0 0 .4px currentColor, 0 0 .4px currentColor;
 }
 
@@ -193,7 +252,12 @@ tr.linha-inativa > td:first-child {
 .card {
     /* raio via variaveis do Bootstrap: o proprio .card-header herda o
        inner-radius e nao precisa mais de border-radius com !important */
-    --bs-card-border-radius: 12px;
+    --bs-card-border-radius: var(--saur-radius-md);
+    /* 11px, nao var(--saur-radius-md) (12px): intencional, nao arredondamento
+       acidental - o Bootstrap exige o raio INTERNO 1px menor que o externo
+       para o .card-header nao vazar um pixel de canto reto por baixo do raio
+       do .card. Se --saur-radius-md mudar de valor no futuro, recalcular
+       este -1px junto. */
     --bs-card-inner-border-radius: 11px;
     /* Card padrao e "sem moldura", mas NAO se pode zerar border-style/width
        aqui: as utilitarias .border-primary/.border-success/... do Bootstrap 5.3
@@ -214,7 +278,7 @@ tr.linha-inativa > td:first-child {
     background: linear-gradient(135deg, var(--rs-gray-50), var(--rs-gray-100));
     border-bottom: 1px solid var(--rs-gray-200);
     font-weight: 600;
-    font-size: .875rem;
+    font-size: var(--saur-font-sm);
     padding: .75rem 1rem;
 }
 
@@ -224,15 +288,18 @@ tr.linha-inativa > td:first-child {
     table-layout: auto;
     border-collapse: separate;
     border-spacing: 0;
+    /* .8125rem: empate exato entre xs (.75rem, diff .0625) e sm (.875rem,
+       diff .0625) - literal mantido de proposito, sem token mais proximo. */
     font-size: .8125rem;
 }
 .tabela-pareceres thead th {
     padding: .45rem .6rem;
-    font-size: .7rem;
+    font-size: var(--saur-font-xs);
     text-transform: uppercase;
     letter-spacing: .03em;
     /* gray-600 (5.74:1 sobre gray-100). gray-500 dava 4.34:1 - reprova em AA
-       para texto pequeno, que e exatamente o caso aqui (.7rem maiusculo). */
+       para texto pequeno, que e exatamente o caso aqui (--saur-font-xs
+       maiusculo, era ".7rem" literal antes da migracao para tokens). */
     color: var(--rs-gray-600);
     background: var(--rs-gray-100);
     border-bottom: 2px solid var(--rs-gray-200);
@@ -273,14 +340,14 @@ tr.linha-inativa > td:first-child {
     white-space: nowrap;
 }
 .tabela-pareceres .badge {
-    font-size: .7rem;
+    font-size: var(--saur-font-xs);
     font-weight: 600;
     padding: .3em .55em;
 }
 /* Tipografia/espacamento compactos dos controles: ver bloco ".acao-form"
    (layout flex) mais abaixo, na secao "Acao column na tabela de pareceres". */
 .tabela-pareceres .btn-sm {
-    font-size: .75rem;
+    font-size: var(--saur-font-xs);
     padding: .25rem .5rem;
 }
 
@@ -322,7 +389,7 @@ tr.linha-inativa > td:first-child {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .875rem;
+    font-size: var(--saur-font-sm);
     font-weight: 700;
     transition: var(--rs-transition);
     border: 3px solid var(--rs-gray-200);
@@ -332,7 +399,7 @@ tr.linha-inativa > td:first-child {
 }
 
 .wizard-step .wizard-label {
-    font-size: .7rem;
+    font-size: var(--saur-font-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .03em;
@@ -417,7 +484,7 @@ tr.linha-inativa > td:first-child {
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: .75rem;
+    font-size: var(--saur-font-xs);
     border: 2px solid var(--rs-gray-200);
     background: #fff;
     color: var(--rs-gray-400);
@@ -451,6 +518,9 @@ tr.linha-inativa > td:first-child {
 
 .timeline-item .timeline-title {
     font-weight: 600;
+    /* .85rem: sem token proximo o bastante (entre sm=.875rem e md=1rem,
+       mais perto de sm mas a diferenca de .025rem importa aqui - e o titulo
+       principal da timeline, mantido literal). */
     font-size: .85rem;
     margin-bottom: .15rem;
 }
@@ -468,7 +538,7 @@ tr.linha-inativa > td:first-child {
 .timeline-item.negativa .timeline-title { color: var(--rs-red); }
 
 .timeline-item .timeline-desc {
-    font-size: .78rem;
+    font-size: var(--saur-font-xs);
     color: var(--rs-gray-500);
 }
 
@@ -481,7 +551,10 @@ tr.linha-inativa > td:first-child {
 /* Badge de encerramento (layout :: badgeEncerramento) na planilha do Painel:
    a celula ja tem o badge de status acima, entao o segundo entra menor para
    nao competir com ele. Substitui o style="font-size:.65rem" inline que
-   existia no dashboard antes de o badge virar fragment compartilhado. */
+   existia no dashboard antes de o badge virar fragment compartilhado.
+   .65rem: abaixo do menor token (xs=.75rem) de proposito - e um badge
+   SECUNDARIO sobreposto a outro badge de status, precisa ficar visualmente
+   menor que --saur-font-xs para nao competir com ele; mantido literal. */
 .badge-encerramento-xs .badge { font-size: .65rem; }
 
 /* === Animacoes === */
@@ -565,7 +638,7 @@ tr.linha-inativa > td:first-child {
 .table thead th {
     background: var(--rs-gray-100);
     font-weight: 600;
-    font-size: .8rem;
+    font-size: var(--saur-font-xs);
     text-transform: uppercase;
     letter-spacing: .03em;
     color: var(--rs-gray-600);
@@ -590,10 +663,10 @@ tr.linha-inativa > td:first-child {
 
 /* === Form controls === */
 .form-control, .form-select {
-    border-radius: 8px;
+    border-radius: var(--saur-radius-sm);
     border-color: var(--rs-gray-200);
     transition: var(--rs-transition);
-    font-size: .875rem;
+    font-size: var(--saur-font-sm);
 }
 
 .form-control:focus, .form-select:focus {
@@ -604,7 +677,11 @@ tr.linha-inativa > td:first-child {
 /* === Progress bar === */
 .progress {
     background: var(--rs-gray-100);
-    border-radius: 100px;
+    /* 100px, nao --saur-radius-pill (999px): valor historico equivalente na
+       pratica (o raio real e sempre limitado a metade da altura do elemento,
+       que aqui e bem menor que 100px) - normalizado para o mesmo token do
+       .status-mark, mesma intencao visual de "pilula". */
+    border-radius: var(--saur-radius-pill);
     overflow: hidden;
 }
 
@@ -618,7 +695,9 @@ tr.linha-inativa > td:first-child {
 /* === Alertas === */
 .alert {
     border: none;
-    border-radius: 10px;
+    /* 10px: entre sm (8px) e md (12px), mesma distancia dos dois -
+       arredondado para sm (diferenca de 2px imperceptivel num alerta). */
+    border-radius: var(--saur-radius-sm);
     box-shadow: var(--rs-shadow-sm);
 }
 
@@ -629,7 +708,7 @@ tr.linha-inativa > td:first-child {
 
 /* === Paginacao === */
 .page-link {
-    --bs-pagination-border-radius: 8px;
+    --bs-pagination-border-radius: var(--saur-radius-sm);
     margin: 0 2px;
     border: 1px solid var(--rs-gray-200);
     color: var(--rs-gray-600);
@@ -651,7 +730,7 @@ tr.linha-inativa > td:first-child {
 .footer-sgpur {
     background: var(--rs-gray-800);
     color: var(--rs-gray-400);
-    font-size: .8rem;
+    font-size: var(--saur-font-xs);
     padding: 1rem;
     text-align: center;
     border-top: 2px solid var(--rs-gold);
@@ -659,7 +738,7 @@ tr.linha-inativa > td:first-child {
 
 /* === Card estatisticas === */
 .stat-card {
-    border-radius: 16px;
+    border-radius: var(--saur-radius-lg);
     padding: 1.25rem;
     transition: var(--rs-transition);
     cursor: pointer;
@@ -683,24 +762,24 @@ tr.linha-inativa > td:first-child {
 .stat-card .stat-icon {
     width: 44px;
     height: 44px;
-    border-radius: 12px;
+    border-radius: var(--saur-radius-md);
     display: flex;
     align-items: center;
     justify-content: center;
-    font-size: 1.25rem;
+    font-size: var(--saur-font-lg);
     background: var(--stat-icon-bg);
     color: var(--stat-icon-color);
 }
 
 .stat-card .stat-number {
-    font-size: 1.75rem;
+    font-size: var(--saur-font-xl);
     font-weight: 800;
     line-height: 1;
     color: var(--stat-text);
 }
 
 .stat-card .stat-label {
-    font-size: .75rem;
+    font-size: var(--saur-font-xs);
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: .04em;
@@ -745,7 +824,7 @@ tr.linha-inativa > td:first-child {
 }
 .tabela-pareceres .acao-form .form-select-sm,
 .tabela-pareceres .acao-form .form-control-sm {
-    font-size: .78rem;
+    font-size: var(--saur-font-xs);
     padding: .2rem .4rem;
     width: auto;
 }
@@ -783,7 +862,7 @@ tr.linha-inativa > td:first-child {
 .stat-card-portal {
     background: var(--stat-bg);
     border: 1px solid var(--stat-border);
-    border-radius: 16px;
+    border-radius: var(--saur-radius-lg);
     box-shadow: var(--rs-shadow);
 }
 
@@ -838,7 +917,7 @@ tr.linha-inativa > td:first-child {
     min-width: 280px;
     max-width: 420px;
     background: #fff;
-    border-radius: 12px;
+    border-radius: var(--saur-radius-md);
     box-shadow: var(--rs-shadow-lg);
     border-left: 4px solid var(--rs-gray-400);
     padding: .875rem 1rem;
@@ -846,15 +925,15 @@ tr.linha-inativa > td:first-child {
     align-items: flex-start;
     gap: .75rem;
     animation: toastIn .3s ease both;
-    font-size: .875rem;
+    font-size: var(--saur-font-sm);
 }
 .toast-sgpur.toast-success { border-left-color: var(--rs-green); }
 .toast-sgpur.toast-error   { border-left-color: var(--rs-red); }
 .toast-sgpur.toast-info    { border-left-color: var(--rs-blue); }
-.toast-sgpur .toast-icon   { font-size: 1.2rem; line-height: 1; flex-shrink: 0; }
+.toast-sgpur .toast-icon   { font-size: var(--saur-font-lg); line-height: 1; flex-shrink: 0; }
 .toast-sgpur .toast-body   { flex: 1; min-width: 0; }
 .toast-sgpur .toast-close  {
-    background: none; border: none; font-size: 1rem; line-height: 1;
+    background: none; border: none; font-size: var(--saur-font-md); line-height: 1;
     cursor: pointer; color: var(--rs-gray-400); padding: 0; flex-shrink: 0;
 }
 .toast-sgpur .toast-close:hover { color: var(--rs-gray-700); }
@@ -870,6 +949,9 @@ tr.linha-inativa > td:first-child {
     /* WebKit/Blink */
     ::-webkit-scrollbar { width: 6px; height: 6px; }
     ::-webkit-scrollbar-track { background: var(--rs-gray-100); }
+    /* 3px: sem token proximo (sm=8px e mais que o dobro) - a barra de rolagem
+       em si tem so 6px de largura, um raio maior estouraria visualmente o
+       proprio elemento; mantido literal de proposito. */
     ::-webkit-scrollbar-thumb { background: var(--rs-gray-300); border-radius: 3px; }
     ::-webkit-scrollbar-thumb:hover { background: var(--rs-gray-400); }
 }
@@ -897,7 +979,10 @@ tr.linha-inativa > td:first-child {
         padding: 0 .25rem;
     }
     .wizard::before { display: none; }
-    .wizard-step .wizard-circle { width: 40px; height: 40px; font-size: .75rem; }
+    .wizard-step .wizard-circle { width: 40px; height: 40px; font-size: var(--saur-font-xs); }
+    /* .6rem: abaixo do menor token (xs=.75rem) de proposito - rotulo do
+       wizard em scroll horizontal mobile, precisa ficar bem pequeno para
+       caber em max-width:85px sem cortar mais que o necessario. */
     .wizard-step .wizard-label { font-size: .6rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 85px; }
     /* Sombra sutil indicando que ha mais passos para scroll */
     .wizard-wrapper { position: relative; }
@@ -970,7 +1055,7 @@ tr.linha-inativa > td:first-child {
     min-height: 44px;
     padding: .75rem 1rem;
     border: 2px solid var(--rs-gray-200);
-    border-radius: 12px;
+    border-radius: var(--saur-radius-md);
     cursor: pointer;
     transition: border-color .15s ease, background-color .15s ease;
 }
@@ -1001,8 +1086,8 @@ tr.linha-inativa > td:first-child {
    que qualquer "@media (min-width: 576px)" existente, exatamente em 576px. */
 @media (max-width: 575.98px) {
     /* Reduz tamanho dos stat-cards no dashboard */
-    .stat-card .stat-number { font-size: 1.25rem; }
-    .stat-card .stat-icon { width: 36px; height: 36px; font-size: 1rem; }
+    .stat-card .stat-number { font-size: var(--saur-font-lg); }
+    .stat-card .stat-icon { width: 36px; height: 36px; font-size: var(--saur-font-md); }
     .stat-card { padding: .75rem; }
 
     /* Toast ocupa largura total com margem */
@@ -1013,7 +1098,7 @@ tr.linha-inativa > td:first-child {
     .card-body { padding: .75rem; }
 
     /* Cards de resumo no controle-urgencias: texto dos badges menor */
-    .badge.fs-5 { font-size: 1rem !important; }
+    .badge.fs-5 { font-size: var(--saur-font-md) !important; }
 }
 
 /* === Chat recolhivel: chevron gira ao colapsar === */
@@ -1030,7 +1115,7 @@ tr.linha-inativa > td:first-child {
    100% de opacidade. Tamanho um pouco maior que o texto ao redor (small)
    pra nao virar um alvo de clique minusculo. */
 .btn-apagar-msg-chat {
-    font-size: 1rem;
+    font-size: var(--saur-font-md);
     line-height: 1;
     opacity: 0.6;
     transition: opacity 0.15s ease, color 0.15s ease;
@@ -1087,7 +1172,7 @@ tr.linha-inativa > td:first-child {
 .subpasso-num        { width: 1.6rem; height: 1.6rem; border-radius: 50%;
                        display: inline-flex; align-items: center;
                        justify-content: center; font-weight: 700;
-                       font-size: .8rem; background: var(--rs-gray-200);
+                       font-size: var(--saur-font-xs); background: var(--rs-gray-200);
                        color: var(--rs-gray-700); flex-shrink: 0; }
 .subpasso-atual .subpasso-num { background: var(--rs-blue);  color: #fff; }
 .subpasso-ok    .subpasso-num { background: var(--rs-green); color: #fff; }
@@ -1102,6 +1187,9 @@ tr.linha-inativa > td:first-child {
     border-left: 3px solid var(--rs-red);
     color: var(--rs-red-dark);
     padding: .5rem .75rem;
+    /* .25rem (4px): sem token proximo (sm=8px e o dobro) - raio pequeno de
+       proposito para um bloco de destaque com borda lateral grossa (3px),
+       um raio maior destoaria da borda; mantido literal. */
     border-radius: .25rem;
     margin-bottom: .5rem;
 }

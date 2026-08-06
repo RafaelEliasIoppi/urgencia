@@ -55,7 +55,18 @@ public enum StatusProcesso {
         };
     }
 
-    /** Classe de cor do Bootstrap (badge bg-*) para as telas que usam Bootstrap. */
+    /**
+     * Classe de cor do Bootstrap (badge bg-*) para as telas que usam Bootstrap.
+     *
+     * @deprecated acopla o dominio a uma classe CSS de um framework especifico
+     * - use {@link #getTom()} (vocabulario semantico "ok"/"danger"/
+     * "attention"/"neutral") e traduza para Bootstrap no template, via o
+     * fragment {@code layout :: tomBadge(tom, texto, icone)}. Mantido por
+     * enquanto porque templates existentes ainda leem este metodo diretamente
+     * e nao foram migrados nesta leva (infraestrutura apenas - ver secao
+     * "Design system - regua de tokens" no CLAUDE.md).
+     */
+    @Deprecated
     public String getBootstrapBadge() {
         return switch (this) {
             case SOLICITADO -> "bg-secondary";
@@ -64,6 +75,26 @@ public enum StatusProcesso {
             case DEFERIDO -> "bg-success";
             case INDEFERIDO -> "bg-danger";
             case CANCELADO -> "bg-dark";
+        };
+    }
+
+    /**
+     * Tom semantico do design system, independente de framework CSS:
+     * {@code "ok"} (deferido), {@code "danger"} (indeferido),
+     * {@code "attention"} (aguardando algo de fora do sistema - solicitacao
+     * de informacao complementar) ou {@code "neutral"} (em andamento sem
+     * alarme, ou encerrado sem decisao de merito - solicitado/enviado/
+     * cancelado). Ver fragment {@code layout :: tomBadge} para a traducao
+     * deste vocabulario para classes Bootstrap.
+     */
+    public String getTom() {
+        return switch (this) {
+            case SOLICITADO -> "neutral";
+            case ENVIADO -> "neutral";
+            case SOLICITA_INFORMACAO -> "attention";
+            case DEFERIDO -> "ok";
+            case INDEFERIDO -> "danger";
+            case CANCELADO -> "neutral";
         };
     }
 }

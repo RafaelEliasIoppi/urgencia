@@ -185,6 +185,24 @@ public class GlobalModelAdvice {
         return uri;
     }
 
+    /**
+     * Densidade visual do design system (ver "Design system - regua de
+     * tokens" no CLAUDE.md): {@code "operacional"} para ADMIN/OPERADOR (mais
+     * compacto - telas de trabalho de alto volume, ex. lista de processos),
+     * {@code "confortavel"} para AVALIADOR/SOLICITANTE e visitante anonimo
+     * (espacamento maior - telas de uso ocasional/publico). Lido pelo script
+     * inline no inicio do fragment {@code navbar} de {@code layout.html},
+     * que aplica o valor como {@code data-densidade} no {@code <html>}.
+     */
+    @ModelAttribute("densidadeAtual")
+    public String densidadeAtual() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.isAuthenticated() && temPapelOperadorOuAdmin(auth)) {
+            return "operacional";
+        }
+        return "confortavel";
+    }
+
     private boolean temPapelSolicitante(Authentication auth) {
         for (GrantedAuthority ga : auth.getAuthorities()) {
             if ("ROLE_SOLICITANTE".equals(ga.getAuthority())) {

@@ -60,6 +60,24 @@
     </div>
 </a>
 <th:block th:fragment="navbar">
+<!--/* Densidade por portal (design system, 2026-08-05): ADMIN/OPERADOR usam
+       "operacional" (mais compacto, mais dado por tela); AVALIADOR/
+       SOLICITANTE e visitante anonimo usam "confortavel" (espacamento maior,
+       menos volume de informacao por tela). O atributo precisa ficar no
+       <html> (nao num elemento qualquer da navbar) porque as variaveis
+       --saur-* dependem de cascata CSS custom property, que so alcanca
+       elementos DESCENDENTES do elemento marcado - <main id="conteudo"> fica
+       fora da propria navbar. Como layout.html nunca e renderizado como
+       pagina inteira (so fragments sao extraidos via th:replace por cada
+       template - o <html>/<body> literal deste arquivo nunca chega ao
+       navegador), a unica forma de alcancar o <html> de toda tela sem editar
+       as ~25 templates e via JS, rodando bem no inicio do fragment navbar
+       (que e o primeiro conteudo incluido logo apos a abertura de <body> em
+       toda tela). th:inline="javascript" e obrigatorio para o /*[[...]]*/
+       funcionar (ver "Convencoes de codigo" no CLAUDE.md). */-->
+<script th:inline="javascript">
+    document.documentElement.setAttribute('data-densidade', /*[[${densidadeAtual}]]*/ 'confortavel');
+</script>
 <!-- Skip-link: primeiro elemento focavel da pagina, invisivel ate receber
      foco por teclado (.visually-hidden-focusable, utilitario do proprio
      Bootstrap 5.3 - sem CSS customizado). Aponta para o <main id="conteudo">
@@ -357,6 +375,43 @@
           class="badge rounded-pill bg-secondary text-white" th:classappend="${classes}"
           title="Decisão registrada. Edição das etapas 1-4 bloqueada, mas ainda faltam etapas de conclusão (ofício/comprovante e resposta ao solicitante).">
         <i class="bi bi-lock-fill" aria-hidden="true"></i> Decisão tomada
+    </span>
+</th:block>
+
+<!-- ============================================================
+     Badge de TOM semantico (design system, 2026-08-05) - traduz o
+     vocabulario "ok"/"danger"/"attention"/"neutral" (usado por
+     StatusProcesso.getTom(), SituacaoPedidoView.tom(),
+     PainelLinha.CelulaMedico.tom() e EtapaFluxo.tom()) para as classes
+     Bootstrap reais, num unico lugar - assim nenhum template precisa saber
+     que "attention" e "bg-warning text-dark" por conta propria.
+
+     Infraestrutura desta leva: nenhum template consome este fragment ainda
+     (os que hoje leem getBootstrapBadge()/classeCor()/cor() diretamente
+     continuam funcionando, so foram marcados @Deprecated) - migrar tela a
+     tela fica para uma leva futura. Ver "Design system - regua de tokens"
+     no CLAUDE.md.
+
+     Uso: <span th:replace="~{layout :: tomBadge('ok', 'Deferido', 'check-circle-fill')}"></span>
+     ============================================================ -->
+<th:block th:fragment="tomBadge(tom, texto, icone)">
+    <span th:switch="${tom}">
+        <span th:case="'ok'" class="badge bg-success">
+            <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
+            <span th:text="${texto}">Texto</span>
+        </span>
+        <span th:case="'danger'" class="badge bg-danger">
+            <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
+            <span th:text="${texto}">Texto</span>
+        </span>
+        <span th:case="'attention'" class="badge bg-warning text-dark">
+            <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
+            <span th:text="${texto}">Texto</span>
+        </span>
+        <span th:case="*" class="badge bg-secondary">
+            <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
+            <span th:text="${texto}">Texto</span>
+        </span>
     </span>
 </th:block>
 

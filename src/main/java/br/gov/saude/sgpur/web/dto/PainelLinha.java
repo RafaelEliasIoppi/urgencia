@@ -42,11 +42,43 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
      * @param medico   "INSTITUICAO - Nome" (ou null quando vazia)
      * @param texto    rotulo curto da situacao (Favoravel/Desfavoravel/etc.)
      * @param cor      classe de cor logica: success, danger, warning, info, muted
+     *                 @deprecated ainda proxima demais de nomenclatura Bootstrap
+     *                 (nao e um sufixo puro de classe, mas usa o mesmo
+     *                 vocabulario) - use {@link #tom()} ("ok"/"danger"/
+     *                 "attention"/"neutral") com o fragment {@code layout ::
+     *                 tomBadge}. Mantido porque a planilha do Painel ainda le
+     *                 este campo diretamente (infraestrutura apenas nesta
+     *                 leva - ver "Design system - regua de tokens" no
+     *                 CLAUDE.md).
      * @param icone    bootstrap-icon (sem "bi-")
      * @param definido se ha medico atribuido nessa coluna
      */
     public record CelulaMedico(String medico, String texto, String cor,
                                String icone, boolean definido) {
+
+        /**
+         * Acessor explicito de {@code cor}, so para carregar
+         * {@code @Deprecated} (ver javadoc do parametro acima).
+         */
+        @Deprecated
+        public String cor() {
+            return cor;
+        }
+
+        /**
+         * Tom semantico do design system, derivado de {@link #cor()}:
+         * {@code "ok"} (success), {@code "danger"} (danger),
+         * {@code "attention"} (warning/info) ou {@code "neutral"} (muted e
+         * demais valores).
+         */
+        public String tom() {
+            return switch (cor) {
+                case "success" -> "ok";
+                case "danger" -> "danger";
+                case "warning", "info" -> "attention";
+                default -> "neutral";
+            };
+        }
 
         static CelulaMedico vazia() {
             return new CelulaMedico(null, "Nao definido", "muted", "dash-circle", false);

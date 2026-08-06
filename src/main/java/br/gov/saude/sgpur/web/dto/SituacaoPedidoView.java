@@ -12,6 +12,14 @@ package br.gov.saude.sgpur.web.dto;
  * @param rotulo texto curto pro badge do topo (ex.: "Deferido").
  * @param classeCor sufixo Bootstrap (success/danger/warning/info/primary/secondary),
  *                   usado no alerta do cartao e no badge do {@code <h1>}.
+ *                   @deprecated acopla esta view a uma classe CSS de um
+ *                   framework especifico - use {@link #tom()} (vocabulario
+ *                   semantico "ok"/"danger"/"attention"/"neutral") no lugar,
+ *                   com o fragment {@code layout :: tomBadge}. Mantido porque
+ *                   {@code solicitante/detalhe.html} ja consome este campo
+ *                   diretamente e nao foi migrado nesta leva (infraestrutura
+ *                   apenas - ver "Design system - regua de tokens" no
+ *                   CLAUDE.md).
  * @param icone bootstrap-icon sem o prefixo {@code bi-}.
  * @param titulo frase curta de resultado, cabecalho do cartao (ex.:
  *               "Deferido - Urgencia renal reconhecida").
@@ -43,5 +51,30 @@ public record SituacaoPedidoView(
 
     /** Anexo final pronto pra baixar: id do {@code Anexo} do processo + rotulo do botao. */
     public record AnexoDownload(Long id, String rotulo) {
+    }
+
+    /**
+     * Acessor explicito do componente {@code classeCor}, so para carregar a
+     * anotacao {@code @Deprecated} (nao muda o comportamento do record - ver
+     * javadoc do parametro acima).
+     */
+    @Deprecated
+    public String classeCor() {
+        return classeCor;
+    }
+
+    /**
+     * Tom semantico do design system, derivado de {@link #classeCor()}:
+     * {@code "ok"} (success), {@code "danger"} (danger),
+     * {@code "attention"} (warning/info) ou {@code "neutral"} (demais
+     * sufixos Bootstrap, ex. primary/secondary).
+     */
+    public String tom() {
+        return switch (classeCor) {
+            case "success" -> "ok";
+            case "danger" -> "danger";
+            case "warning", "info" -> "attention";
+            default -> "neutral";
+        };
     }
 }
