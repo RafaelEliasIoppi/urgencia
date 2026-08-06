@@ -62,14 +62,22 @@
         <h2 class="secao-titulo">Equipe solicitante</h2>
         <div class="superficie-apoio p-3 mb-3">
             <div class="row g-3">
-                <div class="col-md-8">
+                <!--/* col-12 cada um (empilhados), nao col-md-8/col-md-4 lado a lado:
+                       bug real relatado em producao (2026-08-06) - e-mail institucional
+                       cortado visualmente porque 4/12 da largura do container-narrow
+                       (760px) nao comporta a maioria dos enderecos reais. Ambos os
+                       campos sao so informativos (readonly, sem "name"), e "equipe"
+                       tambem pode ser longo (ex. nome de hospital por extenso) -
+                       empilhar da largura total pros dois e a unica forma de garantir
+                       que nenhum dos dois corta, independente do tamanho do conteudo. */-->
+                <div class="col-12">
                     <label class="form-label" for="equipeSolicitanteInfo">Equipe / hospital</label>
                     <!--/* so readonly (sem disabled): disabled tira o campo da ordem de
                            tabulacao/leitor de tela; sem "name", nao e enviado no submit de
                            qualquer forma - so informativo, exatamente como antes. */-->
                     <input type="text" id="equipeSolicitanteInfo" class="form-control" th:value="${equipe}" readonly>
                 </div>
-                <div class="col-md-4">
+                <div class="col-12">
                     <label class="form-label" for="emailSolicitanteInfo">E-mail</label>
                     <input type="text" id="emailSolicitanteInfo" class="form-control" th:value="${email}" readonly>
                 </div>
