@@ -170,9 +170,14 @@
 
 /* Texto livre digitado pelo usuario (justificativa clinica, detalhe de
    situacao etc.) que precisa preservar quebras de linha - substitui o
-   style="white-space: pre-wrap;" repetido inline. */
+   style="white-space: pre-wrap;" repetido inline. `overflow-wrap: anywhere`
+   (bug real relatado em producao em 2026-08-06, solicitacao #12): sem isso,
+   um trecho digitado sem espaco algum (ex. um valor colado, uma URL) nao
+   quebra e estoura a largura do card em vez de virar linha - o mesmo
+   problema ja resolvido em #pane-envio .list-group-item > span. */
 .text-pre-wrap {
     white-space: pre-wrap;
+    overflow-wrap: anywhere;
 }
 
 /* Area de rolagem do chat (Portal do Solicitante/processo) - substitui o
@@ -1361,8 +1366,12 @@ tr.linha-inativa > td:first-child {
 .select-compact-220 { max-width: 220px; }
 
 /* Bloco de texto que preserva quebras de linha digitadas pelo usuario
-   (justificativa clinica, SQL de correcao de CHECK constraint no Painel). */
-.text-pre-wrap { white-space: pre-wrap; }
+   (SQL de correcao de CHECK constraint no Painel). `.text-pre-wrap` (mesma
+   funcao para texto livre em geral) foi consolidada numa unica definicao,
+   ja com overflow-wrap, la no topo do arquivo - esta segunda declaracao
+   idêntica e sem overflow-wrap foi removida em 2026-08-06 (dava a falsa
+   impressao de que a regra de quebra de palavra longa nao se aplicava a
+   ela, quando na verdade a cascata so pegava a ultima declaracao mesmo). */
 .pre-wrap-break { white-space: pre-wrap; word-break: break-word; }
 
 /* Cor de texto em cinza/azul do design system, para substituir
