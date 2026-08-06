@@ -2607,3 +2607,40 @@ mesmo log **pré-existente e documentado** ("EmailSender: remetente (from)
 nao configurado" — `SGPUR_MAIL_USER`/`SGPUR_MAIL_FROM` ausentes nesta
 máquina local), não relacionado a nenhuma das duas mudanças desta sessão.
 
+
+## REGRA: chat com o solicitante fica na barra lateral esquerda de /processos/{id} (2026-08-06)
+
+Um lote de mudanças pulled de outra sessão (commits "lote 4"/"lote 5",
+trazendo `EstadoEtapa`/unificação de vocabulário wizard-timeline, entre
+outras) tinha movido o card "Conversa com o solicitante" da tela de detalhe
+do processo (`processos/detalhe.html`) para fora da barra lateral esquerda
+(`col-lg-3`, onde vivem Progresso/Atalhos/Textos de e-mail prontos) e para
+uma linha própria, larga (`col-lg-6`), no fim da página — sem revisão visual
+humana antes do merge. O usuário reportou como "conversa com o solicitante
+está torto, em todo o sistema" a partir de uma URL de produção.
+
+**Investigação:** o HTML/CSS dos balões em si estava correto (flex
+`justify-content-start`/`justify-content-end`, sem regressão de alinhamento
+interno) nas 3 telas de chat do sistema — reproduzido localmente (H2/dev,
+fluxo completo via Playwright: criar solicitante → enviar solicitação →
+mensagens dos dois lados → triagem → converter em processo) e conferido por
+screenshot. O problema real era de **posição do card na página**, não de
+alinhamento dos balões: o chat saiu do lugar de sempre (lateral esquerda) e
+foi parar numa faixa larga isolada mais abaixo.
+
+**Correção, a pedido explícito do usuário ("o chat na tela do operador deve
+ficar a esquerda, como estava antes. REGRA"):** o card do chat voltou para
+dentro do `col-lg-3` da barra lateral esquerda, como o último card da
+coluna (depois de Progresso/Atalhos/Textos de e-mail prontos), com
+`class="card mt-3 animate-fade-in-d1"` — mesmo padrão dos cards vizinhos,
+sem wrapper `row`/`col-lg-6` próprio. O `id`/estrutura interna do chat
+(`#chatBodyProcesso`, `#chatBox`, `#chatForm` etc.) não mudou — só o
+container em volta.
+
+**Isto é regra fixa do produto, não preferência pontual desta sessão: o
+chat de `/processos/{id}` deve permanecer na barra lateral esquerda. Não
+mover para outro lugar da página sem pedido explícito do usuário.**
+
+Não mexeu nas outras 2 telas de chat (`solicitante/detalhe.html`,
+`processos/solicitacoes-online-detalhe.html`), que não foram tocadas pelo
+lote pulled e já estavam corretas.
