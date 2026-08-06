@@ -10,6 +10,7 @@ import br.gov.saude.sgpur.service.FluxoProcessoService;
 import br.gov.saude.sgpur.service.GeminiService;
 import br.gov.saude.sgpur.service.Iniciais;
 import br.gov.saude.sgpur.service.MembroUrgenciaRenalService;
+import br.gov.saude.sgpur.service.NomePadraoAnexo;
 import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.ProcessoValidator;
 import br.gov.saude.sgpur.service.TempoRespostaService;
@@ -32,6 +33,7 @@ import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
@@ -585,7 +587,14 @@ public class ProcessoDetalheController {
      * que nunca entra no PDF dos avaliadores) para
      * {@code DOCUMENTO_CLINICO_AVALIADOR}, tornando-o elegivel ao envio.
      *
-     * <p>E o unico caminho de promocao, e exige a confirmacao explicita do
+     * <p>E um dos DOIS caminhos que tiram um documento do bloco de revisao. Este
+     * aqui e para o falso-positivo: o operador conferiu e o documento nao
+     * identifica o paciente, entao o proprio arquivo do solicitante e liberado.
+     * Quando o documento realmente traz o nome do paciente, o caminho e
+     * {@link #substituirPorVersaoAnonimizada} (sobe a versao editada e remove o
+     * original numa acao so).
+     *
+     * <p>E o unico caminho de promocao IN-PLACE, e exige a confirmacao explicita do
      * operador ("Confirmo que este documento foi anonimizado") mais o registro
      * em auditoria de QUEM confirmou e QUAL anexo - esse log e o registro de que
      * a revisao humana aconteceu. Sem isso, o documento original do solicitante
@@ -646,6 +655,135 @@ public class ProcessoDetalheController {
         ra.addFlashAttribute("msg", "Anonimizacao confirmada: \"" + anexo.getNomeArquivo()
             + "\" agora entra no PDF enviado aos avaliadores.");
         return "redirect:/processos/" + id + "#envio";
+    }
+
+    /**
+     * TRAVA DE ANONIMIZACAO - caminho da SUBSTITUICAO (Passo Envio): recebe a
+     * versao ja anonimizada de um documento que veio do Portal do Solicitante e,
+     * na MESMA acao, tira o original (nao anonimizado) do processo.
+     *
+     * <p>E o caminho para o caso mais comum e mais importante: o documento
+     * realmente traz o nome do paciente no corpo, entao "Confirmo que ja esta
+     * anonimizado" ({@link #confirmarAnonimizacao}) nao se aplica. Antes deste
+     * endpoint o operador tinha que excluir o pendente no bloco vermelho e,
+     * separadamente, procurar o formulario generico de documento clinico mais
+     * abaixo na tela - duas acoes desconectadas, sem nenhum vinculo entre o
+     * arquivo removido e o que entrou no lugar (e com uma janela em que o
+     * processo ficava sem documento nenhum).
+     *
+     * <p><b>Ordem das escritas (importa):</b> salva o novo anexo PRIMEIRO e so
+     * remove o original DEPOIS que o novo foi gravado (arquivo em disco +
+     * registro no banco) - mesmo racional de
+     * {@code ProcessoAnexoController.substituirAnexo}. Se o upload falhar
+     * (arquivo vazio, extensao fora da allowlist, disco cheio), nada e removido
+     * e o pendente continua no bloco de revisao; o pior caso da falha inversa
+     * (remocao falhando depois do upload) deixa os DOIS visiveis na tela, que o
+     * operador resolve com o botao de remover - nunca um processo sem documento.
+     *
+     * <p><b>Exige PDF</b> (mais restritivo que o upload generico de documento
+     * clinico, que aceita toda a allowlist do {@code AnexoStorageService}):
+     * como esta acao APAGA o original, aceitar um arquivo que a consolidacao
+     * ignora silenciosamente ({@code SolicitacaoAvaliadorService} so funde PDF)
+     * deixaria o processo sem nenhum documento elegivel ao envio e sem o
+     * pendente para reverter.
+     *
+     * <p><b>O original nao e preservado, de proposito.</b> Ele e uma COPIA de
+     * trabalho: o arquivo como o solicitante enviou continua intacto na
+     * {@code SolicitacaoOnline} de origem ({@code AnexoSolicitacaoOnline}, ver
+     * {@code SolicitacaoOnlineService.converter}), acessivel pelo link "Ver
+     * solicitacao original". Manter tambem a copia aqui so espalharia o nome
+     * completo do paciente por mais um lugar do processo (inclusive no dossie
+     * exportado) sem nenhum ganho. O rastro de que ele existiu e foi
+     * substituido, por quem e por qual arquivo, fica em {@code LogAuditoria} -
+     * mesma decisao ja tomada em {@link #confirmarAnonimizacao}, que audita a
+     * revisao sem guardar copia do PDF.
+     *
+     * <p><b>Sem {@code @Transactional}</b> (ao contrario de
+     * {@link #confirmarAnonimizacao}): o metodo tem {@code try/catch} em volta
+     * de {@code anexoStorage.salvar}, servico {@code @Transactional} que lanca
+     * {@code IllegalArgumentException} para arquivo vazio/extensao proibida -
+     * com transacao de controller esse caminho previsto terminaria em 500
+     * ({@code UnexpectedRollbackException}), ver javadoc da classe. Por isso a
+     * checagem de posse tambem nao navega nenhuma associacao LAZY: o anexo e
+     * localizado por uma consulta que ja filtra processo + tipo.
+     */
+    @PostMapping("/{id}/documento-clinico/{anexoId}/substituir")
+    public String substituirPorVersaoAnonimizada(@PathVariable Long id,
+                                                 @PathVariable Long anexoId,
+                                                 @RequestParam("arquivo") MultipartFile arquivo,
+                                                 Principal principal,
+                                                 RedirectAttributes ra) {
+        String destino = "redirect:/processos/" + id + "#envio";
+        Processo p = processoService.buscar(id);
+        if (bloqueadoPorEncerrado(p, ra)) {
+            return destino;
+        }
+        // Posse (anexo e DESTE processo) + tipo (esta mesmo pendente) numa
+        // consulta so, sem navegar anexo.getProcesso() (LAZY) - este metodo nao
+        // abre transacao. Mesma garantia anti-IDOR de confirmarAnonimizacao.
+        Anexo pendente = anexoRepo
+            .findByProcessoIdAndTipo(id, TipoAnexo.DOCUMENTO_PORTAL_NAO_ANONIMIZADO)
+            .stream()
+            .filter(a -> a.getId().equals(anexoId))
+            .findFirst()
+            .orElse(null);
+        if (pendente == null) {
+            ra.addFlashAttribute("erro",
+                "Documento nao encontrado neste processo (ou ja nao esta pendente de anonimizacao).");
+            return destino;
+        }
+        if (arquivo == null || arquivo.isEmpty()) {
+            ra.addFlashAttribute("erro",
+                "Escolha o arquivo com a versao anonimizada antes de substituir. "
+                    + "O documento pendente foi mantido.");
+            return destino;
+        }
+        if (!"pdf".equals(NomePadraoAnexo.extensao(arquivo.getOriginalFilename()))) {
+            ra.addFlashAttribute("erro",
+                "A versao anonimizada precisa ser um arquivo PDF (so PDF entra no documento "
+                    + "enviado aos avaliadores). O documento pendente foi mantido.");
+            return destino;
+        }
+        String quem = principal != null ? principal.getName() : "desconhecido";
+        String hoje = java.time.LocalDate.now()
+            .format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"));
+        String nomeOriginal = pendente.getNomeArquivo();
+        Anexo novo;
+        try {
+            novo = anexoStorage.salvar(p, TipoAnexo.DOCUMENTO_CLINICO_AVALIADOR,
+                "Versao ANONIMIZADA enviada por " + quem + " em " + hoje
+                    + " em substituicao ao documento do Portal do Solicitante",
+                arquivo);
+        } catch (IllegalArgumentException | java.io.IOException e) {
+            ra.addFlashAttribute("erro", "Falha ao anexar a versao anonimizada: " + e.getMessage()
+                + " O documento pendente foi mantido.");
+            return destino;
+        }
+        // So agora o original sai (arquivo em disco + registro). Se esta remocao
+        // falhar, os dois ficam visiveis na tela - estado ruim, mas seguro e
+        // corrigivel pelo botao de remover; o inverso (apagar antes) poderia
+        // deixar o processo sem documento nenhum.
+        boolean originalRemovido = true;
+        try {
+            anexoStorage.excluir(anexoId);
+        } catch (RuntimeException e) {
+            originalRemovido = false;
+        }
+        auditoria.registrar("ANONIMIZACAO_SUBSTITUIDA",
+            "Processo " + p.getNumero() + " - anexo id " + anexoId + " (" + nomeOriginal
+                + ", do Portal do Solicitante) substituido pela versao anonimizada \""
+                + novo.getNomeArquivo() + "\" (anexo id " + novo.getId() + ") por " + quem
+                + (originalRemovido ? "" : " [FALHA ao remover o original - ainda no processo]"));
+        if (originalRemovido) {
+            ra.addFlashAttribute("msg",
+                "Versao anonimizada anexada e documento original removido do processo. "
+                    + "O novo arquivo entra no PDF enviado aos avaliadores.");
+        } else {
+            ra.addFlashAttribute("aviso",
+                "Versao anonimizada anexada, mas o documento original NAO pode ser removido "
+                    + "automaticamente. Remova-o pelo botao de remover, no bloco de revisao.");
+        }
+        return destino;
     }
 
     /**
