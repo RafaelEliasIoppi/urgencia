@@ -1727,3 +1727,29 @@ tr.linha-inativa > td:first-child {
    quando ele é a única coisa na tela (o card de estado vazio de
    lista.html, quando o solicitante ainda não tem nenhuma solicitação). */
 .elev-2 { box-shadow: var(--saur-elev-2); }
+
+/* === V6 - zona de upload (nova.html) ===
+   So CSS ao redor do <input type="file"> que ja existia - o input real
+   continua visivel/focavel/nativo (nunca escondido atras de um <label>
+   proxy, que quebraria tabulacao e leitor de tela). Fundo afundado +
+   borda tracejada + icone, para a area de anexar exames parar de parecer
+   um campo de texto qualquer (era um <input class="form-control"> do
+   mesmo tamanho/aparencia do campo "Nome do paciente"). */
+.zona-upload {
+    background: var(--saur-surface-sunken);
+    border: 2px dashed var(--rs-gray-300);
+    border-radius: var(--saur-radius-md);
+    padding: 1.25rem;
+    text-align: center;
+}
+.zona-upload-icone {
+    display: block;
+    font-size: 1.75rem;
+    color: var(--rs-blue);
+    margin-bottom: .4rem;
+}
+.zona-upload .form-control {
+    max-width: 420px;
+    margin: 0 auto;
+}
+.zona-upload .form-text { max-width: 420px; margin: .35rem auto 0; }
