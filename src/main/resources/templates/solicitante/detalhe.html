@@ -5,83 +5,109 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<main id="conteudo" class="container my-4 container-narrow">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">
-            <span th:text="${solicitacao.pacienteNome}">Paciente</span>
-            <span th:if="${situacao.numeroProcesso != null}" class="text-muted fs-5 font-monospace"
-                  th:text="'#' + ${situacao.numeroProcesso}">#00/0000</span>
-        </h1>
-        <!-- Badge alimentado pelo cartao de situacao unico (situacao.rotulo/
-             classeCor) - fonte unica, nunca recalculado aqui (Fase 6 do
-             relatorio de UI). -->
-        <span th:with="corTexto=${situacao.classeCor == 'warning' or situacao.classeCor == 'info'} ? ' text-dark' : ''"
-              class="badge fs-6" th:classappend="'bg-' + ${situacao.classeCor} + ${corTexto}"
-              th:text="${situacao.rotulo}">Status</span>
+<main id="conteudo">
+    <!-- Faixa de cabecalho SOLIDA (V4 do redesign visual, 2026-08-06, M1(b)):
+         so nesta tela - "capa do protocolo" (numero do processo, que a
+         equipe usa ao telefone, promovido a chip de destaque em vez de um
+         <span class="text-muted"> discreto ao lado do h1). O badge de status
+         que existia aqui foi removido: o cartao de resultado logo abaixo ja
+         comunica a mesma informacao, com muito mais peso visual - mante-lo
+         nos dois lugares era so redundancia (ver mockup
+         docs/mockups/solicitante-detalhe-proposta.html). -->
+    <div class="pagina-cabecalho pagina-cabecalho-solida">
+        <div class="pc-marca" aria-hidden="true"><svg th:replace="~{layout :: marcaSvg}"></svg></div>
+        <div class="pc-inner container-narrow d-block">
+            <a th:href="@{/solicitante}" class="pagina-cabecalho-voltar">
+                <i class="bi bi-arrow-left"></i> Minhas solicitações
+            </a>
+            <h1 class="pagina-titulo mt-2">
+                <span th:text="${solicitacao.pacienteNome}">Paciente</span>
+                <span th:if="${situacao.numeroProcesso != null}" class="chip-protocolo"
+                      th:text="'Processo ' + ${situacao.numeroProcesso}">Processo 00/0000</span>
+            </h1>
+            <p class="pagina-contexto mb-0">
+                Enviada em <span th:text="${#temporals.format(solicitacao.dataEnvio, 'dd/MM/yyyy HH:mm')}">-</span>
+                — <span th:text="${diasEspera.dias()}">0</span>
+                <span th:text="${diasEspera.dias() == 1} ? 'dia' : 'dias'">dias</span>
+                <span th:text="${solicitacao.status.name() == 'ENVIADA'} ? 'de espera pela triagem.' : 'desde o envio.'">de espera.</span>
+            </p>
+        </div>
     </div>
 
-    <p class="text-muted small mb-4">
-        Enviada em <span th:text="${#temporals.format(solicitacao.dataEnvio, 'dd/MM/yyyy HH:mm')}">-</span>
-        — <span th:text="${diasEspera.dias()}">0</span>
-        <span th:text="${diasEspera.dias() == 1} ? 'dia' : 'dias'">dias</span>
-        <span th:text="${solicitacao.status.name() == 'ENVIADA'} ? 'de espera pela triagem.' : 'desde o envio.'">de espera.</span>
-    </p>
+    <div class="container my-4 container-narrow">
 
-    <!-- Cartão de situação único (Fase 6 do relatório de UI, 2026-08):
-         substitui os 8 blocos <alert> que existiam aqui, cada um reescrevendo
-         a mesma decisão de status num vocabulário/formato diferente. Toda a
-         lógica vem pronta de SolicitanteController.montarSituacaoPedido -
-         este template só consome ${situacao}, nunca recalcula a regra. -->
-    <div class="card mb-3 border-start border-4"
-         th:classappend="'border-' + ${situacao.classeCor}">
-        <div class="card-body">
-            <div class="d-flex align-items-start gap-3">
-                <i class="bi fs-2 flex-shrink-0" th:classappend="'bi-' + ${situacao.icone} + ' text-' + ${situacao.classeCor}"></i>
-                <div class="flex-grow-1">
-                    <h2 class="h5 mb-1" th:text="${situacao.titulo}">Situação do pedido</h2>
-                    <p class="mb-2" th:text="${situacao.mensagem}">Mensagem explicando a situação.</p>
-                    <div th:if="${situacao.detalhe != null}" class="p-2 bg-light rounded border small mb-2 text-pre-wrap"
-                         th:text="${situacao.detalhe}">Detalhe adicional.</div>
+    <!-- Cartão de situação único (Fase 6 do relatório de UI, 2026-08), agora
+         em formato de CARTÃO DE RESULTADO (M4(i) + M6, redesign visual
+         2026-08-06): superfície tintada em largura total (no lugar da borda
+         esquerda de 4px), ícone em token circular de 64px, e destaque maior
+         (título 1,75rem + botão btn-lg) só quando o resultado é FINAL
+         (Deferido/Indeferido) - "simetria estrutural com assimetria
+         cromática" (decisão 2 do §10, aprovada): os dois usam exatamente o
+         mesmo layout, mudando só cor/ícone, sem nenhum elemento
+         comemorativo. Toda a lógica continua vindo pronta de
+         SolicitanteController.montarSituacaoPedido - este template só
+         consome ${situacao}, nunca recalcula a regra (o mapeamento abaixo,
+         classeCor -> classe de cor do cartão, é só tradução de apresentação,
+         mesmo espírito do 'bg-' + classeCor que já existia aqui antes).
+         Mapeamento em cadeia de th:with de UM nível cada (não ternário
+         aninhado) - CLAUDE.md proíbe ternário aninhado > 2-3 níveis em
+         atributo Thymeleaf. -->
+    <div th:with="corBase=${situacao.classeCor},
+                  tomA=${corBase == 'success'} ? 'r-ok' : '_',
+                  tomB=${corBase == 'danger'} ? 'r-danger' : ${tomA},
+                  tomC=${corBase == 'warning'} ? 'r-attention' : ${tomB},
+                  tomD=${corBase == 'info' or corBase == 'primary'} ? 'r-info' : ${tomC},
+                  tomFinal=${corBase == 'secondary'} ? 'r-neutral' : ${tomD},
+                  destaque=${situacao.rotulo == 'Deferido' or situacao.rotulo == 'Indeferido'}"
+         class="cartao-resultado animate-fade-in"
+         th:classappend="${tomFinal} + (${destaque} ? ' cartao-resultado-destaque' : '')">
+        <div class="cartao-resultado-icone">
+            <i class="bi" th:classappend="'bi-' + ${situacao.icone}"></i>
+        </div>
+        <div class="flex-grow-1">
+            <h2 th:text="${situacao.titulo}">Situação do pedido</h2>
+            <p th:text="${situacao.mensagem}">Mensagem explicando a situação.</p>
+            <div th:if="${situacao.detalhe != null}" class="cartao-resultado-detalhe"
+                 th:text="${situacao.detalhe}">Detalhe adicional.</div>
 
-                    <!-- Ação primária: baixar o documento final (comprovante SNT / ofício),
-                         promovida a botão de destaque em vez de link pequeno dentro de um
-                         alerta (item 6.6). -->
-                    <div class="mt-2" th:if="${situacao.numeroProcesso != null and (situacao.rotulo == 'Deferido' or situacao.rotulo == 'Indeferido')}">
-                        <a th:if="${situacao.anexoParaBaixar != null}"
-                           class="btn" th:classappend="'btn-' + ${situacao.classeCor}"
-                           th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${situacao.anexoParaBaixar.id})}">
-                            <i class="bi bi-download"></i> <span th:text="${situacao.anexoParaBaixar.rotulo}">Baixar</span>
-                        </a>
-                        <span th:unless="${situacao.anexoParaBaixar != null}" class="small text-muted">
-                            <span th:if="${situacao.rotulo == 'Deferido'}">Comprovante SNT ainda sendo providenciado pela equipe.</span>
-                            <span th:if="${situacao.rotulo == 'Indeferido'}">Ofício ainda sendo providenciado pela equipe.</span>
-                        </span>
-                    </div>
-
-                    <!-- Ação: enviar nova solicitação (devolvida / processo excluído). -->
-                    <div class="mt-2" th:if="${situacao.mostrarNovaSolicitacao}">
-                        <a th:href="@{/solicitante/nova}" class="btn btn-outline-danger">
-                            <i class="bi bi-plus-lg"></i> Enviar nova solicitação
-                        </a>
-                    </div>
-
-                    <!-- Ação mais urgente do fluxo (item 6.3): quando um avaliador pede
-                         informação complementar, o formulário de upload fica no TOPO da
-                         página, dentro deste cartão - não mais no meio da tela. -->
-                    <form th:if="${situacao.precisaAcao}"
-                          th:action="@{/solicitante/{id}/informacao-complementar(id=${solicitacao.id})}"
-                          method="post" enctype="multipart/form-data" class="mt-3"
-                          data-lock-submit="Enviando informações...">
-                        <div class="mb-2">
-                            <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informações pedidas</label>
-                            <input type="file" class="form-control" id="arquivosInfoComplementar" name="arquivos" multiple>
-                        </div>
-                        <button type="submit" class="btn btn-warning">
-                            <i class="bi bi-upload"></i> Enviar informações complementares
-                        </button>
-                    </form>
-                </div>
+            <!-- Ação primária: baixar o documento final (comprovante SNT / ofício),
+                 promovida a botão de destaque em vez de link pequeno dentro de um
+                 alerta (item 6.6, mantido - só o botão ganhou btn-lg e a cor
+                 -dark obrigatória sobre superfície tintada, ver Anexo C). -->
+            <div class="mt-2" th:if="${situacao.numeroProcesso != null and (situacao.rotulo == 'Deferido' or situacao.rotulo == 'Indeferido')}">
+                <a th:if="${situacao.anexoParaBaixar != null}"
+                   class="btn btn-lg" th:classappend="${situacao.rotulo == 'Deferido'} ? 'btn-resultado-ok' : 'btn-resultado-danger'"
+                   th:href="@{/solicitante/{id}/processo-anexo/{anexoId}(id=${solicitacao.id},anexoId=${situacao.anexoParaBaixar.id})}">
+                    <i class="bi bi-download"></i> <span th:text="${situacao.anexoParaBaixar.rotulo}">Baixar</span>
+                </a>
+                <span th:unless="${situacao.anexoParaBaixar != null}" class="small">
+                    <span th:if="${situacao.rotulo == 'Deferido'}">Comprovante SNT ainda sendo providenciado pela equipe.</span>
+                    <span th:if="${situacao.rotulo == 'Indeferido'}">Ofício ainda sendo providenciado pela equipe.</span>
+                </span>
             </div>
+
+            <!-- Ação: enviar nova solicitação (devolvida / processo excluído). -->
+            <div class="mt-2" th:if="${situacao.mostrarNovaSolicitacao}">
+                <a th:href="@{/solicitante/nova}" class="btn btn-outline-danger">
+                    <i class="bi bi-plus-lg"></i> Enviar nova solicitação
+                </a>
+            </div>
+
+            <!-- Ação mais urgente do fluxo (item 6.3): quando um avaliador pede
+                 informação complementar, o formulário de upload fica no TOPO da
+                 página, dentro deste cartão - não mais no meio da tela. -->
+            <form th:if="${situacao.precisaAcao}"
+                  th:action="@{/solicitante/{id}/informacao-complementar(id=${solicitacao.id})}"
+                  method="post" enctype="multipart/form-data" class="mt-3"
+                  data-lock-submit="Enviando informações...">
+                <div class="mb-2">
+                    <label for="arquivosInfoComplementar" class="form-label">Arquivo(s) com as informações pedidas</label>
+                    <input type="file" class="form-control" id="arquivosInfoComplementar" name="arquivos" multiple>
+                </div>
+                <button type="submit" class="btn btn-warning">
+                    <i class="bi bi-upload"></i> Enviar informações complementares
+                </button>
+            </form>
         </div>
     </div>
 
@@ -89,9 +115,12 @@
          detalhe do processo, adaptado aos 3 momentos deste módulo de staging.
          Só um resumo de progresso (item 6.5) - o texto longo de resultado
          vive exclusivamente no cartão de situação acima. -->
-    <div class="card mb-3">
-        <div class="card-body">
-            <h2 class="h6 text-muted mb-3">Andamento do pedido</h2>
+    <!-- Superfície de apoio (M3, redesign visual 2026-08-06), não mais
+         "cartão" - o único cartão que "importa" na tela é o de resultado
+         acima (regra do M3: no máximo 1 elemento por tela usa --saur-elev-2). -->
+    <div class="secao-rotulo">Acompanhamento</div>
+    <h2 class="secao-titulo">Andamento do pedido</h2>
+    <div class="superficie-apoio p-3 mb-3">
             <div class="timeline">
                 <div class="timeline-item concluida">
                     <div class="timeline-dot"><i class="bi bi-check"></i></div>
@@ -136,11 +165,11 @@
                     </div>
                 </div>
             </div>
-        </div>
     </div>
 
-    <div class="card mb-3">
-        <div class="card-body">
+    <div class="secao-rotulo">O que você enviou</div>
+    <div class="secao-titulo">Dados do pedido</div>
+    <div class="superficie-apoio p-3 mb-3">
             <dl class="row mb-0">
                 <dt class="col-sm-4">RGCT / SNT</dt>
                 <dd class="col-sm-8" th:text="${solicitacao.pacienteRgct}"></dd>
@@ -153,10 +182,13 @@
                 <dt class="col-sm-4">Justificativa clínica</dt>
                 <dd class="col-sm-8 text-pre-wrap" th:text="${solicitacao.justificativaClinica}"></dd>
             </dl>
-        </div>
     </div>
 
-    <h2 class="h6 text-muted">Documentos anexados</h2>
+    <h2 class="secao-titulo">
+        Documentos anexados
+        <span th:if="${!solicitacao.anexos.isEmpty()}" class="chip-protocolo claro"
+              th:text="${#lists.size(solicitacao.anexos)}">2</span>
+    </h2>
     <ul class="list-group mb-3">
         <li class="list-group-item" th:each="a : ${solicitacao.anexos}"
             th:with="ext=${#strings.toLowerCase(a.nomeArquivo)},
@@ -172,12 +204,18 @@
                 <i class="bi bi-download text-muted"></i>
             </a>
         </li>
-        <li class="list-group-item text-muted" th:if="${solicitacao.anexos.isEmpty()}">
-            Nenhum documento anexado.
-        </li>
     </ul>
+    <div class="superficie-apoio mb-3" th:if="${solicitacao.anexos.isEmpty()}">
+        <div class="estado-vazio estado-vazio-compacto">
+            <div class="estado-vazio-icone"><i class="bi bi-paperclip"></i></div>
+            <h3>Nenhum documento anexado</h3>
+            <p>Os exames enviados junto ao pedido aparecem nesta lista.</p>
+        </div>
+    </div>
 
-    <!-- Conversa com a equipe -->
+    <!-- Conversa com a equipe: o proprio card-header colapsavel abaixo ja e
+         o titulo visivel da secao (com icone/badges/chevron) - um <h2>
+         externo aqui so duplicaria o mesmo texto. -->
     <div class="card mb-3">
         <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-1" role="button"
              data-bs-toggle="collapse" data-bs-target="#chatBody" aria-expanded="true">
@@ -191,8 +229,11 @@
             </span>
         </div>
         <div class="card-body collapse show" id="chatBody">
-            <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'" class="text-muted small text-center py-3">
-                Nenhuma mensagem ainda. Use o campo abaixo para enviar uma mensagem à equipe.
+            <div id="chatVazio" th:classappend="${!mensagens.isEmpty()} ? 'd-none'"
+                 class="estado-vazio estado-vazio-compacto">
+                <div class="estado-vazio-icone"><i class="bi bi-chat-dots"></i></div>
+                <h3>Nenhuma mensagem ainda</h3>
+                <p>Use o campo abaixo para enviar uma mensagem à equipe.</p>
             </div>
             <!-- Renderizado por chat-solicitacao.js (poll AJAX); o conteudo inicial
                  e so pra nao ter flash de vazio antes do 1o poll rodar. -->
@@ -236,6 +277,7 @@
                 <i class="bi bi-x-circle"></i> Cancelar processo
             </button>
         </form>
+    </div>
     </div>
 </main>
 

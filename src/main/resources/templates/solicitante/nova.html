@@ -5,9 +5,20 @@
 <nav th:replace="~{layout :: navbar}"></nav>
 <div th:replace="~{layout :: flash}"></div>
 
-<main id="conteudo" class="container my-4 container-narrow">
-    <h1 class="h3 mb-3"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
-    <p class="small text-muted">* Campo obrigatório</p>
+<main id="conteudo">
+    <!-- Faixa de cabecalho (V3 do redesign visual, 2026-08-06, variante
+         SUAVE - M1(a)), mesmo tratamento de lista.html. -->
+    <div class="pagina-cabecalho">
+        <div class="pc-marca" aria-hidden="true"><svg th:replace="~{layout :: marcaSvg}"></svg></div>
+        <div class="pc-inner container-narrow">
+            <div>
+                <h1 class="pagina-titulo"><i class="bi bi-send-plus"></i> Nova solicitação</h1>
+                <p class="pagina-contexto mb-0">* Campo obrigatório</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="container my-4 container-narrow">
 
     <!--/* Retorno com erro de validacao: o texto digitado volta preenchido (o
            @ModelAttribute preserva), mas os ARQUIVOS nao - nenhum navegador
@@ -39,11 +50,18 @@
     </div>
 
     <form id="formNovaSolicitacao" th:action="@{/solicitante/nova}" th:object="${solicitacao}" method="post"
-          enctype="multipart/form-data" class="card" data-lock-submit="Enviando solicitação..."
+          enctype="multipart/form-data" data-lock-submit="Enviando solicitação..."
           th:attr="data-rascunho-url=@{/solicitante/nova/rascunho}">
-        <div class="card-body">
-            <h2 class="h6 text-muted">Equipe solicitante</h2>
-            <div class="row g-3 mb-2">
+
+        <!-- Ritmo visual real no lugar dos 4 <hr> (V6 do redesign visual,
+             2026-08-06, M2 + M3): cada bloco do formulário vira sua própria
+             seção com rótulo + título, dentro de uma superfície de apoio -
+             em vez de um único cartão contínuo separado só por réguas
+             cinzas de 1px. -->
+        <div class="secao-rotulo">Quem está enviando</div>
+        <h2 class="secao-titulo">Equipe solicitante</h2>
+        <div class="superficie-apoio p-3 mb-3">
+            <div class="row g-3">
                 <div class="col-md-8">
                     <label class="form-label" for="equipeSolicitanteInfo">Equipe / hospital</label>
                     <!--/* so readonly (sem disabled): disabled tira o campo da ordem de
@@ -56,12 +74,14 @@
                     <input type="text" id="emailSolicitanteInfo" class="form-control" th:value="${email}" readonly>
                 </div>
             </div>
-            <p class="small text-muted">
+            <p class="small text-muted mb-0 mt-2">
                 Preenchidos automaticamente a partir do seu cadastro (não editáveis aqui).
             </p>
+        </div>
 
-            <hr>
-            <h2 class="h6 text-muted">Paciente</h2>
+        <div class="secao-rotulo">Dados do paciente</div>
+        <h2 class="secao-titulo">Paciente</h2>
+        <div class="superficie-apoio p-3 mb-3">
             <div class="row g-3">
                 <div class="col-md-8">
                     <label class="form-label" th:for="pacienteNome">Nome do paciente *</label>
@@ -75,9 +95,7 @@
                     </div>
                 </div>
             </div>
-
-            <hr>
-            <div class="row g-3">
+            <div class="row g-3 mt-1">
                 <div class="col-md-4">
                     <label class="form-label" th:for="dataSituacaoEspecial">Data em que a urgência foi identificada *</label>
                     <input type="date" th:field="*{dataSituacaoEspecial}" class="form-control" required>
@@ -86,54 +104,64 @@
                     </div>
                 </div>
             </div>
+        </div>
 
-            <hr>
-            <div>
-                <label class="form-label" th:for="justificativaClinica">Justificativa clínica *</label>
-                <div class="alert alert-light border small mb-2">
-                    <strong><i class="bi bi-info-circle"></i> O que a equipe de Urgência Renal precisa saber:</strong>
-                    <ul class="mb-0 mt-1 ps-3">
-                        <li>Quadro clínico atual do paciente</li>
-                        <li>Exames que sustentam a urgência</li>
-                        <li>Tempo em diálise e intercorrências recentes</li>
-                        <li>Tratamentos já tentados</li>
-                        <li>Por que a urgência se aplica agora</li>
-                    </ul>
-                </div>
-                <textarea th:field="*{justificativaClinica}" class="form-control" rows="5" required
-                          placeholder="Descreva o quadro clínico e o motivo do pedido de urgência renal."></textarea>
-                <div class="form-text d-flex justify-content-between">
-                    <span>Quanto mais completo, menor a chance de a equipe pedir informação complementar.</span>
-                    <span id="justificativaContador" class="text-muted text-nowrap ms-2">0 caracteres</span>
-                </div>
+        <div class="secao-rotulo">Por que a urgência se aplica</div>
+        <h2 class="secao-titulo">Justificativa clínica</h2>
+        <div class="superficie-apoio p-3 mb-3">
+            <label class="form-label" th:for="justificativaClinica">Descrição *</label>
+            <div class="alert alert-light border small mb-2">
+                <strong><i class="bi bi-info-circle"></i> O que a equipe de Urgência Renal precisa saber:</strong>
+                <ul class="mb-0 mt-1 ps-3">
+                    <li>Quadro clínico atual do paciente</li>
+                    <li>Exames que sustentam a urgência</li>
+                    <li>Tempo em diálise e intercorrências recentes</li>
+                    <li>Tratamentos já tentados</li>
+                    <li>Por que a urgência se aplica agora</li>
+                </ul>
             </div>
+            <textarea th:field="*{justificativaClinica}" class="form-control" rows="5" required
+                      placeholder="Descreva o quadro clínico e o motivo do pedido de urgência renal."></textarea>
+            <div class="form-text d-flex justify-content-between">
+                <span>Quanto mais completo, menor a chance de a equipe pedir informação complementar.</span>
+                <span id="justificativaContador" class="text-muted text-nowrap ms-2">0 caracteres</span>
+            </div>
+        </div>
 
-            <hr>
-            <div>
-                <label class="form-label" th:for="documentos">Documentos clínicos</label>
+        <div class="secao-rotulo">Exames e laudos</div>
+        <h2 class="secao-titulo">Documentos clínicos</h2>
+        <div class="superficie-apoio p-3 mb-3">
+            <!-- Zona de upload (M6/V6): só CSS em volta do <input type="file">
+                 que já existia - mesmo id/name, mesmo comportamento nativo
+                 (inclusive acessibilidade: o input real continua visível e
+                 focável, nunca escondido atrás de um <label> proxy). -->
+            <div class="zona-upload">
+                <i class="bi bi-cloud-arrow-up-fill zona-upload-icone" aria-hidden="true"></i>
+                <label class="form-label fw-semibold" th:for="documentos">Documentos clínicos</label>
                 <input type="file" id="documentos" name="documentos" class="form-control" multiple
                        accept=".pdf,.png,.jpg,.jpeg,.eml,.msg">
                 <div class="form-text text-muted">
                     PDF, imagem (PNG/JPG) ou cópia do e-mail (EML/MSG). Pode selecionar vários arquivos
                     (até 25 MB cada).
                 </div>
-                <div id="documentosResumo" class="alert alert-success d-none d-flex align-items-center gap-2 py-2 mt-2 mb-0"
-                     role="status">
-                    <i class="bi bi-check-circle-fill fs-5"></i>
-                    <span id="documentosResumoTexto" class="fw-semibold"></span>
-                </div>
-                <!--/* Aviso preventivo de tamanho total (soma de todos os arquivos
-                       selecionados) - so aparece se ultrapassar um limiar razoavel,
-                       nao bloqueia o envio. */-->
-                <div id="documentosAvisoTamanho" class="alert alert-warning d-none d-flex align-items-start gap-2 py-2 mt-2 mb-0"
-                     role="alert">
-                    <i class="bi bi-exclamation-triangle-fill mt-1"></i>
-                    <span id="documentosAvisoTamanhoTexto"></span>
-                </div>
-                <ul id="documentosSelecionados" class="list-group mt-2"></ul>
             </div>
+            <div id="documentosResumo" class="alert alert-success d-none d-flex align-items-center gap-2 py-2 mt-2 mb-0"
+                 role="status">
+                <i class="bi bi-check-circle-fill fs-5"></i>
+                <span id="documentosResumoTexto" class="fw-semibold"></span>
+            </div>
+            <!--/* Aviso preventivo de tamanho total (soma de todos os arquivos
+                   selecionados) - so aparece se ultrapassar um limiar razoavel,
+                   nao bloqueia o envio. */-->
+            <div id="documentosAvisoTamanho" class="alert alert-warning d-none d-flex align-items-start gap-2 py-2 mt-2 mb-0"
+                 role="alert">
+                <i class="bi bi-exclamation-triangle-fill mt-1"></i>
+                <span id="documentosAvisoTamanhoTexto"></span>
+            </div>
+            <ul id="documentosSelecionados" class="list-group mt-2"></ul>
         </div>
-        <div class="card-footer d-flex justify-content-between align-items-center">
+
+        <div class="card d-flex flex-row justify-content-between align-items-center p-3">
             <a th:href="@{/solicitante}" class="btn btn-link text-muted p-0"
                data-confirm-msg="Descartar o preenchimento desta solicitação? Os dados digitados serão perdidos.">
                 Cancelar
@@ -149,6 +177,7 @@
             </div>
         </div>
     </form>
+    </div>
 </main>
 
 <script th:replace="~{layout :: scripts}"></script>
