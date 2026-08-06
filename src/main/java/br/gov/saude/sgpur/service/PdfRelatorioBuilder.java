@@ -31,7 +31,18 @@ class PdfRelatorioBuilder {
 
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    static final Color AZUL = new Color(13, 110, 253);
+    // AZUL institucional (--rs-blue do app.css), nao mais o $primary do
+    // Bootstrap 5 (#0D6EFD, new Color(13, 110, 253)) que o documento usava
+    // antes - ver docs/RELATORIO-REFORMULACAO-RELATORIO-FINAL-PDF-2026-08.md
+    // secao 6.1. Contraste branco-sobre-fundo sobe de 4,50:1 (limite exato
+    // da WCAG AA) para 8,39:1, relevante num documento feito para ser
+    // impresso e fotocopiado. Escopo estrito desta troca: SO o Relatorio
+    // Final (esta classe) - CINZA/VERDE_ESCURO/VERMELHO permanecem os
+    // mesmos defaults do Bootstrap, e o Relatorio Anual/Relatorio do
+    // Avaliador (que replicam essas constantes em suas proprias classes)
+    // NAO foram tocados; unificar a paleta nos demais documentos e decisao
+    // de produto separada, ainda nao aprovada.
+    static final Color AZUL = new Color(0x1A, 0x4D, 0x8F);
     static final Color CINZA = new Color(108, 117, 125);
     static final Color CINZA_BORDA = new Color(222, 226, 230);
     static final Color VERDE_ESCURO = new Color(25, 135, 84);
