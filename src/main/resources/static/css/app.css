@@ -112,6 +112,30 @@
     --saur-font-md: 1rem;
     --saur-font-lg: 1.25rem;
     --saur-font-xl: 1.75rem;
+
+    /* === Design system - nivel 2, leva de redesign visual do Portal do
+       Solicitante (2026-08-06, docs/RELATORIO-REDESIGN-VISUAL-SOLICITANTE-2026-08.md,
+       Anexo B) ===
+       Elevacao em 3 degraus. Regra de uso: no MAXIMO um elemento por tela usa
+       elev-2 - se dois cartoes "importam", nenhum importa. */
+    --saur-elev-0: none;                  /* superficie de apoio (sunken) */
+    --saur-elev-1: var(--rs-shadow);      /* cartao padrao - o que existe hoje */
+    --saur-elev-2: var(--rs-shadow-md);   /* o cartao que importa na tela */
+
+    /* Superficies tintadas + a cor de texto OBRIGATORIA sobre cada uma.
+       Nunca usar a variante base (--rs-green/--rs-gold/...) como texto sobre a
+       superficie clara correspondente: ver Anexo C do relatorio - o dourado
+       da 1,85:1 e o verde 4,11:1, ambos reprovam em WCAG AA. As variantes
+       -dark existem exatamente para isto. */
+    --saur-surface-ok: var(--rs-green-light);          --saur-on-ok: var(--rs-green-dark);
+    --saur-surface-danger: var(--rs-red-light);        --saur-on-danger: var(--rs-red-dark);
+    --saur-surface-attention: var(--rs-gold-light);    --saur-on-attention: var(--rs-gold-dark);
+    --saur-surface-info: var(--rs-blue-light);         --saur-on-info: var(--rs-blue);
+
+    /* Degrau tipografico acima do --saur-font-xl (1.75rem) - infraestrutura
+       do Anexo B; nao consumido em nenhum lugar nesta leva (o titulo do
+       cartao de resultado usa --saur-font-xl, nao este). */
+    --saur-font-2xl: 2.25rem;
 }
 
 /* === Densidade por portal (design system, 2026-08-05) ===
