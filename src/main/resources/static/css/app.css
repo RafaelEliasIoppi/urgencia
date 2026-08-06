@@ -88,6 +88,13 @@
     max-width: 980px;
 }
 
+/* Texto livre digitado pelo usuario (justificativa clinica, detalhe de
+   situacao etc.) que precisa preservar quebras de linha - substitui o
+   style="white-space: pre-wrap;" repetido inline. */
+.text-pre-wrap {
+    white-space: pre-wrap;
+}
+
 /* Area de rolagem do chat (Portal do Solicitante/processo) - substitui o
    style="max-height:250px;overflow-y:auto;" antes inline. */
 .chat-box {

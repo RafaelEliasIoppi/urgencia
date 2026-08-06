@@ -40,8 +40,8 @@
                 <div class="flex-grow-1">
                     <h2 class="h5 mb-1" th:text="${situacao.titulo}">Situação do pedido</h2>
                     <p class="mb-2" th:text="${situacao.mensagem}">Mensagem explicando a situação.</p>
-                    <div th:if="${situacao.detalhe != null}" class="p-2 bg-light rounded border small mb-2"
-                         style="white-space: pre-wrap;" th:text="${situacao.detalhe}">Detalhe adicional.</div>
+                    <div th:if="${situacao.detalhe != null}" class="p-2 bg-light rounded border small mb-2 text-pre-wrap"
+                         th:text="${situacao.detalhe}">Detalhe adicional.</div>
 
                     <!-- Ação primária: baixar o documento final (comprovante SNT / ofício),
                          promovida a botão de destaque em vez de link pequeno dentro de um
@@ -151,7 +151,7 @@
                 <dd class="col-sm-8"
                     th:text="${#temporals.format(solicitacao.dataEnvio, 'dd/MM/yyyy HH:mm')}"></dd>
                 <dt class="col-sm-4">Justificativa clínica</dt>
-                <dd class="col-sm-8" th:text="${solicitacao.justificativaClinica}" style="white-space: pre-wrap;"></dd>
+                <dd class="col-sm-8 text-pre-wrap" th:text="${solicitacao.justificativaClinica}"></dd>
             </dl>
         </div>
     </div>
