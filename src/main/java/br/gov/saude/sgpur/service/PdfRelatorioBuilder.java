@@ -3,7 +3,9 @@ package br.gov.saude.sgpur.service;
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
+import br.gov.saude.sgpur.domain.ResultadoParecer;
 import br.gov.saude.sgpur.domain.StatusProcesso;
+import br.gov.saude.sgpur.domain.TipoAnexo;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.*;
 import org.slf4j.Logger;
@@ -73,7 +75,7 @@ class PdfRelatorioBuilder {
     // Merge com anexos
     // -----------------------------------------------------------------------
 
-    byte[] mergeComAnexos(byte[] summary, List<Anexo> pdfs, List<Anexo> naoPdf)
+    byte[] mergeComAnexos(byte[] summary, List<Anexo> pdfs, List<Anexo> naoPdf, String fechoTexto)
             throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         Document doc = new Document();
@@ -91,10 +93,10 @@ class PdfRelatorioBuilder {
             if (!Files.exists(path)) {
                 log.warn("Anexo PDF nao encontrado no disco: {} ({})", a.getNomeArquivo(), path);
                 adicionarPaginaAviso(copier,
-                    "Anexo nao encontrado: " + a.getNomeArquivo(),
+                    "Anexo não encontrado: " + a.getNomeArquivo(),
                     "O arquivo \"" + a.getNomeArquivo()
-                        + "\" (" + a.getTipo().getDescricao()
-                        + ") nao foi localizado no disco.");
+                        + "\" (" + descricaoTipoAnexo(a.getTipo())
+                        + ") não foi localizado no disco.");
                 continue;
             }
             try (PdfReader reader = new PdfReader(Files.readAllBytes(path))) {
@@ -105,20 +107,30 @@ class PdfRelatorioBuilder {
                 log.error("Erro ao importar anexo PDF {}: {}", a.getNomeArquivo(), e.getMessage());
                 adicionarPaginaAviso(copier,
                     "Erro ao importar: " + a.getNomeArquivo(),
-                    "Nao foi possivel importar \"" + a.getNomeArquivo()
-                        + "\" (" + a.getTipo().getDescricao()
+                    "Não foi possível importar \"" + a.getNomeArquivo()
+                        + "\" (" + descricaoTipoAnexo(a.getTipo())
                         + "): " + e.getMessage());
             }
         }
 
         for (Anexo a : naoPdf) {
             adicionarPaginaAviso(copier,
-                "Anexo (formato nao-PDF): " + a.getNomeArquivo(),
-                "Tipo: " + a.getTipo().getDescricao()
+                "Anexo (formato não-PDF): " + a.getNomeArquivo(),
+                "Tipo: " + descricaoTipoAnexo(a.getTipo())
                     + "\nArquivo: " + a.getNomeArquivo()
                     + "\nFormato: " + (a.getContentType() != null ? a.getContentType() : "desconhecido")
                     + "\nData: " + (a.getDataUpload() != null ? a.getDataUpload().format(DATA) : "-")
-                    + "\n\nEste anexo esta disponivel para download na pagina do processo.");
+                    + "\n\nEste anexo está disponível para download na página do processo.");
+        }
+
+        // A11 do relatorio V2: o fecho do documento sai do fim do SUMARIO
+        // (onde ficava antes de tudo isto, ou seja, ANTES dos anexos
+        // importados) e vira a ultima pagina do documento inteiro - dossies
+        // reais tem dezenas de paginas de exame depois do sumario, e um
+        // "documento gerado automaticamente por..." no meio do dossie nao
+        // faz sentido como fecho.
+        if (fechoTexto != null && !fechoTexto.isBlank()) {
+            adicionarPaginaFecho(copier, fechoTexto);
         }
 
         doc.close();
@@ -145,6 +157,26 @@ class PdfRelatorioBuilder {
         }
     }
 
+    /**
+     * Ultima pagina do documento inteiro (apos todos os anexos importados),
+     * so com o texto de fecho institucional - ver {@link #mergeComAnexos}.
+     */
+    private void adicionarPaginaFecho(PdfCopy copier, String texto)
+            throws DocumentException, IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Document d = new Document(PageSize.A4, 40, 40, 50, 40);
+        PdfWriter.getInstance(d, baos);
+        d.open();
+        Paragraph p = new Paragraph(texto, FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA));
+        p.setAlignment(Element.ALIGN_CENTER);
+        d.add(p);
+        d.close();
+
+        try (PdfReader reader = new PdfReader(baos.toByteArray())) {
+            copier.addPage(copier.getImportedPage(reader, 1));
+        }
+    }
+
     // -----------------------------------------------------------------------
     // Capa do relatorio / processo
     // -----------------------------------------------------------------------
@@ -160,7 +192,6 @@ class PdfRelatorioBuilder {
         Font fValor = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
         Font fCabTabela = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
         Font fCelTabela = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.BLACK);
-        Font fRodapeCapa = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA);
 
         try {
             byte[] logoBytes = getClass().getClassLoader()
@@ -182,7 +213,7 @@ class PdfRelatorioBuilder {
         secretaria.setAlignment(Element.ALIGN_CENTER);
         doc.add(secretaria);
 
-        Paragraph urgenciaRenal = new Paragraph("URGENCIA RENAL", fUrgencia);
+        Paragraph urgenciaRenal = new Paragraph("URGÊNCIA RENAL", fUrgencia);
         urgenciaRenal.setAlignment(Element.ALIGN_CENTER);
         urgenciaRenal.setSpacingAfter(36);
         doc.add(urgenciaRenal);
@@ -219,7 +250,7 @@ class PdfRelatorioBuilder {
             adicionarLinhaCapa(tDados, "E-mail do solicitante:", nvl(p.getSolicitanteEmail()), fRotulo, fValor);
             String dataSit = p.getDataSituacaoEspecial() != null
                 ? p.getDataSituacaoEspecial().format(DATA) : "-";
-            adicionarLinhaCapa(tDados, "Data de solicitacao da urgencia renal:", dataSit, fRotulo, fValor);
+            adicionarLinhaCapa(tDados, "Data de solicitação da urgência renal:", dataSit, fRotulo, fValor);
         }
 
         // Fallback: processo ja finalizado sem dataDecisao (dado legado/
@@ -234,7 +265,7 @@ class PdfRelatorioBuilder {
         } else {
             dataDecisaoStr = "-";
         }
-        adicionarLinhaCapa(tDados, "Data da decisao:", dataDecisaoStr, fRotulo, fValor);
+        adicionarLinhaCapa(tDados, "Data da decisão:", dataDecisaoStr, fRotulo, fValor);
 
         if (p.getStatus().isFinalizado()) {
             String textoResultado;
@@ -266,7 +297,7 @@ class PdfRelatorioBuilder {
         }
         doc.add(tDados);
 
-        Paragraph tituloAval = new Paragraph("MEDICOS AVALIADORES", fUrgencia);
+        Paragraph tituloAval = new Paragraph("MÉDICOS AVALIADORES", fUrgencia);
         tituloAval.setAlignment(Element.ALIGN_CENTER);
         tituloAval.setSpacingAfter(6);
         doc.add(tituloAval);
@@ -299,7 +330,7 @@ class PdfRelatorioBuilder {
                 textoResultadoPar = "Impedido (conflito de interesse)";
                 corResultadoPar = CINZA;
             } else if (par.getResultado() != null) {
-                textoResultadoPar = par.getResultado().getDescricao();
+                textoResultadoPar = descricaoResultado(par.getResultado());
                 if (par.getResultado().name().equals("FAVORAVEL")) {
                     corResultadoPar = VERDE_ESCURO;
                 } else if (par.getResultado().name().equals("NAO_FAVORAVEL")) {
@@ -325,12 +356,12 @@ class PdfRelatorioBuilder {
             tAval.addCell(cPar);
         }
         doc.add(tAval);
-
-        Paragraph rodapeCapa = new Paragraph(
-            "Documento gerado pelo SAUR em " + LocalDate.now().format(DATA), fRodapeCapa);
-        rodapeCapa.setAlignment(Element.ALIGN_CENTER);
-        rodapeCapa.setSpacingBefore(20);
-        doc.add(rodapeCapa);
+        // A12 do relatorio V2: NAO repetir aqui um segundo "emitido em" -
+        // a pagina seguinte do sumario (RelatorioService.gerarSummary) ja
+        // estampa "Emitido em DD/MM/AAAA HH:mm" logo abaixo do titulo, com
+        // mais precisao (data+hora) que este rodape (so data). Dois carimbos
+        // de emissao em formatos diferentes na mesma dupla de paginas era
+        // ruido, nao informacao a mais.
     }
 
     private void adicionarLinhaCapa(PdfPTable t, String rotulo, String valor,
@@ -441,5 +472,52 @@ class PdfRelatorioBuilder {
 
     static String nvl(String s) {
         return (s == null || s.isBlank()) ? "-" : s;
+    }
+
+    /**
+     * Traduz {@link ResultadoParecer} para texto acentuado, SEM tocar no
+     * enum: {@code ResultadoParecer.getDescricao()} alimenta varios outros
+     * servicos/relatorios/exportacoes e o `avaliador/lista.html` -
+     * proibicao documentada no CLAUDE.md e no
+     * RELATORIO-UI-OPERADOR-SISTEMA-2026-08.md §10. Mesmo padrao ja usado
+     * la (tradutor local via switch), aplicado aqui so para o texto que sai
+     * no Relatorio Final.
+     */
+    static String descricaoResultado(ResultadoParecer r) {
+        if (r == null) {
+            return null;
+        }
+        return switch (r) {
+            case FAVORAVEL -> "Favorável";
+            case NAO_FAVORAVEL -> "Não favorável";
+            case SOLICITA_INFORMACAO -> "Solicita informação";
+            case SEM_RESPOSTA -> "Sem resposta";
+        };
+    }
+
+    /**
+     * Traduz {@link TipoAnexo} para texto acentuado, mesmo raciocinio de
+     * {@link #descricaoResultado} - so o texto impresso no Relatorio Final
+     * muda; {@code TipoAnexo.getDescricao()} continua sem acento para quem
+     * mais consome (badge de anexo em processos/detalhe.html e outros).
+     */
+    static String descricaoTipoAnexo(TipoAnexo t) {
+        return switch (t) {
+            case SOLICITACAO_AVALIADOR -> "Solicitação de avaliação gerada pelo sistema";
+            case DOCUMENTO_CLINICO_AVALIADOR -> "Documento clínico anonimizado para os avaliadores";
+            case DOCUMENTO_PORTAL_NAO_ANONIMIZADO ->
+                "Documento do Portal do Solicitante pendente de anonimização (não vai aos avaliadores)";
+            case DOCUMENTO_PACIENTE -> "Documento do paciente";
+            case EMAIL_PARECER_RECEBIDO -> "Cópia do e-mail de parecer recebido do avaliador";
+            case ANEXO_AVALIADOR -> "Documento anexado pelo avaliador junto ao parecer (Portal do Avaliador)";
+            case INFO_COMPLEMENTAR -> "Pedido/resposta de informação complementar (solicitante)";
+            case OFICIO_INDEFERIMENTO -> "Ofício de indeferimento";
+            case COMPROVANTE_SNT -> "Comprovante de inserção da urgência renal no SNT";
+            case EMAIL_RESPOSTA_SOLICITANTE -> "Cópia do e-mail de resposta ao solicitante";
+            case COMPROVANTE_ENVIO_SOLICITANTE ->
+                "Comprovante de envio da resposta ao solicitante (print/PDF do e-mail)";
+            case RELATORIO_FINAL -> "Relatório final do processo";
+            case OUTRO -> "Outro";
+        };
     }
 }

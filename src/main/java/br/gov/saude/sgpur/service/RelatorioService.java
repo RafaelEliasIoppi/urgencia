@@ -29,8 +29,19 @@ import org.springframework.transaction.annotation.Transactional;
  *      andamento e relacao de anexos);
  *   2. Copia integral de todos os documentos anexados ao processo (PDFs),
  *      inseridos como paginas apos o sumario;
- *   3. Pagina informativa para anexos nao-PDF.
+ *   3. Pagina informativa para anexos nao-PDF;
+ *   4. Pagina de fecho institucional, ao final de tudo (ver A11 do relatorio
+ *      V2 - antes ficava presa ao fim do sumario, ANTES dos anexos).
  * Todas as paginas recebem cabecalho padrao e numeracao.
+ *
+ * <p><b>Acentuacao (R2 do relatorio V2):</b> os textos fixos deste servico e
+ * de {@link PdfRelatorioBuilder} sao escritos com acentuacao correta -
+ * "ficam de fora dessa regra {@code ResultadoParecer.getDescricao()} e
+ * {@code TipoAnexo.getDescricao()} EM SI (nao devem ser acentuados, ver
+ * CLAUDE.md e RELATORIO-UI-OPERADOR-SISTEMA-2026-08.md §10), que sao
+ * traduzidos localmente por {@link PdfRelatorioBuilder#descricaoResultado}/
+ * {@link PdfRelatorioBuilder#descricaoTipoAnexo} so para o texto impresso
+ * neste documento.</p>
  */
 @Service
 public class RelatorioService {
@@ -79,14 +90,16 @@ public class RelatorioService {
                 .sorted(Comparator.comparing(Anexo::getDataUpload))
                 .toList();
 
-            // 4. Monta o PDF final com todas as paginas
-            byte[] merged = pdfBuilder.mergeComAnexos(summary, pdfs, naoPdf);
+            // 4. Monta o PDF final com todas as paginas (o fecho institucional
+            // vai por ultimo, DEPOIS de todos os anexos - ver A11).
+            String fecho = "Documento gerado automaticamente pelo " + PdfCabecalhoStamper.NOME_SISTEMA + ".";
+            byte[] merged = pdfBuilder.mergeComAnexos(summary, pdfs, naoPdf, fecho);
 
             // 5. Adiciona cabecalho e numeracao em todas as paginas (mesmo
             // padrao institucional do Relatorio Anual, via PdfCabecalhoStamper).
             String iniciais = Iniciais.de(p.getPacienteNome());
             return PdfCabecalhoStamper.estampar(merged,
-                PdfCabecalhoStamper.NOME_INSTITUICAO + " - URGENCIA RENAL",
+                PdfCabecalhoStamper.NOME_INSTITUICAO + " - URGÊNCIA RENAL",
                 "Processo CET-RS " + p.getNumero() + " - Paciente " + iniciais);
 
         } catch (Exception e) {
@@ -107,39 +120,41 @@ public class RelatorioService {
         Font fSecao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
 
         // Pagina de capa
-        pdfBuilder.adicionarCapa(doc, p, "Relatorio do Processo " + p.getNumero(), false);
+        pdfBuilder.adicionarCapa(doc, p, "Relatório do Processo " + p.getNumero(), false);
         doc.newPage();
 
-        Paragraph titulo = new Paragraph("RELATORIO FINAL - PROCESSO DE URGENCIA RENAL", fTitulo);
+        Paragraph titulo = new Paragraph("RELATÓRIO FINAL - PROCESSO DE URGÊNCIA RENAL", fTitulo);
         titulo.setAlignment(Element.ALIGN_CENTER);
         doc.add(titulo);
 
+        // A12: este e o UNICO carimbo de emissao do documento (data+hora) -
+        // a capa nao repete um segundo "emitido em" com formato diferente.
         Paragraph sub = new Paragraph(
-            p.identificacao() + "  |  Situacao: " + p.getStatus().getDescricao()
+            p.identificacao() + "  |  Situação: " + p.getStatus().getDescricao()
                 + "  |  Emitido em " + java.time.LocalDateTime.now().format(DATA_HORA), fSub);
         sub.setAlignment(Element.ALIGN_CENTER);
         sub.setSpacingAfter(14);
         doc.add(sub);
 
-        pdfBuilder.secao(doc, fSecao, "1. Dados da solicitacao");
+        pdfBuilder.secao(doc, fSecao, "1. Dados da solicitação");
         PdfPTable t1 = pdfBuilder.tabelaDados();
-        pdfBuilder.linha(t1, "Numero do processo", p.getNumero());
+        pdfBuilder.linha(t1, "Número do processo", p.getNumero());
         pdfBuilder.linha(t1, "Paciente (receptor)", p.getPacienteNome());
         pdfBuilder.linha(t1, "RGCT / SNT", PdfRelatorioBuilder.nvl(p.getPacienteRgct()));
         pdfBuilder.linha(t1, "Equipe solicitante", p.getSolicitanteEquipe());
         pdfBuilder.linha(t1, "E-mail do solicitante", PdfRelatorioBuilder.nvl(p.getSolicitanteEmail()));
-        pdfBuilder.linha(t1, "Data de solicitacao da urgencia renal",
+        pdfBuilder.linha(t1, "Data de solicitação da urgência renal",
             p.getDataSituacaoEspecial() != null ? p.getDataSituacaoEspecial().format(DATA) : "-");
         pdfBuilder.linha(t1, "Data de cadastro",
             p.getDataCadastro() != null ? p.getDataCadastro().format(DATA_HORA) : "-");
-        pdfBuilder.linha(t1, "Observacoes", PdfRelatorioBuilder.nvl(p.getObservacoes()));
+        pdfBuilder.linha(t1, "Observações", PdfRelatorioBuilder.nvl(p.getObservacoes()));
         doc.add(t1);
 
-        pdfBuilder.secao(doc, fSecao, "2. Pareceres dos medicos (Urgencia Renal)");
+        pdfBuilder.secao(doc, fSecao, "2. Pareceres dos médicos (Urgência Renal)");
         PdfPTable t2 = new PdfPTable(new float[]{3, 2, 2});
         t2.setWidthPercentage(100);
         t2.setSpacingBefore(4);
-        pdfBuilder.cabecalho(t2, "Medico", "Parecer", "Data da resposta");
+        pdfBuilder.cabecalho(t2, "Médico", "Parecer", "Data da resposta");
         for (Parecer par : p.getPareceres()) {
             pdfBuilder.celula(t2, par.getMembro().getRotulo(), Element.ALIGN_LEFT, false);
             // Impedido (conflito de interesse - avaliador e o proprio
@@ -151,24 +166,34 @@ public class RelatorioService {
             if (par.isImpedido()) {
                 textoParecer = "Impedido - conflito de interesse (solicitante do processo)";
             } else if (par.getResultado() != null) {
-                textoParecer = par.getResultado().getDescricao();
+                textoParecer = PdfRelatorioBuilder.descricaoResultado(par.getResultado());
             } else {
                 textoParecer = p.getStatus().isFinalizado() ? "Dispensado pela maioria" : "Pendente";
             }
             pdfBuilder.celula(t2, textoParecer, Element.ALIGN_LEFT, false);
             pdfBuilder.celula(t2, par.getDataResposta() != null ? par.getDataResposta().format(DATA) : "-",
                 Element.ALIGN_LEFT, false);
+
+            // A5 (resto): "Enviado em" (dataEnvio) fica visivel mesmo antes
+            // do voto - e o prazo de resposta do avaliador que o documento
+            // de arquivo precisa deixar legivel. "Registrado por" (a trilha
+            // de auditoria do voto autenticado, que desde 2026-07-27
+            // SUBSTITUI o antigo anexo comprobatorio) so aparece apos o voto.
+            StringBuilder linhaInfo = new StringBuilder();
+            if (par.getDataEnvio() != null) {
+                linhaInfo.append("Enviado em: ").append(par.getDataEnvio().format(DATA));
+            }
             if (par.getResultado() != null && par.getDataHoraVoto() != null) {
-                // Trilha de auditoria do voto: desde 2026-07-27 o registro
-                // autenticado (usuario + dataHoraVoto + origem, com IP no log
-                // de auditoria) e o que SUBSTITUIU o antigo anexo
-                // comprobatorio do parecer - o documento que arquiva o
-                // processo precisa carregar essa prova, nao so a data.
                 String origemTexto = par.getOrigem() != null ? par.getOrigem().getDescricao() : "-";
-                PdfPCell cAud = new PdfPCell(new Phrase(
-                    "Registrado por: " + PdfRelatorioBuilder.nvl(par.getVotadoPor())
-                        + " em " + par.getDataHoraVoto().format(DATA_HORA)
-                        + " (" + origemTexto + ")",
+                if (linhaInfo.length() > 0) {
+                    linhaInfo.append("   |   ");
+                }
+                linhaInfo.append("Registrado por: ").append(PdfRelatorioBuilder.nvl(par.getVotadoPor()))
+                    .append(" em ").append(par.getDataHoraVoto().format(DATA_HORA))
+                    .append(" (").append(origemTexto).append(")");
+            }
+            if (linhaInfo.length() > 0) {
+                PdfPCell cAud = new PdfPCell(new Phrase(linhaInfo.toString(),
                     FontFactory.getFont(FontFactory.HELVETICA, 8, CINZA)));
                 cAud.setColspan(3);
                 cAud.setPadding(4);
@@ -191,78 +216,81 @@ public class RelatorioService {
             }
         }
         doc.add(t2);
-        // A frase da regra e fixa em "2 de 3" na maioria dos casos, mas isso
-        // contradiz a decisao registrada quando o processo foi deferido pela
-        // excecao regimental do Coordenador da CET-RS (voto favoravel dele
-        // basta, ver ProcessoValidator.favoraveisNecessariosParaDeferir):
-        // sem este tratamento, o documento oficial de arquivo chegava a
-        // registrar "Favoraveis: 1 (regra: 2 de 3 defere o processo)" ao
-        // lado de "DEFERIDO", como se a propria regra citada tivesse sido
-        // violada. Fora desse caso especifico o texto permanece exatamente
-        // como sempre foi (inclusive para o deferimento por maioria normal
-        // e para o indeferimento).
-        Paragraph fav;
-        if (processoService.deferidoPeloCoordenador(p)) {
-            String nomeCoordenador = p.getPareceres().stream()
-                .filter(par -> par.getResultado() == ResultadoParecer.FAVORAVEL
-                    && par.getMembro() != null && par.getMembro().isCoordenador())
-                .map(par -> par.getMembro().getNome())
-                .findFirst()
-                .orElse("Coordenador da CET-RS");
-            fav = new Paragraph(
-                "Deferido pelo voto do Coordenador da CET-RS (" + nomeCoordenador
-                    + "), que defere isoladamente, conforme excecao regimental que dispensa "
-                    + "a maioria de " + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
-                    + ProcessoService.AVALIADORES_POR_PROCESSO + ". Favoraveis: "
-                    + processoService.contarFavoraveis(p) + ".",
-                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA));
-        } else {
-            fav = new Paragraph(
-                "Favoraveis: " + processoService.contarFavoraveis(p) + " (regra: "
-                    + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
-                    + ProcessoService.AVALIADORES_POR_PROCESSO + " defere o processo).",
-                FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA));
+        // B3 do relatorio V2: a frase que resume a regra de decisao era fixa
+        // em "Favoraveis: N (regra: 2 de 3 defere o processo)" mesmo quando o
+        // processo foi INDEFERIDO (cita a regra do deferimento ao lado da
+        // decisao oposta) ou ainda esta em andamento (enuncia uma regra de
+        // deferimento sem nenhuma decisao tomada). O PR #45 ja tinha
+        // corrigido o caso do coordenador (voto isolado dele basta - ver
+        // ProcessoValidator.favoraveisNecessariosParaDeferir); aqui os demais
+        // casos ficam simetricos: DEFERIDO cita a regra de favoraveis,
+        // INDEFERIDO cita a regra de desfavoraveis (DESFAVORAVEIS_PARA_INDEFERIR),
+        // CANCELADO nao imprime frase de regra (nenhuma foi aplicada) e
+        // processo em andamento mostra os dois contadores sem afirmar qual
+        // decisao eles produzem.
+        Paragraph fav = paragrafoRegraDecisao(p);
+        if (fav != null) {
+            fav.setSpacingBefore(4);
+            doc.add(fav);
         }
-        fav.setSpacingBefore(4);
-        doc.add(fav);
 
-        pdfBuilder.secao(doc, fSecao, "3. Decisao final");
+        // B4+A7 do relatorio V2 (tratados como item unico): a secao "3.
+        // Decisao final" era uma lista FIXA de 8 linhas impressa
+        // incondicionalmente - metade delas garantidamente "-" conforme o
+        // status (numero do oficio/datas do oficio so fazem sentido em
+        // INDEFERIDO; data de envio ao SNT so em DEFERIDO). Agora o titulo
+        // muda para "3. Situação atual" enquanto o processo nao foi decidido
+        // (rotula corretamente a promessa do titulo - ver Decisao 3 do
+        // relatorio V2, que rotula "RELATORIO PARCIAL" no cabecalho da rota
+        // sem bloquea-la) e cada bloco de linhas so aparece se for aplicavel
+        // ao status atual.
+        boolean finalizado = p.getStatus().isFinalizado();
+        pdfBuilder.secao(doc, fSecao, finalizado ? "3. Decisão final" : "3. Situação atual");
         PdfPTable t3 = pdfBuilder.tabelaDados();
-        if (p.getStatus().isFinalizado()) {
+        if (finalizado) {
             // Resultado com destaque equivalente ao da capa (negrito, fonte
             // maior, CAIXA ALTA + cor semantica) - e o dado mais importante
-            // do documento e antes era so mais uma linha rotulo:valor em 9pt
-            // igual as demais. A cor e bonus: "DEFERIDO"/"INDEFERIDO" em
-            // caixa alta e negrito ja carrega a informacao mesmo impresso em
-            // P&B.
+            // do documento. A cor e bonus: "DEFERIDO"/"INDEFERIDO" em caixa
+            // alta e negrito ja carrega a informacao mesmo impresso em P&B.
             Color corResultado = switch (p.getStatus()) {
                 case DEFERIDO -> PdfRelatorioBuilder.VERDE_ESCURO;
                 case INDEFERIDO -> PdfRelatorioBuilder.VERMELHO;
                 default -> CINZA;
             };
             pdfBuilder.linhaDestaque(t3, "Resultado", p.getStatus().getDescricao(), corResultado);
+            pdfBuilder.linha(t3, "Data da decisão",
+                p.getDataDecisao() != null ? p.getDataDecisao().format(DATA_HORA) : "-");
         } else {
-            // Processo ainda em tramitacao (nao decidido): a capa do mesmo
-            // documento (PdfRelatorioBuilder.adicionarCapa) ja trata esse
-            // caso corretamente com "Em andamento" - antes esta secao
-            // imprimia p.getStatus().getDescricao() incondicionalmente,
-            // entao um processo ENVIADO chegava a anunciar "Resultado:
-            // ENVIADO" em destaque de 13pt, como se ENVIADO fosse a decisao.
-            // Sem linhaDestaque (sem CAIXA ALTA/13pt): a informacao nao e
-            // uma decisao e nao deve ter o mesmo peso visual de uma.
-            pdfBuilder.linha(t3, "Resultado", "Em andamento (processo ainda nao decidido)");
+            // Processo ainda em tramitacao (nao decidido): antes esta secao
+            // imprimia p.getStatus().getDescricao() incondicionalmente, entao
+            // um processo ENVIADO chegava a anunciar "Resultado: ENVIADO" em
+            // destaque de 13pt, como se ENVIADO fosse a decisao. Sem
+            // linhaDestaque (sem CAIXA ALTA/13pt): a informacao nao e uma
+            // decisao e nao deve ter o mesmo peso visual de uma.
+            pdfBuilder.linha(t3, "Resultado", "Em andamento (processo ainda não decidido)");
         }
-        pdfBuilder.linha(t3, "Data da decisao",
-            p.getDataDecisao() != null ? p.getDataDecisao().format(DATA_HORA) : "-");
-        pdfBuilder.linha(t3, "Motivo do indeferimento", PdfRelatorioBuilder.nvl(p.getMotivoIndeferimento()));
-        pdfBuilder.linha(t3, "Numero do oficio", PdfRelatorioBuilder.nvl(p.getNumeroOficio()));
-        pdfBuilder.linha(t3, "Data de emissao do oficio",
-            p.getDataEmissaoOficio() != null ? p.getDataEmissaoOficio().format(DATA) : "-");
-        pdfBuilder.linha(t3, "Data de envio do oficio",
-            p.getDataEnvioOficio() != null ? p.getDataEnvioOficio().format(DATA) : "-");
-        pdfBuilder.linha(t3, "Data de envio ao SNT",
-            p.getDataEnvioSnt() != null ? p.getDataEnvioSnt().format(DATA) : "-");
-        pdfBuilder.linha(t3, "E-mail enviado ao solicitante", p.isEmailEnviadoSolicitante() ? "Sim" : "Nao");
+        switch (p.getStatus()) {
+            case INDEFERIDO -> {
+                pdfBuilder.linha(t3, "Motivo do indeferimento", PdfRelatorioBuilder.nvl(p.getMotivoIndeferimento()));
+                pdfBuilder.linha(t3, "Número do ofício", PdfRelatorioBuilder.nvl(p.getNumeroOficio()));
+                pdfBuilder.linha(t3, "Data de emissão do ofício",
+                    p.getDataEmissaoOficio() != null ? p.getDataEmissaoOficio().format(DATA) : "-");
+                pdfBuilder.linha(t3, "Data de envio do ofício",
+                    p.getDataEnvioOficio() != null ? p.getDataEnvioOficio().format(DATA) : "-");
+                pdfBuilder.linha(t3, "E-mail enviado ao solicitante", p.isEmailEnviadoSolicitante() ? "Sim" : "Não");
+            }
+            case DEFERIDO -> {
+                pdfBuilder.linha(t3, "Data de envio ao SNT",
+                    p.getDataEnvioSnt() != null ? p.getDataEnvioSnt().format(DATA) : "-");
+                pdfBuilder.linha(t3, "E-mail enviado ao solicitante", p.isEmailEnviadoSolicitante() ? "Sim" : "Não");
+            }
+            default -> {
+                // CANCELADO nao exige oficio/comprovante SNT/e-mail formal
+                // (ver CLAUDE.md, "Processo Cancelado nao trava mais o
+                // progresso"); SOLICITADO/ENVIADO/SOLICITA_INFORMACAO ainda
+                // nao tem nenhum desses dados.
+            }
+        }
         doc.add(t3);
 
         pdfBuilder.secao(doc, fSecao, "4. Andamento do processo");
@@ -282,14 +310,14 @@ public class RelatorioService {
         }
         doc.add(t4);
 
-        pdfBuilder.secao(doc, fSecao, "5. Relacao de anexos");
+        pdfBuilder.secao(doc, fSecao, "5. Relação de anexos");
         if (p.getAnexos().isEmpty()) {
             doc.add(new Paragraph("Nenhum anexo registrado.",
                 FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA)));
         } else {
             // Tipo ganhou mais espaco (33% -> 47%) e Data encolheu (22% ->
-            // 16%, sobra de sobra para "dd/mm/aaaa"): TipoAnexo.getDescricao()
-            // costuma ser bem mais longo que o nome do arquivo ou a data,
+            // 16%, sobra de sobra para "dd/mm/aaaa"): a descricao do tipo
+            // costuma ser bem mais longa que o nome do arquivo ou a data,
             // e quebrava em 2 linhas de forma irregular com as proporcoes
             // antigas (3, 4, 2).
             PdfPTable t5 = new PdfPTable(new float[]{4.5f, 3.5f, 1.5f});
@@ -297,7 +325,7 @@ public class RelatorioService {
             t5.setSpacingBefore(4);
             pdfBuilder.cabecalho(t5, "Tipo", "Arquivo", "Data");
             for (Anexo a : p.getAnexos()) {
-                pdfBuilder.celula(t5, a.getTipo().getDescricao(), Element.ALIGN_LEFT, false);
+                pdfBuilder.celula(t5, PdfRelatorioBuilder.descricaoTipoAnexo(a.getTipo()), Element.ALIGN_LEFT, false);
                 pdfBuilder.celula(t5, a.getNomeArquivo(), Element.ALIGN_LEFT, false);
                 pdfBuilder.celula(t5, a.getDataUpload() != null ? a.getDataUpload().format(DATA) : "-",
                     Element.ALIGN_LEFT, false);
@@ -305,14 +333,75 @@ public class RelatorioService {
             doc.add(t5);
         }
 
-        Paragraph rodape = new Paragraph(
-            "Documento gerado automaticamente pelo " + PdfCabecalhoStamper.NOME_SISTEMA + ".",
-            FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA));
-        rodape.setAlignment(Element.ALIGN_CENTER);
-        rodape.setSpacingBefore(20);
-        doc.add(rodape);
+        // A11: o fecho institucional NAO fica mais aqui - foi movido para a
+        // ultima pagina do documento inteiro (apos todos os anexos
+        // importados), ver PdfRelatorioBuilder.mergeComAnexos/gerar() acima.
 
         doc.close();
         return out.toByteArray();
+    }
+
+    /**
+     * Frase que resume, em uma linha, a regra de decisao aplicada (ou a
+     * situacao atual, se o processo ainda nao foi decidido). Ver B3 no
+     * relatorio V2 - antes era um texto fixo (so tratava o caso do
+     * coordenador), que citava a regra de DEFERIMENTO mesmo em processos
+     * indeferidos ou ainda em andamento.
+     *
+     * @return {@code null} quando nenhuma frase de regra se aplica
+     *         (CANCELADO - nenhuma regra de maioria foi usada)
+     */
+    private Paragraph paragrafoRegraDecisao(Processo p) {
+        Font fReg = FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA);
+
+        // A frase da regra e fixa em "2 de 3" na maioria dos casos, mas isso
+        // contradiz a decisao registrada quando o processo foi deferido pela
+        // excecao regimental do Coordenador da CET-RS (voto favoravel dele
+        // basta, ver ProcessoValidator.favoraveisNecessariosParaDeferir):
+        // sem este tratamento, o documento oficial de arquivo chegava a
+        // registrar "Favoraveis: 1 (regra: 2 de 3 defere o processo)" ao
+        // lado de "DEFERIDO", como se a propria regra citada tivesse sido
+        // violada.
+        if (processoService.deferidoPeloCoordenador(p)) {
+            String nomeCoordenador = p.getPareceres().stream()
+                .filter(par -> par.getResultado() == ResultadoParecer.FAVORAVEL
+                    && par.getMembro() != null && par.getMembro().isCoordenador())
+                .map(par -> par.getMembro().getNome())
+                .findFirst()
+                .orElse("Coordenador da CET-RS");
+            return new Paragraph(
+                "Deferido pelo voto do Coordenador da CET-RS (" + nomeCoordenador
+                    + "), que defere isoladamente, conforme exceção regimental que dispensa "
+                    + "a maioria de " + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
+                    + ProcessoService.AVALIADORES_POR_PROCESSO + ". Favoráveis: "
+                    + processoService.contarFavoraveis(p) + ".",
+                fReg);
+        }
+
+        long favoraveis = processoService.contarFavoraveis(p);
+        long desfavoraveis = p.getPareceres().stream()
+            .filter(par -> par.getResultado() == ResultadoParecer.NAO_FAVORAVEL)
+            .count();
+
+        return switch (p.getStatus()) {
+            case DEFERIDO -> new Paragraph(
+                "Favoráveis: " + favoraveis + " (regra: "
+                    + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
+                    + ProcessoService.AVALIADORES_POR_PROCESSO + " defere o processo).",
+                fReg);
+            case INDEFERIDO -> new Paragraph(
+                "Desfavoráveis: " + desfavoraveis + " (regra: "
+                    + ProcessoService.DESFAVORAVEIS_PARA_INDEFERIR + " de "
+                    + ProcessoService.AVALIADORES_POR_PROCESSO + " indefere o processo).",
+                fReg);
+            case CANCELADO -> null;
+            default -> new Paragraph(
+                "Favoráveis: " + favoraveis + "   |   Desfavoráveis: " + desfavoraveis
+                    + " (decisão exige " + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
+                    + ProcessoService.AVALIADORES_POR_PROCESSO
+                    + " votos no mesmo sentido para deferir ou indeferir, ou o voto favorável "
+                    + "isolado do Coordenador da CET-RS para deferir).",
+                fReg);
+        };
     }
 }
