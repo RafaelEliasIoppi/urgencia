@@ -123,11 +123,31 @@ public class RelatorioService {
         // proprio AZUL institucional, ver PdfRelatorioBuilder.secao().
         Font fSecao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, AZUL);
 
-        // Pagina de capa
-        pdfBuilder.adicionarCapa(doc, p, "Relatório do Processo " + p.getNumero(), false);
-        doc.newPage();
+        // Decisao 7 do relatorio V2 (§7.7): capa separada ELIMINADA - o
+        // proprio sumario (esta pagina) vira a folha de rosto do documento.
+        // Antes havia uma pagina inteira so de capa (brasao grande + nome do
+        // orgao + titulo + tabela de dados + tabela de avaliadores), cujo
+        // conteudo era subconjunto do que as secoes 1/2/3 abaixo ja repetem
+        // por completo (achado 6.6 do relatorio original) - sobrava
+        // inclusive um terco de pagina em branco, e DOIS brasoes na mesma
+        // dupla de paginas (o da capa e o do carimbo institucional). O
+        // Oficio de Indeferimento - a regua de qualidade do sistema - nunca
+        // teve capa propria e e igualmente formal (brasao + nome do orgao +
+        // titulo + corpo, tudo numa pagina so). O cabecalho institucional
+        // compacto abaixo (brasao pequeno + nome do orgao + secretaria)
+        // substitui a capa antiga sem repetir dado nenhum.
+        pdfBuilder.cabecalhoInstitucionalCompacto(doc);
 
-        Paragraph titulo = new Paragraph("RELATÓRIO FINAL - PROCESSO DE URGÊNCIA RENAL", fTitulo);
+        // Decisao 3 do relatorio V2 (§7.3): quando o processo AINDA NAO foi
+        // decidido, o titulo avisa "RELATORIO PARCIAL" em vez de prometer um
+        // desfecho que nao existe - sem bloquear a rota (GET /processos/{id}/
+        // relatorio continua liberada em qualquer status; o operador tem uso
+        // legitimo de imprimir o andamento parcial). Simetrico a secao "3."
+        // virar "Situação atual" no mesmo caso (B4+A7, ja feito no R1b).
+        String rotuloDocumento = p.getStatus().isFinalizado()
+            ? "RELATÓRIO FINAL - PROCESSO DE URGÊNCIA RENAL"
+            : "RELATÓRIO PARCIAL - PROCESSO DE URGÊNCIA RENAL (processo ainda não decidido)";
+        Paragraph titulo = new Paragraph(rotuloDocumento, fTitulo);
         titulo.setAlignment(Element.ALIGN_CENTER);
         doc.add(titulo);
 
