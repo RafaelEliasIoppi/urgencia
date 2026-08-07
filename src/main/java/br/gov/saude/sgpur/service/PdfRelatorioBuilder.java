@@ -210,7 +210,7 @@ class PdfRelatorioBuilder {
         tDados.setHorizontalAlignment(Element.ALIGN_CENTER);
         tDados.setSpacingAfter(30);
 
-        adicionarLinhaCapa(tDados, "N do Processo:", nvl(p.getNumero()), fRotulo, fValor);
+        adicionarLinhaCapa(tDados, "Nº do Processo:", nvl(p.getNumero()), fRotulo, fValor);
         adicionarLinhaCapa(tDados, "Paciente:", nvl(p.getPacienteNome()), fRotulo, fValor);
         adicionarLinhaCapa(tDados, "RGCT / SNT:", nvl(p.getPacienteRgct()), fRotulo, fValor);
 
@@ -276,13 +276,14 @@ class PdfRelatorioBuilder {
         tAval.setHorizontalAlignment(Element.ALIGN_CENTER);
         tAval.setSpacingAfter(30);
 
-        for (String col : new String[]{"Nome", "Instituicao", "Parecer"}) {
+        for (String col : new String[]{"Nome", "Instituição", "Parecer"}) {
             PdfPCell c = new PdfPCell(new Phrase(col, fCabTabela));
             c.setBackgroundColor(AZUL);
             c.setPadding(5);
             c.setHorizontalAlignment(Element.ALIGN_CENTER);
             tAval.addCell(c);
         }
+        tAval.setHeaderRows(1);
 
         for (Parecer par : p.getPareceres()) {
             PdfPCell cNome = new PdfPCell(new Phrase(par.getMembro().getNome(), fCelTabela));
@@ -421,6 +422,12 @@ class PdfRelatorioBuilder {
             c.setPadding(4);
             t.addCell(c);
         }
+        // Achado B2 do relatorio V2: sem isto, uma tabela que quebra entre
+        // paginas termina a pagina com o cabecalho e ZERO linhas de dado, e a
+        // pagina seguinte comeca com dado nenhum sem rotulo de coluna. Custo:
+        // uma linha, aqui uma unica vez para as 3 tabelas que usam este helper
+        // (pareceres, andamento, anexos).
+        t.setHeaderRows(1);
     }
 
     void celula(PdfPTable t, String texto, int align, boolean bold) {

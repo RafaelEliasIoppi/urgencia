@@ -306,7 +306,7 @@ public class RelatorioService {
         }
 
         Paragraph rodape = new Paragraph(
-            "Documento gerado automaticamente pelo SAUR - Sistema de Gestao de Processos de Urgencia Renal.",
+            "Documento gerado automaticamente pelo " + PdfCabecalhoStamper.NOME_SISTEMA + ".",
             FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA));
         rodape.setAlignment(Element.ALIGN_CENTER);
         rodape.setSpacingBefore(20);

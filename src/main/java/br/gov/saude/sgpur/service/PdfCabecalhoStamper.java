@@ -10,6 +10,8 @@ import com.lowagie.text.pdf.PdfName;
 import com.lowagie.text.pdf.PdfReader;
 import com.lowagie.text.pdf.PdfRectangle;
 import com.lowagie.text.pdf.PdfStamper;
+import com.lowagie.text.pdf.PdfString;
+import com.lowagie.text.pdf.PdfWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,7 +43,28 @@ final class PdfCabecalhoStamper {
     static final String NOME_INSTITUICAO = "Central de Transplantes do Estado do Rio Grande do Sul";
 
     /** Linha da secretaria, usada nas capas dos relatorios (Final e Anual). */
-    static final String SECRETARIA = "SECRETARIA DE SAUDE";
+    static final String SECRETARIA = "SECRETARIA DE SAÚDE";
+
+    /**
+     * Nome do sistema, unico para os rodapes de TODOS os documentos PDF
+     * oficiais (Relatorio Final, Relatorio Anual, Relatorio do Avaliador) -
+     * mesmo raciocinio de {@link #NOME_INSTITUICAO}: antes desta constante,
+     * o Relatorio Final dizia "SAUR - Sistema de Gestao de Processos de
+     * Urgencia Renal" enquanto o Anual e o do Avaliador diziam "SAUR -
+     * Sistema de Avaliacao de Urgencia Renal" (dois nomes para o mesmo
+     * sistema, achado B8 de
+     * docs/RELATORIO-REFORMULACAO-RELATORIO-FINAL-PDF-V2-2026-08.md).
+     */
+    static final String NOME_SISTEMA = "SAUR - Sistema de Gestão de Processos de Urgência Renal";
+
+    /**
+     * Codigo de idioma (RFC 5646) escrito no catalogo do documento
+     * ({@code /Lang}) para os tres documentos que passam por
+     * {@link #estampar} - atende a tecnica WCAG PDF16 (3.1.1 Language of
+     * Page). Nivel 1 da Decisao 10 do relatorio V2 (§7.10): custo de duas
+     * escritas no dicionario, zero efeito visual.
+     */
+    private static final String IDIOMA_DOCUMENTO = "pt-BR";
 
     private static final Logger log = LoggerFactory.getLogger(PdfCabecalhoStamper.class);
 
@@ -273,6 +296,22 @@ final class PdfCabecalhoStamper {
     }
 
     /**
+     * Escreve {@code /Lang} no catalogo do documento e liga
+     * {@code DisplayDocTitle} nas preferencias do visualizador - as duas
+     * pecas "baratas" de acessibilidade (nivel 1 da Decisao 10 do relatorio
+     * V2), sem nenhum efeito no layout. O {@code Title} em si ja existe
+     * (escrito por {@link #anonimizarMetadados}); aqui so se garante que o
+     * leitor de PDF o exiba no lugar do nome do arquivo (tecnica WCAG PDF18)
+     * e que o idioma do documento seja declarado (tecnica WCAG PDF16).
+     */
+    private static void aplicarAcessibilidadeBasica(PdfReader reader, PdfStamper stamper) {
+        PdfDictionary catalog = reader.getCatalog();
+        catalog.put(PdfName.LANG, new PdfString(IDIOMA_DOCUMENTO));
+        stamper.markUsed(catalog);
+        stamper.setViewerPreferences(PdfWriter.DisplayDocTitle);
+    }
+
+    /**
      * Estampa o cabecalho institucional padrao em todas as paginas de
      * {@code pdf}.
      *
@@ -285,6 +324,7 @@ final class PdfCabecalhoStamper {
         try (PdfReader reader = new PdfReader(pdf)) {
             PdfStamper stamper = novoStamper(reader, baos);
             anonimizarMetadados(reader, stamper, linha2);
+            aplicarAcessibilidadeBasica(reader, stamper);
 
             Image logo = carregarLogo();
 
@@ -331,7 +371,7 @@ final class PdfCabecalhoStamper {
                 over.beginText();
                 over.setFontAndSize(bf, 9);
                 over.showTextAligned(Element.ALIGN_RIGHT,
-                    "Pagina " + i + " de " + totalPaginas,
+                    "Página " + i + " de " + totalPaginas,
                     largura - MARGEM_DIR, 22, 0);
                 over.endText();
 

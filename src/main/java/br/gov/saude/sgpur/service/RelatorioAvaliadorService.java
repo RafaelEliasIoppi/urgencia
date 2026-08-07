@@ -104,7 +104,7 @@ public class RelatorioAvaliadorService {
             doc.add(tabelaDetalhe(detalhes, processoPorParecer));
 
             Paragraph rodape = new Paragraph(
-                "Documento gerado automaticamente pelo SAUR - Sistema de Avaliacao de Urgencia Renal em "
+                "Documento gerado automaticamente pelo " + PdfCabecalhoStamper.NOME_SISTEMA + " em "
                     + LocalDate.now().format(DATA) + ".",
                 FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA));
             rodape.setAlignment(Element.ALIGN_CENTER);
