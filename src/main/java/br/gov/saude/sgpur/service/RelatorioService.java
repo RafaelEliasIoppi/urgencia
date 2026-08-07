@@ -152,6 +152,12 @@ public class RelatorioService {
         pdfBuilder.linha(t1, "Data de cadastro",
             p.getDataCadastro() != null ? p.getDataCadastro().format(DATA_HORA) : "-");
         pdfBuilder.linha(t1, "Observações", PdfRelatorioBuilder.nvl(p.getObservacoes()));
+        // P9 do relatorio V2 (§7.8, extensao do achado 6.7 original): evita a
+        // secao "1." ficar orfa no fim de uma pagina com a tabela inteira
+        // (curta, sempre 8 linhas fixas) pulando pra proxima - "tentar", nao
+        // "forcar": OpenPDF ainda quebra a tabela se ela nao couber em
+        // NENHUMA pagina inteira.
+        t1.setKeepTogether(true);
         doc.add(t1);
 
         pdfBuilder.secao(doc, fSecao, "2. Pareceres dos médicos (Urgência Renal)");
@@ -295,6 +301,8 @@ public class RelatorioService {
                 // nao tem nenhum desses dados.
             }
         }
+        // P9 (mesmo raciocinio de t1): "3." tem no maximo 6 linhas.
+        t3.setKeepTogether(true);
         doc.add(t3);
 
         pdfBuilder.secao(doc, fSecao, "4. Andamento do processo");

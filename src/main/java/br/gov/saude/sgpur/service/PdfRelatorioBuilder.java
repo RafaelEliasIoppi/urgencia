@@ -18,6 +18,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -53,16 +55,34 @@ class PdfRelatorioBuilder {
         this.anexoStorage = anexoStorage;
     }
 
+    // B1/Decisao 9 do relatorio V2 (§4.1/§7.9): o Relatorio Final NUNCA foi
+    // A4 de verdade - PdfCabecalhoStamper.expandirTopo AUMENTA o MediaBox de
+    // cada pagina em ALTURA_CABECALHO (55pt) no topo para desenhar o carimbo
+    // sem cobrir conteudo, mas isso e aplicado tambem as paginas que o
+    // PROPRIO sistema gera (sumario, avisos, fecho), que ja tem margem
+    // sobrando e nao precisavam da expansao - o resultado final tinha
+    // 595x897pt (31,6cm de altura, 6,5% mais que os 29,7cm do A4), sem
+    // rotulo "(A4)" no pdfinfo. Corrigido reservando o espaco do carimbo NO
+    // LAYOUT dessas paginas (abrindo o Document ja 55pt mais baixo), para
+    // que a expansao do stamper resulte EXATAMENTE em A4. As paginas de
+    // ANEXO IMPORTADAS continuam sendo expandidas sem este ajuste - ali a
+    // expansao e o comportamento certo (documento escaneado sem margem
+    // superior garantida), e normalizar tudo pra A4 exigiria reescalar scans,
+    // degradando a resolucao (ver ressalva na Decisao 9).
+    private static final Rectangle TAMANHO_PAGINA_SISTEMA =
+        new Rectangle(PageSize.A4.getWidth(), PageSize.A4.getHeight() - PdfCabecalhoStamper.ALTURA_CABECALHO);
+
     Document abrirDocumentoA4(ByteArrayOutputStream out) throws DocumentException {
-        // Margem superior 30pt (era 50pt): o PdfCabecalhoStamper ja expande
-        // 55pt no topo fisico da pagina para desenhar o cabecalho carimbado
-        // (logo + 2 linhas + regua em y=topo-44) - com 50pt de margem aqui,
-        // sobravam quase 4,3cm vazios entre a regua do cabecalho e o
-        // primeiro texto do corpo. 30pt deixa ~1,4cm de respiro (verificado
-        // nas coordenadas: regua em ~853pt de 897pt de altura da pagina
-        // expandida; texto do corpo passa a comecar em 841.89-30=811.89pt,
-        // ainda ~41pt abaixo da regua - nao encosta nela).
-        Document doc = new Document(PageSize.A4, 40, 40, 30, 40);
+        // Margem superior 30pt (era 50pt, quando a pagina ainda abria em
+        // PageSize.A4 "cheio"): o PdfCabecalhoStamper expande 55pt no topo
+        // fisico da pagina para desenhar o cabecalho carimbado (logo + 2
+        // linhas + regua em y=topo-44). A conta do respiro entre a regua e o
+        // primeiro texto do corpo (~41pt, ~1,4cm) e a MESMA de antes: reduzir
+        // a altura do Document em 55pt (TAMANHO_PAGINA_SISTEMA, acima) e
+        // depois expandir 55pt de volta no stamper resulta no mesmo gap
+        // relativo, so que agora a pagina final e A4 de verdade em vez de
+        // 55pt mais alta.
+        Document doc = new Document(TAMANHO_PAGINA_SISTEMA, 40, 40, 30, 40);
         PdfWriter.getInstance(doc, out);
         doc.open();
         return doc;
@@ -79,6 +99,15 @@ class PdfRelatorioBuilder {
         PdfCopy copier = new PdfCopy(doc, baos);
         doc.open();
 
+        // P8(c) do relatorio V2 (§7.8/§5.6): marcadores/bookmarks de
+        // navegacao, viabilidade confirmada decompilando o .jar
+        // (SimpleBookmark + PdfCopy/PdfWriter.setOutlines). Custo zero de
+        // layout, ganho grande de navegacao num dossie de 40+ paginas -
+        // hoje nao ha NENHUMA marca de onde termina um anexo e comeca o
+        // outro alem da folha divisoria nova (P8(a) abaixo).
+        List<HashMap<String, Object>> marcadores = new ArrayList<>();
+        marcadores.add(marcador("Sumário", copier.getCurrentPageNumber()));
+
         try (PdfReader summaryReader = new PdfReader(summary)) {
             for (int i = 1; i <= summaryReader.getNumberOfPages(); i++) {
                 copier.addPage(copier.getImportedPage(summaryReader, i));
@@ -89,6 +118,7 @@ class PdfRelatorioBuilder {
             Path path = anexoStorage.resolverArquivo(a);
             if (!Files.exists(path)) {
                 log.warn("Anexo PDF nao encontrado no disco: {} ({})", a.getNomeArquivo(), path);
+                marcadores.add(marcador(a.getNomeArquivo() + " (não encontrado)", copier.getCurrentPageNumber()));
                 adicionarPaginaAviso(copier,
                     "Anexo não encontrado: " + a.getNomeArquivo(),
                     "O arquivo \"" + a.getNomeArquivo()
@@ -96,6 +126,14 @@ class PdfRelatorioBuilder {
                         + ") não foi localizado no disco.");
                 continue;
             }
+            // P8(a): folha divisoria por anexo (mecanismo ja existia -
+            // adicionarPaginaAviso - so nao era chamado no caminho normal,
+            // so nos avisos de erro). Num processo real de 30-60 paginas de
+            // exame escaneado, sem isto nao ha NENHUMA marca visual de onde
+            // termina um anexo e comeca o outro - o carimbo do topo e
+            // identico em todas as paginas.
+            marcadores.add(marcador(a.getNomeArquivo(), copier.getCurrentPageNumber()));
+            adicionarFolhaDivisoria(copier, a);
             try (PdfReader reader = new PdfReader(Files.readAllBytes(path))) {
                 for (int i = 1; i <= reader.getNumberOfPages(); i++) {
                     copier.addPage(copier.getImportedPage(reader, i));
@@ -111,6 +149,7 @@ class PdfRelatorioBuilder {
         }
 
         for (Anexo a : naoPdf) {
+            marcadores.add(marcador(a.getNomeArquivo(), copier.getCurrentPageNumber()));
             adicionarPaginaAviso(copier,
                 "Anexo (formato não-PDF): " + a.getNomeArquivo(),
                 "Tipo: " + descricaoTipoAnexo(a.getTipo())
@@ -130,14 +169,59 @@ class PdfRelatorioBuilder {
             adicionarPaginaFecho(copier, fechoTexto);
         }
 
+        copier.setOutlines(marcadores);
         doc.close();
         return baos.toByteArray();
+    }
+
+    /** Um item de marcador (bookmark) apontando para {@code pagina} do PDF resultante. */
+    private static HashMap<String, Object> marcador(String titulo, int pagina) {
+        HashMap<String, Object> item = new HashMap<>();
+        item.put("Title", titulo);
+        item.put("Action", "GoTo");
+        item.put("Page", pagina + " Fit");
+        return item;
+    }
+
+    /**
+     * Folha divisoria simples, gerada antes de cada anexo PDF importado com
+     * sucesso - P8(a) do relatorio V2. Reaproveita a mesma pagina A4 "de
+     * sistema" ({@link #TAMANHO_PAGINA_SISTEMA}) das demais paginas geradas
+     * pelo proprio Relatorio Final.
+     */
+    private void adicionarFolhaDivisoria(PdfCopy copier, Anexo a)
+            throws DocumentException, IOException {
+        ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        Document d = new Document(TAMANHO_PAGINA_SISTEMA, 40, 40, 50, 40);
+        PdfWriter.getInstance(d, baos);
+        d.open();
+        Paragraph pTitulo = new Paragraph("Anexo: " + a.getNomeArquivo(),
+            FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, AZUL));
+        pTitulo.setAlignment(Element.ALIGN_CENTER);
+        pTitulo.setSpacingAfter(10);
+        d.add(pTitulo);
+        Paragraph pTipo = new Paragraph(descricaoTipoAnexo(a.getTipo()),
+            FontFactory.getFont(FontFactory.HELVETICA, 11, CINZA));
+        pTipo.setAlignment(Element.ALIGN_CENTER);
+        d.add(pTipo);
+        if (a.getDataUpload() != null) {
+            Paragraph pData = new Paragraph("Anexado em " + a.getDataUpload().format(DATA),
+                FontFactory.getFont(FontFactory.HELVETICA, 9, CINZA));
+            pData.setAlignment(Element.ALIGN_CENTER);
+            pData.setSpacingBefore(4);
+            d.add(pData);
+        }
+        d.close();
+
+        try (PdfReader reader = new PdfReader(baos.toByteArray())) {
+            copier.addPage(copier.getImportedPage(reader, 1));
+        }
     }
 
     private void adicionarPaginaAviso(PdfCopy copier, String titulo, String corpo)
             throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Document d = new Document(PageSize.A4, 40, 40, 50, 40);
+        Document d = new Document(TAMANHO_PAGINA_SISTEMA, 40, 40, 50, 40);
         PdfWriter.getInstance(d, baos);
         d.open();
         Paragraph pTitulo = new Paragraph(titulo,
@@ -161,7 +245,7 @@ class PdfRelatorioBuilder {
     private void adicionarPaginaFecho(PdfCopy copier, String texto)
             throws DocumentException, IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        Document d = new Document(PageSize.A4, 40, 40, 50, 40);
+        Document d = new Document(TAMANHO_PAGINA_SISTEMA, 40, 40, 50, 40);
         PdfWriter.getInstance(d, baos);
         d.open();
         Paragraph p = new Paragraph(texto, FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 8, CINZA));
