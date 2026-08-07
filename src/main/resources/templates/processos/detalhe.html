@@ -21,8 +21,11 @@
                       th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
                 <span th:replace="~{layout :: badgeEncerramento(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
+                <!-- "Aguardando parecer"/"pronto para decidir" - pendencia interna
+                     (medicos ainda votando), nao a pausa "Solicita informacao".
+                     Padronizacao de cores 2026-08-06: azul. -->
                 <span th:if="${statusSubrotulo != null}"
-                      class="badge align-middle bg-warning text-dark rounded-pill px-3 py-1"
+                      class="badge align-middle bg-primary rounded-pill px-3 py-1"
                       th:text="${statusSubrotulo}">Aguardando parecer</span>
             </div>
             <p class="text-muted small mb-0 ms-2">
@@ -683,8 +686,8 @@
             </div>
 
             <!-- PAUSA: avaliador pediu informacao complementar ao solicitante -->
-            <div th:if="${aguardandoInfo}" class="card border-info mb-4" id="info-complementar">
-                <div class="card-header bg-info text-dark">
+            <div th:if="${aguardandoInfo}" class="card border-warning mb-4" id="info-complementar">
+                <div class="card-header bg-warning text-dark">
                     <i class="bi bi-question-circle-fill"></i> Aguardando informação complementar do solicitante
                 </div>
                 <div class="card-body">
@@ -818,7 +821,7 @@
                                         <i class="bi bi-hand-thumbs-up"></i> Favorável</span>
                                     <span th:case="'NAO_FAVORAVEL'" class="badge bg-danger">
                                         <i class="bi bi-hand-thumbs-down"></i> Não favorável</span>
-                                    <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-primary">
+                                    <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-warning text-dark">
                                         <i class="bi bi-question-circle"></i> Solicita informação</span>
                                     <span th:case="*" class="small text-muted">—</span>
                                 </span>

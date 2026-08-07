@@ -39,7 +39,7 @@ public enum StatusSolicitacaoOnline {
     /** Classe de cor do Bootstrap (badge bg-*), mesmo padrao de {@code StatusProcesso}. */
     public String getBootstrapBadge() {
         return switch (this) {
-            case ENVIADA -> "bg-warning text-dark";
+            case ENVIADA -> "bg-primary";
             case CONVERTIDA -> "bg-success";
             case DEVOLVIDA -> "bg-danger";
             case CANCELADA -> "bg-secondary";

@@ -41,15 +41,18 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
      *
      * @param medico   "INSTITUICAO - Nome" (ou null quando vazia)
      * @param texto    rotulo curto da situacao (Favoravel/Desfavoravel/etc.)
-     * @param cor      classe de cor logica: success, danger, warning, info, muted
+     * @param cor      classe de cor logica: success, danger, warning, primary, muted
+     *                 (padronizacao de 2026-08-06: "Aguardando" = primary/azul,
+     *                 "Solicita informacao" = warning/amarelo - ver
+     *                 {@code docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md})
      *                 @deprecated ainda proxima demais de nomenclatura Bootstrap
      *                 (nao e um sufixo puro de classe, mas usa o mesmo
      *                 vocabulario) - use {@link #tom()} ("ok"/"danger"/
-     *                 "attention"/"neutral") com o fragment {@code layout ::
-     *                 tomBadge}. Mantido porque a planilha do Painel ainda le
-     *                 este campo diretamente (infraestrutura apenas nesta
-     *                 leva - ver "Design system - regua de tokens" no
-     *                 CLAUDE.md).
+     *                 "attention"/"aguardando"/"neutral") com o fragment
+     *                 {@code layout :: tomBadge}. Mantido porque a planilha do
+     *                 Painel ainda le este campo diretamente (infraestrutura
+     *                 apenas nesta leva - ver "Design system - regua de
+     *                 tokens" no CLAUDE.md).
      * @param icone    bootstrap-icon (sem "bi-")
      * @param definido se ha medico atribuido nessa coluna
      */
@@ -68,14 +71,16 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
         /**
          * Tom semantico do design system, derivado de {@link #cor()}:
          * {@code "ok"} (success), {@code "danger"} (danger),
-         * {@code "attention"} (warning/info) ou {@code "neutral"} (muted e
-         * demais valores).
+         * {@code "attention"} (warning - "Solicita informacao"),
+         * {@code "aguardando"} (primary - "Aguardando") ou {@code "neutral"}
+         * (muted e demais valores).
          */
         public String tom() {
             return switch (cor) {
                 case "success" -> "ok";
                 case "danger" -> "danger";
-                case "warning", "info" -> "attention";
+                case "warning" -> "attention";
+                case "primary" -> "aguardando";
                 default -> "neutral";
             };
         }
@@ -95,15 +100,19 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
                 if (finalizado) {
                     return new CelulaMedico(medico, "Dispensado", "muted", "dash-circle", true);
                 }
-                return new CelulaMedico(medico, "Aguardando", "warning", "hourglass-split", true);
+                // Padronizacao de cores 2026-08-06: "Aguardando" (medico ainda
+                // nao votou, pendencia interna do sistema) = AZUL.
+                return new CelulaMedico(medico, "Aguardando", "primary", "hourglass-split", true);
             }
             return switch (resultado) {
                 case FAVORAVEL ->
                     new CelulaMedico(medico, "Favoravel", "success", "check-circle-fill", true);
                 case NAO_FAVORAVEL ->
                     new CelulaMedico(medico, "Desfavoravel", "danger", "x-circle-fill", true);
+                // Padronizacao de cores 2026-08-06: "Solicita informacao"
+                // (a pausa do processo) = AMARELO.
                 case SOLICITA_INFORMACAO ->
-                    new CelulaMedico(medico, "Solicita info", "info", "question-circle-fill", true);
+                    new CelulaMedico(medico, "Solicita info", "warning", "question-circle-fill", true);
                 case SEM_RESPOSTA ->
                     new CelulaMedico(medico, "Sem resposta", "muted", "slash-circle", true);
             };

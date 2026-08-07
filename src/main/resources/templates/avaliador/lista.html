@@ -310,7 +310,7 @@
                                     <i class="bi bi-hand-thumbs-up"></i> Favorável</span>
                                 <span th:case="'NAO_FAVORAVEL'" class="badge bg-danger">
                                     <i class="bi bi-hand-thumbs-down"></i> Não favorável</span>
-                                <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-primary">
+                                <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-warning text-dark">
                                     <i class="bi bi-question-circle"></i> Solicita informação</span>
                                 <span th:case="*" class="badge bg-secondary"
                                       th:text="${par.resultado.descricao}">-</span>
@@ -347,7 +347,7 @@
                             <i class="bi bi-hand-thumbs-up"></i> Favorável</span>
                         <span th:case="'NAO_FAVORAVEL'" class="badge bg-danger">
                             <i class="bi bi-hand-thumbs-down"></i> Não favorável</span>
-                        <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-primary">
+                        <span th:case="'SOLICITA_INFORMACAO'" class="badge bg-warning text-dark">
                             <i class="bi bi-question-circle"></i> Solicita informação</span>
                         <span th:case="*" class="badge bg-secondary"
                               th:text="${par.resultado.descricao}">-</span>

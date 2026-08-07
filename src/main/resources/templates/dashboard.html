@@ -246,7 +246,9 @@
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
                                         <span th:text="${c.texto}">situação</span>
                                     </span>
-                                    <span th:case="'info'" class="badge rounded-1 mt-1 text-bg-info">
+                                    <!-- "Aguardando" (medico ainda nao votou) - padronizacao de cores
+                                         2026-08-06: azul, nao mais amarelo/ciano. -->
+                                    <span th:case="'primary'" class="badge rounded-1 mt-1 text-bg-primary">
                                         <i class="bi" th:classappend="'bi-' + ${c.icone}"></i>
                                         <span th:text="${c.texto}">situação</span>
                                     </span>
