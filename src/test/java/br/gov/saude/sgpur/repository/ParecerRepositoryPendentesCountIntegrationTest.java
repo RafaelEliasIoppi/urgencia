@@ -21,13 +21,16 @@ import static org.assertj.core.api.Assertions.assertThat;
  * Teste de INTEGRACAO (contexto Spring real + H2) que compara o resultado da
  * nova query de contagem direta
  * ({@code ParecerRepository.
- * countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus})
+ * countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn})
  * com o resultado que a LOGICA ANTIGA produzia — carregar todos os pareceres
  * do membro (via {@code findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull},
  * ainda existente e usado por outros caminhos) e filtrar em Java pelo status
  * do processo (o mesmo criterio de
  * {@code AvaliadorController.pendenteAtivoParaVoto}: resultado nulo,
- * {@code dataEnvio} preenchida, {@code processo.status == ENVIADO}).
+ * {@code dataEnvio} preenchida, {@code processo.status.aceitaVotoAvaliador()}
+ * — ENVIADO ou SOLICITA_INFORMACAO desde a correcao de 2026-08 do bug em que
+ * a pausa causada por UM avaliador escondia o processo dos outros dois, ver
+ * docs/RELATORIO-BUG-PAUSA-BLOQUEIA-OUTROS-AVALIADORES-2026-08.md).
  *
  * <p><b>Por que integracao, nao {@code @DataJpaTest} isolado sem contexto
  * completo:</b> segue o padrao ja estabelecido no projeto
@@ -84,17 +87,20 @@ class ParecerRepositoryPendentesCountIntegrationTest {
         return processoRepo.saveAndFlush(p);
     }
 
+    private static final List<StatusProcesso> STATUS_ACEITA_VOTO =
+            List.of(StatusProcesso.ENVIADO, StatusProcesso.SOLICITA_INFORMACAO);
+
     /** Reproduz a LOGICA ANTIGA (carregar entidades + filtrar em Java). */
     private long contarPeloCriterioAntigo(Long membroId) {
         return parecerRepo.findByMembroIdAndResultadoIsNullAndDataEnvioIsNotNull(membroId)
                 .stream()
-                .filter(par -> par.getProcesso().getStatus() == StatusProcesso.ENVIADO)
+                .filter(par -> par.getProcesso().getStatus().aceitaVotoAvaliador())
                 .count();
     }
 
     private void assertNovaQueryIgualALogicaAntiga(Long membroId, long esperado) {
-        long novo = parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
-                membroId, StatusProcesso.ENVIADO);
+        long novo = parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn(
+                membroId, STATUS_ACEITA_VOTO);
         assertThat(novo).isEqualTo(esperado);
         assertThat(novo).isEqualTo(contarPeloCriterioAntigo(membroId));
     }
@@ -163,25 +169,30 @@ class ParecerRepositoryPendentesCountIntegrationTest {
 
     @Test
     @Transactional
-    void processoEmStatusQueNaoAceitaVotacaoNaoConta() {
+    void processoDecididoNaoContaMasProcessoPausadoContinuaContando() {
         MembroUrgenciaRenal alvo = membroRepo.getReferenceById(membroAlvoId);
 
         // Processo ja decidido: o parecer pendente (sem resultado) nao deve
         // contar mais, mesmo com dataEnvio preenchida - mesmo criterio de
-        // AvaliadorController.pendenteAtivoParaVoto (so ENVIADO conta).
+        // AvaliadorController.pendenteAtivoParaVoto (DEFERIDO/INDEFERIDO/
+        // CANCELADO nao aceitam voto).
         Processo pDeferido = novoProcesso("40/2026", 40, StatusProcesso.DEFERIDO);
         Parecer parDeferido = new Parecer(alvo);
         parDeferido.setProcesso(pDeferido);
         parDeferido.setDataEnvio(LocalDate.of(2026, 5, 2));
         parecerRepo.saveAndFlush(parDeferido);
 
+        // Processo PAUSADO por outro avaliador (SOLICITA_INFORMACAO): o
+        // parecer pendente deste membro (que nao pediu informacao) CONTINUA
+        // contando - bug corrigido em 2026-08, ver
+        // docs/RELATORIO-BUG-PAUSA-BLOQUEIA-OUTROS-AVALIADORES-2026-08.md.
         Processo pPausado = novoProcesso("41/2026", 41, StatusProcesso.SOLICITA_INFORMACAO);
         Parecer parPausado = new Parecer(alvo);
         parPausado.setProcesso(pPausado);
         parPausado.setDataEnvio(LocalDate.of(2026, 5, 2));
         parecerRepo.saveAndFlush(parPausado);
 
-        assertNovaQueryIgualALogicaAntiga(membroAlvoId, 0);
+        assertNovaQueryIgualALogicaAntiga(membroAlvoId, 1);
     }
 
     @Test

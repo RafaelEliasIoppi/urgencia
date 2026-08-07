@@ -43,6 +43,21 @@ public enum StatusProcesso {
         return !isFinalizado();
     }
 
+    /**
+     * Indica se o processo aceita voto NOVO de avaliador (abrir a tela de
+     * voto e registrar um parecer). Inclui {@code ENVIADO} (fluxo normal) e
+     * {@code SOLICITA_INFORMACAO} (pausa causada por UM avaliador pedir
+     * informacao complementar) - a pausa bloqueia a DECISAO
+     * ({@code ProcessoValidator.validarPausaDecisao}/
+     * {@code tentarDecisaoAutomatica}), nao o voto dos outros dois medicos,
+     * que e independente. O avaliador que causou a pausa continua bloqueado
+     * de votar de novo por outra checagem, em {@code AvaliadorController}
+     * ({@code parecer.getResultado() != null}), nao por este metodo.
+     */
+    public boolean aceitaVotoAvaliador() {
+        return this == ENVIADO || this == SOLICITA_INFORMACAO;
+    }
+
     /** Bootstrap-icon (sem o prefixo "bi-") usado no badge do status. */
     public String getBadgeIcone() {
         return switch (this) {

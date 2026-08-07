@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -45,16 +46,24 @@ public interface ParecerRepository extends JpaRepository<Parecer, Long> {
      * Contagem direta (sem carregar nenhuma entidade) de pareceres "pendentes
      * ativos para voto" de um membro — MESMO criterio de
      * {@link br.gov.saude.sgpur.web.AvaliadorController#pendenteAtivoParaVoto}
-     * (resultado nulo, envio ja registrado, processo em status ENVIADO), so que
-     * resolvido pelo banco com um {@code count(...)} em vez de trazer as
-     * entidades {@code Parecer} inteiras e filtrar em Java navegando
+     * (resultado nulo, envio ja registrado, processo em algum dos status
+     * informados — tipicamente ENVIADO e SOLICITA_INFORMACAO, ver
+     * {@link StatusProcesso#aceitaVotoAvaliador()}), so que resolvido pelo
+     * banco com um {@code count(...)} em vez de trazer as entidades
+     * {@code Parecer} inteiras e filtrar em Java navegando
      * {@code Parecer.processo} (LAZY). Usado por
      * {@link br.gov.saude.sgpur.web.GlobalModelAdvice#pendentesAvaliador()},
      * que roda em TODA requisicao do avaliador (e um {@code @ModelAttribute}
      * de {@code @ControllerAdvice}) — a query anterior era um N+1 por render.
+     *
+     * <p>Recebe uma colecao de status (nao um unico valor) desde 2026-08:
+     * bug real corrigido em que a pausa "Solicita informacao" causada por UM
+     * avaliador escondia o processo da lista de pendencias/badge dos OUTROS
+     * dois avaliadores, que continuavam livres para votar — ver
+     * docs/RELATORIO-BUG-PAUSA-BLOQUEIA-OUTROS-AVALIADORES-2026-08.md.</p>
      */
-    long countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
-        Long membroId, StatusProcesso status);
+    long countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn(
+        Long membroId, Collection<StatusProcesso> status);
 
     /**
      * Pareceres pendentes (resultado nulo, envio ja registrado) de um processo

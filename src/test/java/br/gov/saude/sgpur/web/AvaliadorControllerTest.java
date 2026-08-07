@@ -26,6 +26,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -266,8 +267,8 @@ class AvaliadorControllerTest {
         // proprio stub, refletindo o MESMO criterio (so o processo ENVIADO conta).
         when(parecerRepo.findPendentesComProcesso(10L))
             .thenReturn(List.of(pendenteAtivo, pendenteInativo));
-        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
-                10L, StatusProcesso.ENVIADO))
+        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn(
+                eq(10L), any()))
             .thenReturn(1L);
         when(anexoRepo.findByProcessoIdAndTipo(any(Long.class), any()))
             .thenReturn(List.of());
