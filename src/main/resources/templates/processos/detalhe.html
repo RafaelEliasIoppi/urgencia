@@ -392,24 +392,27 @@
                         </span>
                     </div>
 
-                    <!-- ========== TRAVA DE ANONIMIZACAO ==========
+                    <!-- ========== TRAVA DE ANONIMIZACAO (area de revisao) ==========
                          Documentos que vieram do Portal do Solicitante ainda NAO
                          revisados (TipoAnexo.DOCUMENTO_PORTAL_NAO_ANONIMIZADO).
-                         Eles NAO entram no PDF dos avaliadores enquanto o operador
-                         nao confirmar explicitamente a anonimizacao. -->
+                         NAO e uma lista de anexos do processo: nada daqui entra no
+                         PDF dos avaliadores. Cada item oferece as 3 saidas
+                         possiveis, no proprio item: (A) substituir pela versao
+                         anonimizada - upload que ja remove o original na mesma
+                         acao; (B) confirmar que o arquivo ja esta anonimizado
+                         (falso-positivo); (C) descartar. -->
                     <div th:if="${!documentosPendentesAnonimizacao.isEmpty()}"
                          class="alert alert-danger mb-4" id="pendentes-anonimizacao">
                         <h6 class="fw-bold mb-2">
                             <i class="bi bi-shield-exclamation"></i>
-                            Documento do solicitante <span class="text-uppercase">pendente de anonimização</span>
+                            Área de revisão &mdash; aguardando sua anonimização
                         </h6>
                         <p class="small mb-3">
-                            Este arquivo chegou pelo Portal do Solicitante <strong>com o nome completo do
-                            paciente impresso no corpo</strong> e, por isso, <strong>NÃO será enviado aos
-                            avaliadores</strong> nem libera o registro do envio. Baixe, remova/oculte o nome
-                            do paciente e reenvie o arquivo já anonimizado no passo 1 abaixo &mdash; ou, se
-                            você já conferiu que este documento não identifica o paciente, confirme a
-                            anonimização para liberá-lo.
+                            <strong>Nenhum destes arquivos vai para os avaliadores.</strong>
+                            Eles chegaram pelo Portal do Solicitante, normalmente <strong>com o nome
+                            completo do paciente impresso no corpo</strong>, e ficam aqui &mdash; fora da
+                            lista de documentos clínicos do processo &mdash; até você resolver cada um.
+                            Esta não é uma lista de anexos do processo: é a sua fila de revisão.
                         </p>
                         <ul class="list-group list-group-flush mb-0">
                             <li class="list-group-item px-0 bg-transparent border-danger-subtle"
@@ -421,30 +424,88 @@
                                            th:text="${doc.nomeArquivo}">arquivo</a>
                                         <span class="badge bg-danger ms-1">Não será enviado</span>
                                     </span>
-                                    <form th:unless="${processo.status.finalizado}"
-                                          th:action="@{/processos/anexos/{id}/excluir(id=${doc.id})}" method="post"
-                                          class="d-inline" data-confirm-msg="Remover este documento do processo?">
-                                        <button class="btn btn-sm btn-outline-danger" title="Remover"
-                                                aria-label="Remover documento pendente de anonimização">
-                                            <i class="bi bi-trash"></i>
+                                    <a th:href="@{/processos/anexos/{id}/download(id=${doc.id})}"
+                                       class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-download"></i> Baixar para editar
+                                    </a>
+                                </div>
+
+                                <p class="small fw-semibold mt-3 mb-2" th:unless="${processo.status.finalizado}">
+                                    Escolha uma ação para este arquivo:
+                                </p>
+
+                                <!-- Acao A (a mais comum): sobe a versao ja editada e tira o
+                                     original do processo numa acao so. -->
+                                <div class="border border-danger-subtle rounded p-2 mb-2"
+                                     th:unless="${processo.status.finalizado}">
+                                    <p class="small mb-2">
+                                        <strong>A. Substituir pela versão anonimizada</strong>
+                                        <span class="badge bg-danger ms-1">recomendado</span><br>
+                                        Baixe o arquivo acima, apague o nome do paciente de dentro do PDF e
+                                        envie aqui a versão corrigida. O arquivo original sai do processo na
+                                        mesma ação &mdash; você não precisa removê-lo antes.
+                                    </p>
+                                    <form th:action="@{/processos/{id}/documento-clinico/{anexoId}/substituir(id=${processo.id},anexoId=${doc.id})}"
+                                          method="post" enctype="multipart/form-data"
+                                          class="row g-2 align-items-end"
+                                          data-lock-submit="Substituindo documento..."
+                                          data-confirm-msg="Anexar esta versão anonimizada e remover o documento original do processo? O arquivo enviado pelo solicitante continua guardado na solicitação original.">
+                                        <div class="col-md-7">
+                                            <label class="form-label small mb-1"
+                                                   th:for="'arquivoAnonimizado-' + ${doc.id}">
+                                                Versão anonimizada (PDF)
+                                            </label>
+                                            <input type="file" name="arquivo" accept=".pdf" required
+                                                   class="form-control form-control-sm"
+                                                   th:id="'arquivoAnonimizado-' + ${doc.id}">
+                                        </div>
+                                        <div class="col-md-5 d-flex align-items-end">
+                                            <button class="btn btn-sm btn-danger">
+                                                <i class="bi bi-arrow-repeat"></i> Substituir e liberar
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <!-- Acao B: falso-positivo (o documento nao identifica o paciente). -->
+                                <div class="border border-danger-subtle rounded p-2 mb-2"
+                                     th:unless="${processo.status.finalizado}">
+                                    <p class="small mb-2">
+                                        <strong>B. Este arquivo já está anonimizado</strong><br>
+                                        Use quando você conferiu e o documento não identifica o paciente.
+                                        O próprio arquivo do solicitante passa a ser enviado.
+                                    </p>
+                                    <form th:action="@{/processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao(id=${processo.id},anexoId=${doc.id})}"
+                                          method="post"
+                                          data-confirm-msg="Confirmar que este documento está anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
+                                        <div class="form-check small mb-2">
+                                            <input class="form-check-input" type="checkbox" name="confirmo" value="true"
+                                                   th:id="'confirmo-anonimizacao-' + ${doc.id}" required>
+                                            <label class="form-check-label" th:for="'confirmo-anonimizacao-' + ${doc.id}">
+                                                Confirmo que este documento foi anonimizado (nome do paciente removido do corpo).
+                                            </label>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-unlock"></i> Liberar para os avaliadores
                                         </button>
                                     </form>
                                 </div>
-                                <form th:unless="${processo.status.finalizado}"
-                                      th:action="@{/processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao(id=${processo.id},anexoId=${doc.id})}"
-                                      method="post" class="mt-2"
-                                      data-confirm-msg="Confirmar que este documento está anonimizado? Ele passará a ser enviado aos 3 médicos avaliadores.">
-                                    <div class="form-check small mb-2">
-                                        <input class="form-check-input" type="checkbox" name="confirmo" value="true"
-                                               th:id="'confirmo-anonimizacao-' + ${doc.id}" required>
-                                        <label class="form-check-label" th:for="'confirmo-anonimizacao-' + ${doc.id}">
-                                            Confirmo que este documento foi anonimizado (nome do paciente removido do corpo).
-                                        </label>
-                                    </div>
-                                    <button class="btn btn-sm btn-danger">
-                                        <i class="bi bi-unlock"></i> Liberar para os avaliadores
-                                    </button>
-                                </form>
+
+                                <!-- Acao C: descartar (documento nao serve ao processo). -->
+                                <div class="border border-danger-subtle rounded p-2"
+                                     th:unless="${processo.status.finalizado}">
+                                    <p class="small mb-2">
+                                        <strong>C. Descartar este arquivo</strong><br>
+                                        Remove o documento do processo sem substituí-lo. O arquivo enviado
+                                        pelo solicitante continua guardado na solicitação original.
+                                    </p>
+                                    <form th:action="@{/processos/anexos/{id}/excluir(id=${doc.id})}" method="post"
+                                          data-confirm-msg="Remover este documento do processo?">
+                                        <button class="btn btn-sm btn-outline-danger">
+                                            <i class="bi bi-trash"></i> Remover do processo
+                                        </button>
+                                    </form>
+                                </div>
                             </li>
                         </ul>
                     </div>
@@ -480,7 +541,8 @@
                         <p class="small text-muted mb-2" th:if="${!documentosPendentesAnonimizacao.isEmpty()}">
                             <i class="bi bi-info-circle"></i>
                             Documentos do Portal aguardando sua revisão aparecem no bloco vermelho acima e
-                            não entram nesta lista.
+                            não entram nesta lista. Para trocar um deles pela versão anonimizada, use a
+                            opção <strong>A</strong> lá em cima &mdash; ela já remove o arquivo original.
                         </p>
                         <ul class="list-group list-group-flush mb-2" th:if="${!documentosClinicos.isEmpty()}">
                             <li class="list-group-item px-0 bg-transparent" th:each="doc : ${documentosClinicos}">

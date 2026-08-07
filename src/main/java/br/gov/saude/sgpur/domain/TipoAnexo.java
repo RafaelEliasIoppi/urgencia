@@ -12,10 +12,18 @@ public enum TipoAnexo {
      * Solicitante e ainda NAO foi revisado/anonimizado pelo operador. Este tipo
      * <b>nunca</b> entra no PDF consolidado enviado aos 3 avaliadores
      * ({@code RegistroEnvioService} so funde {@link #DOCUMENTO_CLINICO_AVALIADOR})
-     * e nao satisfaz {@code ProcessoValidator.validarRegistroEnvio}. Vira
-     * {@link #DOCUMENTO_CLINICO_AVALIADOR} apenas por acao explicita e auditada
-     * do operador ("Confirmo que este documento foi anonimizado", endpoint
-     * {@code POST /processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao}).
+     * e nao satisfaz {@code ProcessoValidator.validarRegistroEnvio}. So sai desse
+     * estado por acao explicita e auditada do operador, por um de dois caminhos:
+     *
+     * <ul>
+     *   <li><b>Substituicao</b> (o caso comum - o documento realmente traz o nome
+     *   do paciente): o operador sobe a versao ja anonimizada e o original sai do
+     *   processo na mesma acao -
+     *   {@code POST /processos/{id}/documento-clinico/{anexoId}/substituir};</li>
+     *   <li><b>Confirmacao</b> (falso-positivo - o documento nao identifica o
+     *   paciente): o proprio arquivo vira {@link #DOCUMENTO_CLINICO_AVALIADOR} -
+     *   {@code POST /processos/{id}/documento-clinico/{anexoId}/confirmar-anonimizacao}.</li>
+     * </ul>
      *
      * <p><b>Processos anteriores a esta trava</b> tiveram o documento do portal
      * copiado direto como {@link #DOCUMENTO_CLINICO_AVALIADOR}: aquele tipo

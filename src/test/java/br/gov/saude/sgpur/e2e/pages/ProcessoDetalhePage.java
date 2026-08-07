@@ -37,7 +37,14 @@ public class ProcessoDetalhePage {
     public ProcessoDetalhePage passo1_anexarDocumentoClinico(FilePayload documentoClinico) {
         narrar("Passo 1/4 - Envio: anexando o documento clinico anonimizado...");
         clicarPasso("pane-envio");
-        page.locator("#pane-envio form[action*='documento-clinico'] input[name=arquivo]").setInputFiles(documentoClinico);
+        // Seletor ANCORADO NO FIM da URL (action$=): desde 2026-08-06 a area de
+        // revisao da trava de anonimizacao tambem tem um <form> de upload cuja
+        // action contem "documento-clinico"
+        // (.../documento-clinico/{anexoId}/substituir) - um action*= aqui passaria
+        // a casar os dois e o modo estrito do Playwright falharia. Este e o
+        // formulario generico de documento clinico, cuja action TERMINA em
+        // /documento-clinico.
+        page.locator("#pane-envio form[action$='/documento-clinico'] input[name=arquivo]").setInputFiles(documentoClinico);
         page.locator("#pane-envio button:has-text('Anexar documento clínico')").click();
         page.waitForLoadState();
         return this;
