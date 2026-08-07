@@ -2644,3 +2644,132 @@ mover para outro lugar da página sem pedido explícito do usuário.**
 Não mexeu nas outras 2 telas de chat (`solicitante/detalhe.html`,
 `processos/solicitacoes-online-detalhe.html`), que não foram tocadas pelo
 lote pulled e já estavam corretas.
+
+## Sessão de 2026-08-06/07 (retomada em casa): 4 itens da lista de pendências implementados
+
+O usuário pediu, ainda no trabalho, para salvar tudo (relatórios/ideias em
+`docs/`, resumo em memória) para poder dizer só "prossiga de onde parou" ao
+chegar em casa. Numa sessão separada, à noite (commits de autoria
+`rafaelioppi`), ele retomou e implementou os 4 itens pendentes, um PR por
+item, todos mesclados em `main` e já em produção (deploy automático
+confirmado verde). Registrando aqui porque aquela sessão não chegou a
+atualizar este arquivo — só os `docs/*.md` de cada item.
+
+**1. Bug corrigido — pausa "Solicita informação" não bloqueia mais os outros
+avaliadores** (commit `4171987`). Ver a seção "Solicita informação (PAUSA)"
+acima: o texto de lá descreve a regra pretendida (só a Decisão fica
+bloqueada); o bug real era `AvaliadorController` exigir
+`status == ENVIADO` para **qualquer** voto, então quando um avaliador pedia
+informação e o `Processo` inteiro mudava para `SOLICITA_INFORMACAO`, os
+outros dois médicos — que não pediram nada — ficavam impedidos de votar
+(403, e o processo sumia da lista/badge deles) até o operador concluir todo
+o ciclo de retomada, o que podia levar dias. Corrigido com
+`StatusProcesso.aceitaVotoAvaliador()` (novo método, `true` para `ENVIADO`
+e `SOLICITA_INFORMACAO`), usado em `resolverParecerPendente`/
+`pendenteAtivoParaVoto`; a query de contagem do badge
+(`ParecerRepository.countByMembroId...ProcessoStatus`) virou
+`...ProcessoStatusIn` (aceita os dois status). `ProcessoValidator
+.validarPausaDecisao`/`tentarDecisaoAutomatica` (a trava da **decisão**)
+não foram tocados — continuam corretos, só bloqueavam a etapa certa. O
+avaliador que causou a pausa continua impedido de votar de novo (checagem
+`parecer.getResultado() != null`, inalterada). Teste de regressão dedicado:
+`AvaliadorVotoDuranteSolicitaInformacaoIntegrationTest`. Diagnóstico
+completo em `docs/RELATORIO-BUG-PAUSA-BLOQUEIA-OUTROS-AVALIADORES-2026-08.md`
+(status atualizado para CORRIGIDO).
+
+**2. Padronização de cores implementada — "Solicita informação" = amarelo,
+"Aguardando" = azul** (commit `d35dfaa`). Antes, as duas coisas usavam cor
+ao contrário do que fazia sentido (e inconsistente entre si — o badge direto
+do status dizia azul, o `tom()` semântico do mesmo status já dizia amarelo).
+Seguiu a Opção A do documento de ideia (criar um **5º tom semântico**, não
+uma exceção fora do vocabulário): `"aguardando"`, distinto de `"attention"`,
+com token `--saur-state-aguardando` e caso próprio em `layout ::
+tomBadge`. **O vocabulário de tom deixou de ter só 4 valores** — onde este
+arquivo cita "ok/danger/attention/neutral" em outras seções (Design system,
+Regras de negócio), ler como **histórico**: hoje é
+`ok/danger/attention/aguardando/neutral`, 5 valores.
+`StatusProcesso.getBootstrapBadge()` (`SOLICITA_INFORMACAO`: `bg-info` →
+`bg-warning`), `StatusSolicitacaoOnline.getBootstrapBadge()` (`ENVIADA`:
+`bg-warning` → `bg-primary`), `PainelLinha.CelulaMedico` ("Aguardando":
+warning→primary; "Solicita info": info→warning),
+`SolicitanteController.montarSituacaoPedido` (aguardando triagem/análise →
+primary) todos ajustados. Nenhuma regra de negócio mudou, só cor/classe
+CSS. Doc atualizado para IMPLEMENTADA em
+`docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md`.
+
+**3. Feature nova — chat interno Avaliador (Membro) ↔ Operador, por
+processo** (commit `6d9b8a5`, F1-F5). Antes desta sessão o médico avaliador
+era o único participante "mudo" do sistema — sem nenhum canal, dentro do
+SAUR, para trocar mensagem com a equipe operacional (dúvida sobre um PDF que
+não abriu, aviso de viagem etc.), tudo acontecia por fora (telefone/
+WhatsApp), sem trilha. **Nota: uma vistoria anterior no mesmo dia (2026-08-06)
+tinha registrado essa mesma feature como "DESCARTADA — usuário decidiu
+explicitamente não implementar"; nesta sessão seguinte o usuário retomou e
+aprovou a implementação (mensagem do commit registra "aprovacao repassada
+pela tarefa") — a decisão de não implementar foi revertida, não é uma
+inconsistência.** Arquitetura: entidade nova e separada
+`domain/MensagemAvaliador.java` (tabela `mensagem_avaliador`, enum próprio
+`RemetenteMensagemAvaliador`, **não** reusa `MensagemSolicitacao
+.RemetenteMensagem` — a CHECK constraint dela está congelada em produção,
+ver seção de CHECK constraints acima) — conversa **por processo**, 1:1
+(avaliador ↔ equipe operacional), iniciável pelos dois lados, até o
+processo ser decidido (depois, só leitura). `service/MensagemAvaliadorService`
+espelha `MensagemSolicitacaoService` de propósito (mesmos métodos:
+enviar/paraChat/marcarComoLidas/contarNaoLidas/apagar). **Proteção de
+imparcialidade:** `service/VerificadorNomePaciente.java` bloqueia
+(determinístico, por palavra inteira — nunca heurística) qualquer mensagem
+que contenha o nome do paciente ou da equipe solicitante, reaproveitando a
+normalização já validada em `ConflitoEquipeMatcher`/`Iniciais`; o operador
+escrevendo outra coisa sensível (ex. revelar o voto de outro avaliador) foi
+**aceito conscientemente como risco não mitigável por código** — mitigado só
+por aviso fixo na composição + auditoria (nunca com o texto da mensagem).
+Endpoints: lado avaliador em `AvaliadorController`
+(`GET/POST /avaliador/{id}/mensagens`, `mensagem/ajax`,
+`mensagem/{id}/apagar/ajax`, `GET /avaliador/nao-lidas-count`); lado
+operador em `ProcessoDetalheController`
+(`GET/POST /processos/{id}/avaliador/{membroId}/mensagens` e pares, com
+verificação de nome **antes** de gravar); caixa de entrada nova (F5) em
+`GET /processos/mensagens-avaliadores`
+(`processos/mensagens-avaliadores-lista.html`, todas as threads, mais
+recente primeiro) + item de navbar com badge. Reusa `chat-solicitacao.js`
+**sem nenhuma modificação**. Auditoria: `MENSAGEM_AVALIADOR_ENVIADA` /
+`MENSAGEM_OPERADOR_AVALIADOR_ENVIADA`, nunca com o texto da mensagem nem o
+nome completo do paciente. **Fora de escopo nesta leva** (F6/F7,
+deliberado): e-mail de notificação ao avaliador de mensagem nova; canal
+geral sem processo associado. Relatório de arquitetura original em
+`docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md` (o header desse doc
+ainda não foi atualizado com o status IMPLEMENTADO — só este parágrafo do
+CLAUDE.md registra isso por ora).
+
+**4. Relatório Final (PDF) — plano completo R0-R6 implementado** (5
+commits, `06783ba`→`d60f4d6`, mesclados em `bb167c3`), continuação da
+correção de conteúdo/paleta já registrada acima (PR #45) e do
+diagnóstico nível 2 (`docs/RELATORIO-REFORMULACAO-RELATORIO-FINAL-PDF-V2-2026-08.md`,
+que pediu pesquisa web e reconfirmou a falta de acentuação). Implementado
+nesta sessão: **R0** (cabeçalho de tabela repetido entre páginas, "Nº" em
+vez de "N", nome do sistema unificado nos 4 documentos institucionais,
+`/Lang` + `DisplayDocTitle` no PDF); **R1b+R2** (conteúdo simétrico entre os
+caminhos Deferido/Indeferido + acentuação completa de todos os literais
+Java do relatório — a queixa original do usuário); **R3b+R4** (paleta
+institucional compartilhada entre os documentos + tipografia/cor comedida,
+reduzindo a proporção de página que é faixa azul decorativa em vez de
+conteúdo); **R5** (correção do tamanho de página — o PDF **não era A4 de
+verdade**, 6,5% mais alto que A4 real, o que encolhia o corpo de 9pt para
+~8,4pt efetivo ao imprimir — mais divisórias por anexo e marcadores de
+navegação); **R6** (capa eliminada — o sumário virou a folha de rosto,
+mesmo padrão do Ofício de Indeferimento — e rótulo "RELATÓRIO PARCIAL"
+quando o processo ainda não foi decidido, em vez de poder emitir um
+documento chamado "RELATÓRIO FINAL" a qualquer momento). Suíte completa
+validada a cada bloco (a última rodada geral: 826 testes, 0 falhas, JDK
+21, contando também o item 3 acima). **Pendência:** nem o CLAUDE.md nem o
+header do doc V2 foram atualizados por aquela sessão com o status de
+"implementado" — só o commit `5ed8bf4` ("docs: registra implementacao do
+plano do relatorio V2") existe, sem corpo detalhado. Quem for mexer no
+Relatório Final de novo: o diagnóstico V2 (seções 1-11) descreve o estado
+**anterior** a esta implementação, não o atual — conferir o código real
+antes de assumir que um achado do V2 ainda se aplica.
+
+**Deploy automático confirmado funcionando ponta a ponta** para os 4 merges
+desta sessão (GitHub Actions "Deploy" verde após cada merge em `main`,
+último em 2026-08-07 03:10 UTC) — produção validada por `curl -Ik
+https://urgenciarenal.duckdns.org/login` (200) na sessão seguinte.
