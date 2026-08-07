@@ -413,7 +413,8 @@ public class SolicitanteController {
                     "Informação complementar necessária", mensagem, null, true, false, null, numero);
             }
             if (precisaInfo) {
-                return new SituacaoPedidoView("Aguardando análise", "info", "check-circle-fill",
+                // Padronizacao de cores 2026-08-06: "Aguardando" = azul.
+                return new SituacaoPedidoView("Aguardando análise", "primary", "check-circle-fill",
                     "Informações complementares recebidas",
                     "Aguardando a análise da equipe de Urgência Renal.", null, false, false, null, numero);
             }
@@ -428,9 +429,12 @@ public class SolicitanteController {
         }
 
         // ENVIADA (default): ainda nao triada, nenhum processo gerado ainda.
+        // Padronizacao de cores 2026-08-06: "Aguardando" = azul (nao amarelo -
+        // amarelo fica reservado para "Solicita informacao", ver
+        // docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md).
         String mensagem = "Não é necessário fazer nada agora. Assim que a equipe de Urgência Renal analisar "
             + "o pedido, você será avisado por e-mail (" + s.getSolicitanteEmail() + ").";
-        return new SituacaoPedidoView("Aguardando triagem", "warning", "hourglass-split", "Aguardando triagem",
+        return new SituacaoPedidoView("Aguardando triagem", "primary", "hourglass-split", "Aguardando triagem",
             mensagem, null, false, false, null, null);
     }
 

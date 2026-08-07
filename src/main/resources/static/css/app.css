@@ -95,6 +95,11 @@
     --saur-state-attention: var(--rs-gold);
     --saur-state-danger: var(--rs-red);
     --saur-state-neutral: var(--rs-gray-500);
+    /* "Aguardando" (pendencia interna do sistema, ex.: medico ainda nao
+       votou) - padronizacao de cores 2026-08-06, distinto de "attention"
+       (amarelo, reservado para "Solicita informacao"). Ver
+       docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md. */
+    --saur-state-aguardando: var(--rs-blue);
 
     /* Nivel 3: escalas discretas (espacamento/raio/fonte) */
     --saur-space-1: .25rem;
@@ -1357,7 +1362,9 @@ tr.linha-inativa > td:first-child {
 }
 .legend-dot-favoravel   { background: var(--rs-green); }
 .legend-dot-desfavoravel{ background: var(--rs-red); }
-.legend-dot-aguardando  { background: var(--rs-gold); }
+/* Padronizacao de cores 2026-08-06: "Aguardando" = azul (nao mais dourado -
+   ver docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md). */
+.legend-dot-aguardando  { background: var(--rs-blue); }
 .legend-dot-sem-medico  { background: var(--rs-gray-300); }
 
 /* <select> compacto usado nos filtros de ano/avaliador dos relatorios

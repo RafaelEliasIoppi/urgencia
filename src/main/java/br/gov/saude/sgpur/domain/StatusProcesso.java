@@ -86,7 +86,7 @@ public enum StatusProcesso {
         return switch (this) {
             case SOLICITADO -> "bg-secondary";
             case ENVIADO -> "bg-primary";
-            case SOLICITA_INFORMACAO -> "bg-info text-dark";
+            case SOLICITA_INFORMACAO -> "bg-warning text-dark";
             case DEFERIDO -> "bg-success";
             case INDEFERIDO -> "bg-danger";
             case CANCELADO -> "bg-dark";

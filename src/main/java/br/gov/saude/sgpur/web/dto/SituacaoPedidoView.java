@@ -10,7 +10,7 @@ package br.gov.saude.sgpur.web.dto;
  * e o template so consome este record - nunca recalcula a regra sozinho.
  *
  * @param rotulo texto curto pro badge do topo (ex.: "Deferido").
- * @param classeCor sufixo Bootstrap (success/danger/warning/info/primary/secondary),
+ * @param classeCor sufixo Bootstrap (success/danger/warning/primary/secondary),
  *                   usado no alerta do cartao e no badge do {@code <h1>}.
  *                   @deprecated acopla esta view a uma classe CSS de um
  *                   framework especifico - use {@link #tom()} (vocabulario
@@ -66,14 +66,18 @@ public record SituacaoPedidoView(
     /**
      * Tom semantico do design system, derivado de {@link #classeCor()}:
      * {@code "ok"} (success), {@code "danger"} (danger),
-     * {@code "attention"} (warning/info) ou {@code "neutral"} (demais
-     * sufixos Bootstrap, ex. primary/secondary).
+     * {@code "attention"} (warning - "Informacao necessaria"),
+     * {@code "aguardando"} (primary - "Aguardando triagem"/"Aguardando
+     * analise"/"Em analise") ou {@code "neutral"} (demais sufixos
+     * Bootstrap, ex. secondary). Padronizacao de cores 2026-08-06: ver
+     * {@code docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md}.
      */
     public String tom() {
         return switch (classeCor) {
             case "success" -> "ok";
             case "danger" -> "danger";
-            case "warning", "info" -> "attention";
+            case "warning" -> "attention";
+            case "primary" -> "aguardando";
             default -> "neutral";
         };
     }

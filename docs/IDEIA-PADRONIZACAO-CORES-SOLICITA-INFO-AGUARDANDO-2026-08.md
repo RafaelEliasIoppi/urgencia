@@ -1,9 +1,69 @@
-# Ideia (não implementada): padronizar cores — "Solicita informação" = amarelo, "Aguardando" = azul
+# Padronização de cores — "Solicita informação" = amarelo, "Aguardando" = azul
 
-**Status: IDEIA REGISTRADA A PEDIDO DO USUÁRIO. NÃO IMPLEMENTADA.**
+**Status: IMPLEMENTADA em 2026-08-06.**
 
 Pedido do dono do produto em 2026-08-06: *"solicita informação deve ser cor
 amarela e o aguardando deveria ser de cor azul, pra padronizar tudo."*
+
+## O que foi feito
+
+Todos os pontos levantados na tabela abaixo (mais alguns achados numa
+varredura própria por `grep -rn "SOLICITA_INFORMACAO|Aguardando"` em todo
+`src/main/resources/templates` e `src/main/java`) foram corrigidos para a
+regra: **"Solicita informação" (a pausa do processo, aguardando resposta do
+solicitante) = amarelo (`bg-warning`/`--rs-gold`)**; **"Aguardando" (algo
+pendente do lado interno do sistema, ex.: médico ainda não votou, pedido
+ainda não triado) = azul (`bg-primary`/`--rs-blue`)**.
+
+Seguida a recomendação do documento (Opção A): foi criado um **5º tom
+semântico** `"aguardando"` (distinto de `"attention"`), com token
+`--saur-state-aguardando` (`app.css`) e caso próprio no fragment
+`layout :: tomBadge`. `StatusProcesso.getTom()`/`PainelLinha.CelulaMedico
+.tom()`/`SituacaoPedidoView.tom()` foram atualizados para emitir
+`"aguardando"` onde antes emitiam `"attention"`/`"neutral"` incorretamente
+(esses métodos `tom()` continuam sem consumidor direto em nenhum template
+nesta leva — mesma situação de infraestrutura já documentada no CLAUDE.md
+para o design system —, mas ficaram corretos e coerentes com os campos
+`cor`/`classeCor`/`bootstrapBadge` que os templates de fato leem).
+
+Pontos corrigidos:
+- `StatusProcesso.getBootstrapBadge()`: `SOLICITA_INFORMACAO` de `bg-info`
+  para `bg-warning text-dark` (agora concorda com `getTom()`, que já dizia
+  `"attention"`/amarelo).
+- `StatusSolicitacaoOnline.getBootstrapBadge()`: `ENVIADA` ("Enviada,
+  aguardando triagem") de `bg-warning` para `bg-primary` — usado nos badges
+  de `/processos/solicitacoes-online`, `solicitante/lista.html` e
+  `solicitacoes-online-detalhe.html`.
+- `PainelLinha.CelulaMedico`: "Aguardando" (médico não votou) de
+  `cor="warning"` para `cor="primary"`; "Solicita info" (voto do médico) de
+  `cor="info"` para `cor="warning"`. `dashboard.html` (planilha do Painel,
+  `th:switch="${c.cor}"`) ganhou o caso `'primary'` → `text-bg-primary`.
+- `dashboard.html`: `.legend-dot-aguardando` de `var(--rs-gold)` para
+  `var(--rs-blue)`.
+- `SolicitanteController.montarSituacaoPedido`: "Aguardando triagem" e
+  "Aguardando análise" de `warning`/`info` para `primary` (azul);
+  "Informação necessária" (a pausa ativa, aguardando upload do solicitante)
+  **manteve** `warning` (já estava correto/amarelo).
+- `processos/detalhe.html`: badge do voto `SOLICITA_INFORMACAO` (`bg-primary`
+  → `bg-warning text-dark`); card "Aguardando informação complementar do
+  solicitante" (a pausa em si, `border-info`/`bg-info` → `border-warning`/
+  `bg-warning`); badge dinâmico `statusSubrotulo` ("Aguardando parecer (x/y)"
+  — pendência interna de votos dos avaliadores, não a pausa — `bg-warning`
+  → `bg-primary`).
+- `avaliador/lista.html` (2 ocorrências, tabela e cards mobile): badge do
+  voto `SOLICITA_INFORMACAO` de `bg-primary` para `bg-warning text-dark`.
+
+Não alterado (fora do escopo da regra, cores diferentes por motivo próprio,
+não confundir com "Aguardando"/"Solicita informação"): badges de status
+finais (Deferido=verde, Indeferido=vermelho, Cancelado=cinza/preto), o card
+"Devolvidas" do Portal do Solicitante (âmbar, é "você precisa agir de novo",
+diferente de "aguardando"), a legenda `legend-dot-sem-medico`, e os badges
+`bg-warning`/`bg-info` usados para avisos genéricos sem relação com os dois
+conceitos (ex.: "não-PDF", "sem e-mail cadastrado", contador "avaliados" de
+`membros/lista.html`).
+
+Nenhuma regra de negócio mudou — só cor/classe CSS. Suíte completa validada
+(810 testes, 0 falhas, JDK 21) após as mudanças.
 
 ## Estado atual (levantado por grep, para não perder o contexto)
 

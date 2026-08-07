@@ -394,11 +394,15 @@
 
 <!-- ============================================================
      Badge de TOM semantico (design system, 2026-08-05) - traduz o
-     vocabulario "ok"/"danger"/"attention"/"neutral" (usado por
+     vocabulario "ok"/"danger"/"attention"/"aguardando"/"neutral" (usado por
      StatusProcesso.getTom(), SituacaoPedidoView.tom(),
-     PainelLinha.CelulaMedico.tom() e EtapaFluxo.tom()) para as classes
-     Bootstrap reais, num unico lugar - assim nenhum template precisa saber
-     que "attention" e "bg-warning text-dark" por conta propria.
+     PainelLinha.CelulaMedico.tom() e EtapaFluxo.tom() - este ultimo nunca
+     produz "aguardando") para as classes Bootstrap reais, num unico lugar -
+     assim nenhum template precisa saber que "attention" e "bg-warning
+     text-dark" por conta propria. O tom "aguardando" foi acrescentado em
+     2026-08-06 (padronizacao de cores "Solicita informacao"=amarelo/
+     "Aguardando"=azul) - ver
+     docs/IDEIA-PADRONIZACAO-CORES-SOLICITA-INFO-AGUARDANDO-2026-08.md.
 
      Infraestrutura desta leva: nenhum template consome este fragment ainda
      (os que hoje leem getBootstrapBadge()/classeCor()/cor() diretamente
@@ -419,6 +423,13 @@
             <span th:text="${texto}">Texto</span>
         </span>
         <span th:case="'attention'" class="badge bg-warning text-dark">
+            <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
+            <span th:text="${texto}">Texto</span>
+        </span>
+        <!-- "aguardando" (pendencia interna, ex.: medico ainda nao votou) -
+             padronizacao de cores 2026-08-06, distinto de "attention"
+             (amarelo, reservado a "Solicita informacao"). -->
+        <span th:case="'aguardando'" class="badge bg-primary">
             <i th:if="${icone}" class="bi" th:classappend="'bi-' + ${icone}" aria-hidden="true"></i>
             <span th:text="${texto}">Texto</span>
         </span>
