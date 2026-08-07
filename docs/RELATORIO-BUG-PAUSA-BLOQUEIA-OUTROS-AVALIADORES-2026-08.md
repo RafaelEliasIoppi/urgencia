@@ -1,7 +1,29 @@
 # Bug real e grave: "Solicita informação" de UM avaliador trava o voto dos OUTROS DOIS
 
-**Status: CONFIRMADO. NÃO CORRIGIDO — só diagnóstico, a pedido explícito do
-usuário ("FAÇA SOMENTE O RELATORIO DESTE BUG, PARA POSTERIOR CORREÇAO").**
+**Status: CORRIGIDO em 2026-08-06.** A correção seguiu exatamente a direção
+recomendada na seção 5 abaixo: `StatusProcesso.aceitaVotoAvaliador()` (novo
+método, `true` para `ENVIADO` e `SOLICITA_INFORMACAO`) substituiu a checagem
+`status != StatusProcesso.ENVIADO` em `AvaliadorController.
+resolverParecerPendente` e em `pendenteAtivoParaVoto`; a query de contagem
+`ParecerRepository.
+countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus`
+virou `...ProcessoStatusIn` (recebe uma `Collection<StatusProcesso>`), com
+`GlobalModelAdvice.pendentesAvaliador()` passando `List.of(ENVIADO,
+SOLICITA_INFORMACAO)`. `ProcessoValidator.validarPausaDecisao`/
+`tentarDecisaoAutomatica` (a trava da DECISÃO) não foram tocados — continuam
+bloqueando só a decisão, como já era correto. O avaliador que causou a pausa
+continua impedido de votar de novo (checagem `parecer.getResultado() !=
+null`, inalterada, roda antes da checagem de status). Teste de regressão
+dedicado: `AvaliadorVotoDuranteSolicitaInformacaoIntegrationTest`
+(`@SpringBootTest`, H2 real, sem mock de serviço) — confirma que os outros
+dois avaliadores abrem `GET /avaliador/{id}` (200) e votam com sucesso via
+`POST /avaliador/{id}/votar` enquanto o processo está em
+`SOLICITA_INFORMACAO`, que o processo continua na lista `/avaliador` deles, e
+que o avaliador que pediu informação continua bloqueado (403) de votar de
+novo. Suíte completa validada: **815 testes, 0 falhas** (JDK 21).
+
+O texto abaixo (seções 1-6) é o relatório de diagnóstico original, mantido
+como registro da investigação — reflete o estado ANTES da correção.
 
 Reportado pelo dono do produto em 2026-08-06: *"QUANDO UM MEMBRO SOLICITA
 INFORMAÇAO, OS OUTROS MEMBROS NAO CONSEGUEM MAIS VOTAR. ISSO NAO ERA PARA SER

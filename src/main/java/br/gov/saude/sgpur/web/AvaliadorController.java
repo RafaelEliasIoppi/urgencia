@@ -542,7 +542,11 @@ public class AvaliadorController {
 
     /**
      * Criterio de "pendente ativo para voto": parecer sem resultado, ja enviado,
-     * cujo processo ainda esta em status que aceita votacao (ENVIADO).
+     * cujo processo ainda esta em status que aceita votacao (ENVIADO ou
+     * SOLICITA_INFORMACAO — ver {@link StatusProcesso#aceitaVotoAvaliador()};
+     * a pausa por pedido de informacao de UM avaliador nao deve impedir o
+     * voto dos outros dois, bug real corrigido em 2026-08, ver
+     * docs/RELATORIO-BUG-PAUSA-BLOQUEIA-OUTROS-AVALIADORES-2026-08.md).
      *
      * Regra UNICA de negocio, reaproveitada pelas consultas com fetch join
      * usadas em {@link #lista()}/{@link #registrarVoto} — mas nao mais pelo
@@ -550,17 +554,18 @@ public class AvaliadorController {
      * {@code GlobalModelAdvice.pendentesAvaliador()} usa uma query de
      * {@code count(...)} dedicada no repositorio
      * ({@code ParecerRepository.
-     * countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus}),
+     * countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn}),
      * que expressa o MESMO criterio (resultado nulo + dataEnvio preenchida +
-     * processo.status = ENVIADO) diretamente no banco, sem carregar nenhuma
-     * entidade {@code Parecer}/{@code Processo}. O metodo estatico
-     * {@code pendentesDoMembro} que existia aqui antes (carregava as entidades
-     * e filtrava em Java navegando {@code par.getProcesso()}) foi removido por
-     * ter ficado sem nenhum chamador.
+     * processo.status em ENVIADO/SOLICITA_INFORMACAO) diretamente no banco,
+     * sem carregar nenhuma entidade {@code Parecer}/{@code Processo}. O
+     * metodo estatico {@code pendentesDoMembro} que existia aqui antes
+     * (carregava as entidades e filtrava em Java navegando
+     * {@code par.getProcesso()}) foi removido por ter ficado sem nenhum
+     * chamador.
      */
     private static boolean pendenteAtivoParaVoto(Parecer par) {
         StatusProcesso s = par.getProcesso().getStatus();
-        return s == StatusProcesso.ENVIADO;
+        return s.aceitaVotoAvaliador();
     }
 
     // -------------------------------------------------------------------------
@@ -627,7 +632,7 @@ public class AvaliadorController {
         }
 
         StatusProcesso status = parecer.getProcesso().getStatus();
-        if (status != StatusProcesso.ENVIADO) {
+        if (!status.aceitaVotoAvaliador()) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                 "Este processo nao esta disponivel para avaliacao (status: "
                     + status.getDescricao() + ").");

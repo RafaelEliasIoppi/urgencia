@@ -18,6 +18,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 /**
@@ -99,12 +101,13 @@ class GlobalModelAdviceTest {
         when(usuarioRepo.findByUsername("aval1")).thenReturn(Optional.of(usuario));
 
         // O calculo em si (resultado nulo + dataEnvio preenchida + processo em
-        // ENVIADO) e responsabilidade da query de count() no banco - aqui so
-        // verificamos que o advice delega ao repositorio com os parametros
-        // certos (membroId do usuario logado + StatusProcesso.ENVIADO) e
-        // devolve o valor tal como veio, sem carregar nenhuma entidade Parecer.
-        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
-                7L, StatusProcesso.ENVIADO))
+        // ENVIADO/SOLICITA_INFORMACAO) e responsabilidade da query de count() no
+        // banco - aqui so verificamos que o advice delega ao repositorio com os
+        // parametros certos (membroId do usuario logado + os status que aceitam
+        // voto) e devolve o valor tal como veio, sem carregar nenhuma entidade
+        // Parecer.
+        when(parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn(
+                eq(7L), any()))
             .thenReturn(2L);
 
         assertThat(advice.pendentesAvaliador()).isEqualTo(2L);

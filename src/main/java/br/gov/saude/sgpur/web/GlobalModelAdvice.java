@@ -17,6 +17,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ModelAttribute;
 
+import java.util.List;
+
 /**
  * Atributos de model disponiveis em TODAS as views.
  *
@@ -69,10 +71,17 @@ public class GlobalModelAdvice {
         return solicitanteHabilitado;
     }
 
+    // Status que aceitam voto novo do avaliador (ver
+    // StatusProcesso.aceitaVotoAvaliador()) - ENVIADO e SOLICITA_INFORMACAO
+    // (a pausa causada por um avaliador nao deve esconder o processo da lista
+    // de pendencias/badge dos outros dois, que continuam livres para votar).
+    private static final List<StatusProcesso> STATUS_ACEITA_VOTO =
+        List.of(StatusProcesso.ENVIADO, StatusProcesso.SOLICITA_INFORMACAO);
+
     // @Transactional(readOnly = true) mantido por seguranca/consistencia com os
     // demais @ModelAttribute deste advice (todos leem via repositorio), mas
     // deixou de ser estritamente NECESSARIO aqui: desde a troca para
-    // countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus
+    // countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn
     // (query de COUNT direta no banco, sem carregar nenhuma entidade Parecer/
     // Processo), nao sobra navegacao LAZY nenhuma neste metodo — o antigo
     // comentario sobre LazyInitializationException valia para a versao anterior,
@@ -88,8 +97,8 @@ public class GlobalModelAdvice {
         return usuarioRepo.findByUsername(auth.getName())
                 .map(Usuario::getMembro)
                 .map(MembroUrgenciaRenal::getId)
-                .map(membroId -> parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatus(
-                        membroId, StatusProcesso.ENVIADO))
+                .map(membroId -> parecerRepo.countByMembroIdAndResultadoIsNullAndDataEnvioIsNotNullAndProcessoStatusIn(
+                        membroId, STATUS_ACEITA_VOTO))
                 .orElse(0L);
     }
 
