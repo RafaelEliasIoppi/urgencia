@@ -207,6 +207,18 @@ não renomeados no rebrand SAUR). `artifactId` do Maven é `saur` (gera
   limpo) para o voto definitivo, e o fluxo de Respostas/Decisão é liberado. O
   solicitante só ENVIA; retomar a análise continua exclusivo do OPERADOR via
   `retomarAposInformacao`.
+  **Decisão de produto confirmada (2026-08-07):** se, no momento de retomar a
+  análise, a maioria simples já estava formada pelos outros 2 pareceres (ex.:
+  2 favoráveis, com o 3º em pausa), `retomarAnalise`
+  (`ProcessoDecisaoController.java`) encadeia `retomarAposInformacao` +
+  `tentarDecisaoAutomatica` **na mesma requisição** — o processo é decidido
+  imediatamente, **sem esperar** o avaliador que pediu a informação votar de
+  novo. Investigado e perguntado explicitamente ao dono do produto
+  (`docs/RELATORIO-BUG-DOIS-VOTOS-DEFEREM-DURANTE-PAUSA-2026-08.md`, achado
+  B) depois de um relato de "dois votos deferem durante a pausa" — **resposta
+  confirmada: manter o comportamento atual** (decidir na hora, não esperar o
+  3º voto). Não é um bug; é a regra de maioria simples 2 de 3 aplicada
+  normalmente assim que a pausa é removida.
 - **Solicitante pode cancelar até a decisão final (desde 2026-07-29).** Antes, o
   Portal do Solicitante só permitia cancelar enquanto a solicitação estava
   `ENVIADA` (não triada). Agora `SolicitacaoOnlineService.podeCancelar` abre
