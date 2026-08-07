@@ -41,9 +41,14 @@ public class RelatorioAnualService {
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private static final Color AZUL = new Color(13, 110, 253);
-    private static final Color CINZA = new Color(108, 117, 125);
-    private static final Color BORDA = new Color(222, 226, 230);
+    // Decisao 6 do relatorio V2 (§7.6): paleta institucional compartilhada
+    // com o Relatorio Final e o Relatorio do Avaliador via PaletaPdf, no
+    // lugar do azul/cinza/borda do Bootstrap que este documento usava desde
+    // sempre - eram a origem do achado B6 (dois azuis institucionais
+    // diferentes nos PDFs do proprio sistema).
+    private static final Color AZUL = PaletaPdf.AZUL;
+    private static final Color CINZA = PaletaPdf.CINZA;
+    private static final Color BORDA = PaletaPdf.CINZA_BORDA;
 
     private final TempoRespostaService tempoRespostaService;
 

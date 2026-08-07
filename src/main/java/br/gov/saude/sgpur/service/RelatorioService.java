@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
 import br.gov.saude.sgpur.domain.ResultadoParecer;
 import br.gov.saude.sgpur.domain.TipoAnexo;
+import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.EtapaFluxo;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPCell;
@@ -117,7 +118,10 @@ public class RelatorioService {
 
         Font fTitulo = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 15, AZUL);
         Font fSub = FontFactory.getFont(FontFactory.HELVETICA, 9, CINZA);
-        Font fSecao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
+        // R4 do relatorio V2: titulo de secao tipografico (nao mais faixa
+        // AZUL chapada com texto branco) - a cor do texto passa a ser o
+        // proprio AZUL institucional, ver PdfRelatorioBuilder.secao().
+        Font fSecao = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, AZUL);
 
         // Pagina de capa
         pdfBuilder.adicionarCapa(doc, p, "Relatório do Processo " + p.getNumero(), false);
@@ -294,17 +298,21 @@ public class RelatorioService {
         doc.add(t3);
 
         pdfBuilder.secao(doc, fSecao, "4. Andamento do processo");
-        PdfPTable t4 = new PdfPTable(new float[]{1, 4, 5});
+        // Coluna "Situacao" ganhou mais espaco (10% -> 18%) para caber o
+        // texto por extenso ("Concluida"/"Atual"/"Bloqueada") - R4 do
+        // relatorio V2: "[X]"/"[>]"/"[ ]" eram compactos mas exigiam decifrar
+        // um codigo visual num documento de arquivo/auditoria.
+        PdfPTable t4 = new PdfPTable(new float[]{1.8f, 3.7f, 4.5f});
         t4.setWidthPercentage(100);
         t4.setSpacingBefore(4);
-        pdfBuilder.cabecalho(t4, "Status", "Etapa", "Detalhe");
+        pdfBuilder.cabecalho(t4, "Situação", "Etapa", "Detalhe");
         for (EtapaFluxo e : fluxoService.montarEtapas(p)) {
-            String marca = switch (e.estado()) {
-                case CONCLUIDA -> "[X]";
-                case ATUAL -> "[>]";
-                case BLOQUEADA -> "[ ]";
+            String situacao = switch (e.estado()) {
+                case CONCLUIDA -> "Concluída";
+                case ATUAL -> "Atual";
+                case BLOQUEADA -> "Bloqueada";
             };
-            pdfBuilder.celula(t4, marca, Element.ALIGN_CENTER, false);
+            pdfBuilder.celula(t4, situacao, Element.ALIGN_LEFT, e.estado() != EstadoEtapa.BLOQUEADA);
             pdfBuilder.celula(t4, e.titulo(), Element.ALIGN_LEFT, false);
             pdfBuilder.celula(t4, e.detalhe(), Element.ALIGN_LEFT, false);
         }
@@ -315,12 +323,13 @@ public class RelatorioService {
             doc.add(new Paragraph("Nenhum anexo registrado.",
                 FontFactory.getFont(FontFactory.HELVETICA_OBLIQUE, 9, CINZA)));
         } else {
-            // Tipo ganhou mais espaco (33% -> 47%) e Data encolheu (22% ->
-            // 16%, sobra de sobra para "dd/mm/aaaa"): a descricao do tipo
-            // costuma ser bem mais longa que o nome do arquivo ou a data,
-            // e quebrava em 2 linhas de forma irregular com as proporcoes
-            // antigas (3, 4, 2).
-            PdfPTable t5 = new PdfPTable(new float[]{4.5f, 3.5f, 1.5f});
+            // Tipo ganhou mais espaco (33% -> 42%) e Data ganhou mais espaco
+            // tambem (16% -> 19%, precisa de mais fôlego a 10pt do que a
+            // 9pt): a descricao do tipo costuma ser bem mais longa que o
+            // nome do arquivo ou a data, e "dd/mm/aaaa" quebrava em 2 linhas
+            // com a coluna estreita demais a 10pt (achado do protótipo do
+            // relatorio V2, §6 - risco previsto e confirmado na pratica).
+            PdfPTable t5 = new PdfPTable(new float[]{4.2f, 3.3f, 2f});
             t5.setWidthPercentage(100);
             t5.setSpacingBefore(4);
             pdfBuilder.cabecalho(t5, "Tipo", "Arquivo", "Data");

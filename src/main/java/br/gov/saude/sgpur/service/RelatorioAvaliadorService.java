@@ -41,10 +41,13 @@ public class RelatorioAvaliadorService {
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
     private static final DateTimeFormatter DATA_HORA = DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm");
 
-    private static final Color AZUL = new Color(13, 110, 253);
-    private static final Color CINZA = new Color(108, 117, 125);
-    private static final Color BORDA = new Color(222, 226, 230);
-    private static final Color VERMELHO = new Color(220, 53, 69);
+    // Decisao 6 do relatorio V2 (§7.6): paleta institucional compartilhada
+    // com o Relatorio Final e o Relatorio Anual via PaletaPdf - ver o mesmo
+    // comentario em RelatorioAnualService.
+    private static final Color AZUL = PaletaPdf.AZUL;
+    private static final Color CINZA = PaletaPdf.CINZA;
+    private static final Color BORDA = PaletaPdf.CINZA_BORDA;
+    private static final Color VERMELHO = PaletaPdf.VERMELHO;
 
     private final TempoRespostaService tempoRespostaService;
 

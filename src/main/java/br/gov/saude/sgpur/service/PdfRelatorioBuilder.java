@@ -33,22 +33,19 @@ class PdfRelatorioBuilder {
 
     private static final DateTimeFormatter DATA = DateTimeFormatter.ofPattern("dd/MM/yyyy");
 
-    // AZUL institucional (--rs-blue do app.css), nao mais o $primary do
-    // Bootstrap 5 (#0D6EFD, new Color(13, 110, 253)) que o documento usava
-    // antes - ver docs/RELATORIO-REFORMULACAO-RELATORIO-FINAL-PDF-2026-08.md
-    // secao 6.1. Contraste branco-sobre-fundo sobe de 4,50:1 (limite exato
-    // da WCAG AA) para 8,39:1, relevante num documento feito para ser
-    // impresso e fotocopiado. Escopo estrito desta troca: SO o Relatorio
-    // Final (esta classe) - CINZA/VERDE_ESCURO/VERMELHO permanecem os
-    // mesmos defaults do Bootstrap, e o Relatorio Anual/Relatorio do
-    // Avaliador (que replicam essas constantes em suas proprias classes)
-    // NAO foram tocados; unificar a paleta nos demais documentos e decisao
-    // de produto separada, ainda nao aprovada.
-    static final Color AZUL = new Color(0x1A, 0x4D, 0x8F);
-    static final Color CINZA = new Color(108, 117, 125);
-    static final Color CINZA_BORDA = new Color(222, 226, 230);
-    static final Color VERDE_ESCURO = new Color(25, 135, 84);
-    static final Color VERMELHO = new Color(220, 53, 69);
+    // Paleta institucional COMPLETA (Decisao 1 + Decisao 6 do relatorio V2,
+    // §7.1/§7.6) - antes so o AZUL tinha sido trocado (PR #45), deixando
+    // CINZA/CINZA_BORDA/VERDE_ESCURO/VERMELHO como defaults do Bootstrap
+    // ($secondary/$gray-300/$success/$danger). Agora as 5 cores vem de
+    // PaletaPdf, compartilhada com RelatorioAnualService/
+    // RelatorioAvaliadorService - ver javadoc de PaletaPdf para o raciocinio
+    // completo (inclusive por que NAO ficou "so o Relatorio Final" desta
+    // vez, ao contrario da decisao original do PR #45).
+    static final Color AZUL = PaletaPdf.AZUL;
+    static final Color CINZA = PaletaPdf.CINZA;
+    static final Color CINZA_BORDA = PaletaPdf.CINZA_BORDA;
+    static final Color VERDE_ESCURO = PaletaPdf.VERDE_ESCURO;
+    static final Color VERMELHO = PaletaPdf.VERMELHO;
 
     private final AnexoStorageService anexoStorage;
 
@@ -382,17 +379,37 @@ class PdfRelatorioBuilder {
     // Helpers de layout
     // -----------------------------------------------------------------------
 
+    /**
+     * Titulo de secao como TIPOGRAFIA (negrito, azul institucional, sem caixa
+     * alta - o texto passado ja vem no case que deve ser exibido) com um
+     * filete de 1,5pt embaixo, em vez da faixa AZUL chapada de fundo a
+     * fundo que o documento usava antes (R4 do relatorio V2, §7 e §6 -
+     * protótipo). Motivo, com respaldo externo (§5.1/§5.5 do relatorio V2):
+     * o padrao ofício da Presidencia da Republica prescreve texto preto em
+     * papel branco, reservando cor para graficos/ilustracoes, e a mesma faixa
+     * chapada mede 11-13% da area da pagina e 59-68% de toda a tinta impressa
+     * (achado B7) - virando mancha solida em fotocopia. O filete sozinho ja
+     * demarca a secao sem pagar esse custo (Butterick: bordas finas nao
+     * "ofuscam a informacao" como bordas grossas).
+     */
     void secao(Document doc, Font fSecao, String texto) throws DocumentException {
-        PdfPTable barra = new PdfPTable(1);
-        barra.setWidthPercentage(100);
-        barra.setSpacingBefore(12);
-        barra.setSpacingAfter(2);
-        PdfPCell c = new PdfPCell(new Phrase(texto, fSecao));
-        c.setBackgroundColor(AZUL);
-        c.setPadding(5);
-        c.setBorder(Rectangle.NO_BORDER);
-        barra.addCell(c);
-        doc.add(barra);
+        Paragraph titulo = new Paragraph(texto, fSecao);
+        titulo.setSpacingBefore(14);
+        titulo.setSpacingAfter(2);
+        doc.add(titulo);
+
+        PdfPTable filete = new PdfPTable(1);
+        filete.setWidthPercentage(100);
+        filete.setSpacingAfter(6);
+        PdfPCell c = new PdfPCell(new Phrase(" ", FontFactory.getFont(FontFactory.HELVETICA, 2)));
+        c.setBorderWidthBottom(1.5f);
+        c.setBorderWidthTop(0);
+        c.setBorderWidthLeft(0);
+        c.setBorderWidthRight(0);
+        c.setBorderColorBottom(AZUL);
+        c.setPadding(0);
+        filete.addCell(c);
+        doc.add(filete);
     }
 
     PdfPTable tabelaDados() {
@@ -403,8 +420,8 @@ class PdfRelatorioBuilder {
     }
 
     void linha(PdfPTable t, String rotulo, String valor) {
-        Font fr = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, CINZA);
-        Font fv = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.BLACK);
+        Font fr = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, CINZA);
+        Font fv = FontFactory.getFont(FontFactory.HELVETICA, 10, Color.BLACK);
         PdfPCell c1 = new PdfPCell(new Phrase(rotulo, fr));
         PdfPCell c2 = new PdfPCell(new Phrase(valor, fv));
         for (PdfPCell c : new PdfPCell[]{c1, c2}) {
@@ -424,7 +441,7 @@ class PdfRelatorioBuilder {
      * do dado (mesmo principio ja usado na capa, {@link #adicionarCapa}).
      */
     void linhaDestaque(PdfPTable t, String rotulo, String valor, Color cor) {
-        Font fr = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, CINZA);
+        Font fr = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, CINZA);
         Font fv = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 13, cor);
         PdfPCell c1 = new PdfPCell(new Phrase(rotulo, fr));
         c1.setPadding(6);
@@ -438,19 +455,30 @@ class PdfRelatorioBuilder {
         t.addCell(c2);
     }
 
-    // Cor de preenchimento unificada para "titulo de bloco": a barra de
-    // secao (secao(), acima) e o cabecalho de tabela (abaixo) usam AZUL,
-    // igual ja fazia a tabela de avaliadores da capa (adicionarCapa) - antes
-    // o cabecalho de tabela usava CINZA cheio, uma segunda cor de "titulo"
-    // sem nenhuma regra visivel de quando usar qual. VERDE_ESCURO/VERMELHO
-    // ficam reservados exclusivamente para o resultado da decisao.
+    /** Fundo claro do cabecalho de tabela ({@code --rs-gray-100}), R4 do relatorio V2. */
+    private static final Color CABECALHO_TABELA_FUNDO = new Color(0xF1, 0xF5, 0xF9);
+
+    // Cabecalho de tabela CLARO (fundo --rs-gray-100 + texto preto + filete
+    // AZUL de 1,5pt embaixo), no lugar do fundo AZUL chapado com texto branco
+    // que o documento usava antes (R4 do relatorio V2) - mesmo raciocinio de
+    // secao() acima: a faixa chapada e o elemento que mais contribui pra
+    // saturacao de tinta da pagina (achado B7) e contraria o padrao ofício
+    // (§5.1). O contraste preto-sobre-#F1F5F9 (19,17:1, Anexo B do relatorio
+    // V2) folga MUITO mais que o branco-sobre-AZUL que ele substitui.
     void cabecalho(PdfPTable t, String... cols) {
-        Font f = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.WHITE);
+        Font f = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 9, Color.BLACK);
         for (String col : cols) {
             PdfPCell c = new PdfPCell(new Phrase(col, f));
-            c.setBackgroundColor(AZUL);
-            c.setBorderColor(CINZA_BORDA);
-            c.setPadding(4);
+            c.setBackgroundColor(CABECALHO_TABELA_FUNDO);
+            c.setBorderWidthBottom(1.5f);
+            c.setBorderColorBottom(AZUL);
+            c.setBorderWidthTop(0.5f);
+            c.setBorderColorTop(CINZA_BORDA);
+            c.setBorderWidthLeft(0.5f);
+            c.setBorderColorLeft(CINZA_BORDA);
+            c.setBorderWidthRight(0.5f);
+            c.setBorderColorRight(CINZA_BORDA);
+            c.setPadding(5);
             t.addCell(c);
         }
         // Achado B2 do relatorio V2: sem isto, uma tabela que quebra entre
@@ -461,8 +489,15 @@ class PdfRelatorioBuilder {
         t.setHeaderRows(1);
     }
 
+    // Corpo a 10pt (era 9pt) - R4 do relatorio V2: 9pt fica abaixo do minimo
+    // de toda fonte tipografica/de acessibilidade consultada (Butterick
+    // 10-12pt, Section508 11-12pt, UKAAF 12pt, padrao oficio 12pt) e o
+    // proprio Oficio de Indeferimento do sistema (a regua de qualidade
+    // estabelecida em 2026-08-04) ja usa 11pt. 10pt e o piso da faixa de
+    // consenso, nao o alvo confortavel - mas subir mais exigiria reajustar
+    // TODAS as proporcoes de coluna do zero, fora do escopo desta rodada.
     void celula(PdfPTable t, String texto, int align, boolean bold) {
-        Font f = FontFactory.getFont(bold ? FontFactory.HELVETICA_BOLD : FontFactory.HELVETICA, 9, Color.BLACK);
+        Font f = FontFactory.getFont(bold ? FontFactory.HELVETICA_BOLD : FontFactory.HELVETICA, 10, Color.BLACK);
         PdfPCell c = new PdfPCell(new Phrase(texto, f));
         c.setPadding(4);
         c.setHorizontalAlignment(align);
