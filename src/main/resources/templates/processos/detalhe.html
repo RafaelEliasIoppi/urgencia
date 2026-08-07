@@ -788,6 +788,7 @@
                             <th>Parecer</th>
                             <th>Data resposta</th>
                             <th>Ação</th>
+                            <th>Conversa</th>
                         </tr></thead>
                         <tbody>
                         <th:block th:each="par : ${processo.pareceres}">
@@ -863,16 +864,60 @@
                                     <i class="bi bi-envelope-slash"></i> Sem e-mail cadastrado
                                 </span>
                             </td>
+                            <td>
+                                <!-- Conversa com este avaliador (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md).
+                                     Botao recolhe/expande a thread abaixo - o poll AJAX so comeca
+                                     quando o operador expande de fato (ver script no fim da pagina),
+                                     pra nao manter ate 3 polls simultaneos numa mesma tela quando
+                                     ninguem esta lendo nenhuma conversa (risco R5 do relatorio). -->
+                                <button type="button" class="btn btn-outline-primary btn-sm text-nowrap"
+                                        data-bs-toggle="collapse" th:attr="data-bs-target='#chatAval' + ${par.id}">
+                                    <i class="bi bi-chat-dots"></i> Conversa
+                                    <span th:if="${naoLidasPorParecer.get(par.id) != null and naoLidasPorParecer.get(par.id) > 0}"
+                                          class="badge bg-warning text-dark ms-1"
+                                          th:text="${naoLidasPorParecer.get(par.id)}">0</span>
+                                </button>
+                            </td>
                         </tr>
                         <!-- Justificativa do avaliador (material INTERNO do operador;
                              NUNCA exibida a outros avaliadores no portal). -->
                         <tr th:if="${par.justificativa != null and !par.justificativa.isBlank()}">
-                            <td colspan="4" class="pt-0">
+                            <td colspan="5" class="pt-0">
                                 <div class="alert alert-light border py-2 mb-0 small">
                                     <i class="bi bi-chat-left-quote text-secondary"></i>
                                     <span class="fw-semibold">Justificativa / observações do avaliador:</span>
                                     <div class="text-body mt-1" style="white-space: pre-wrap"
                                          th:text="${par.justificativa}">...</div>
+                                </div>
+                            </td>
+                        </tr>
+                        <!-- Thread do chat com este avaliador - recolhida por padrao. -->
+                        <tr>
+                            <td colspan="5" class="pt-0 pb-3">
+                                <div class="collapse chat-avaliador-thread" th:id="'chatAval' + ${par.id}"
+                                     th:attr="data-parecer-id=${par.id}">
+                                    <div class="border rounded p-2 bg-light-subtle">
+                                        <div class="alert alert-warning py-2 mb-2 small">
+                                            <i class="bi bi-exclamation-triangle-fill"></i>
+                                            Esta mensagem será lida pelo médico avaliador. Refira-se ao
+                                            paciente apenas pelas iniciais
+                                            <strong th:text="${iniciais}">X.X.</strong>. Não cite o nome, a
+                                            equipe solicitante nem os pareceres dos outros avaliadores.
+                                        </div>
+                                        <div th:id="'chatVazioAval' + ${par.id}" class="text-muted small text-center py-2">
+                                            Nenhuma mensagem ainda.
+                                        </div>
+                                        <div th:id="'chatBoxAval' + ${par.id}" class="mb-2 chat-box d-none"></div>
+                                        <form th:id="'chatFormAval' + ${par.id}" method="post" class="chat-form-avaliador">
+                                            <div class="input-group input-group-sm">
+                                                <input type="text" name="texto" class="form-control"
+                                                       placeholder="Escrever para o avaliador..." required maxlength="2000">
+                                                <button type="submit" class="btn btn-primary">
+                                                    <i class="bi bi-reply"></i> Enviar
+                                                </button>
+                                            </div>
+                                        </form>
+                                    </div>
                                 </div>
                             </td>
                         </tr>
@@ -1312,6 +1357,40 @@
         labelApagadaOutro: 'pelo solicitante',
         intervaloMs: 5000
     });
+
+    // Conversas com os avaliadores (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md):
+    // uma thread 1:1 por parecer, iniciada SO quando o operador expande a
+    // conversa (evento shown.bs.collapse) - evita ate 3 polls simultaneos
+    // rodando o tempo todo numa mesma tela quando ninguem esta lendo nenhuma
+    // conversa (risco R5 do relatorio). chat-solicitacao.js e reusado sem
+    // nenhuma modificacao (item 12.7 do relatorio).
+    /*[# th:each="par : ${processo.pareceres}"]*/
+    (function () {
+        var parecerId = /*[[${par.id}]]*/ 0;
+        var pollUrl = /*[[@{/processos/{id}/avaliador/{membroId}/mensagens(id=${processo.id},membroId=${par.membro.id})}]]*/ '';
+        var sendUrl = /*[[@{/processos/{id}/avaliador/{membroId}/mensagem/ajax(id=${processo.id},membroId=${par.membro.id})}]]*/ '';
+        var deleteUrlBase = /*[[@{/processos/{id}/avaliador/{membroId}/mensagem/(id=${processo.id},membroId=${par.membro.id})}]]*/ '';
+        var elCollapse = document.getElementById('chatAval' + parecerId);
+        if (!elCollapse) return;
+        var iniciado = false;
+        elCollapse.addEventListener('shown.bs.collapse', function () {
+            if (iniciado) return;
+            iniciado = true;
+            iniciarChatSolicitacao({
+                pollUrl: pollUrl,
+                sendUrl: sendUrl,
+                deleteUrlBase: deleteUrlBase,
+                formSelector: '#chatFormAval' + parecerId,
+                inputSelector: 'input[name="texto"]',
+                chatBoxSelector: '#chatBoxAval' + parecerId,
+                emptySelector: '#chatVazioAval' + parecerId,
+                notifMensagem: 'Nova mensagem do avaliador.',
+                labelApagadaOutro: 'pelo avaliador',
+                intervaloMs: 5000
+            });
+        });
+    })();
+    /*[/]*/
 </script>
 
 <div th:replace="~{layout :: footer}"></div>

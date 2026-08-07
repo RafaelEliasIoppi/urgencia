@@ -1,6 +1,7 @@
 package br.gov.saude.sgpur.web;
 
 import br.gov.saude.sgpur.domain.*;
+import br.gov.saude.sgpur.domain.MensagemAvaliador.RemetenteMensagemAvaliador;
 import br.gov.saude.sgpur.repository.AnexoRepository;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.repository.ParecerRepository;
@@ -9,6 +10,7 @@ import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.DecisaoFinalService;
 import br.gov.saude.sgpur.service.Iniciais;
+import br.gov.saude.sgpur.service.MensagemAvaliadorService;
 import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -77,6 +79,7 @@ public class AvaliadorController {
     private final ProcessoService processoService;
     private final AuditoriaService auditoria;
     private final DecisaoFinalService decisaoFinalService;
+    private final MensagemAvaliadorService mensagemAvaliadorService;
     /**
      * Transacoes explicitas e CURTAS do POST de voto. Ver o comentario grande em
      * {@link #registrarVoto}: o voto do medico precisa ser commitado numa
@@ -94,6 +97,7 @@ public class AvaliadorController {
                                ProcessoService processoService,
                                AuditoriaService auditoria,
                                DecisaoFinalService decisaoFinalService,
+                               MensagemAvaliadorService mensagemAvaliadorService,
                                PlatformTransactionManager txManager,
                                // Prazo-meta vem do TempoRespostaService (nao um @Value proprio):
                                // fonte unica de verdade pro mesmo criterio "fora do prazo" usado
@@ -108,6 +112,7 @@ public class AvaliadorController {
         this.processoService = processoService;
         this.auditoria = auditoria;
         this.decisaoFinalService = decisaoFinalService;
+        this.mensagemAvaliadorService = mensagemAvaliadorService;
         this.txTemplate = new TransactionTemplate(txManager);
         this.prazoDias = tempoRespostaService.getPrazoDias();
     }
@@ -534,6 +539,106 @@ public class AvaliadorController {
             .contentType(MediaType.APPLICATION_PDF)
             .header(HttpHeaders.CONTENT_DISPOSITION, "inline; filename=\"" + anexo.getNomeArquivo() + "\"")
             .body(resource);
+    }
+
+    // -------------------------------------------------------------------------
+    // Chat com a equipe operacional (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md)
+    // -------------------------------------------------------------------------
+    //
+    // Endpoints no MESMO formato exigido pelo modulo JS reutilizado
+    // (chat-solicitacao.js, ver comentario do topo do arquivo: nao foi
+    // reescrito, so reusado com URLs/seletores diferentes). Posse SEMPRE
+    // verificada via parecerRepo.findByProcessoIdAndMembroIdComProcesso
+    // (mesmo predicado ja usado por baixarPdf) - nunca resolve a thread so
+    // pelo id do processo. Conversa fica aberta ENQUANTO o processo nao for
+    // finalizado (Q4 do relatorio, recomendacao aceita), mesmo depois do
+    // proprio voto ja emitido - por isso NAO reusa resolverParecerPendente
+    // (que exige resultado nulo).
+
+    /** Polling do chat com a equipe operacional (AJAX). */
+    @GetMapping("/{processoId}/mensagens")
+    @ResponseBody
+    public Map<String, Object> mensagensAvaliadorJson(@PathVariable Long processoId, Principal principal) {
+        MembroUrgenciaRenal membro = resolverMembro(principal);
+        Parecer parecer = resolverParecerDoMembro(processoId, membro);
+        Usuario usuario = usuarioLogado(principal);
+        mensagemAvaliadorService.marcarComoLidas(processoId, membro.getId(),
+            RemetenteMensagemAvaliador.OPERADOR, usuario.getId());
+        Map<String, Object> resp = new HashMap<>();
+        resp.put("mensagens", mensagemAvaliadorService.paraChat(
+            processoId, membro.getId(), RemetenteMensagemAvaliador.AVALIADOR, usuario.getId(),
+            "Voce", "Equipe CET-RS"));
+        resp.put("podeEnviar", !parecer.getProcesso().getStatus().isFinalizado());
+        return resp;
+    }
+
+    @PostMapping("/{processoId}/mensagem/ajax")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> enviarMensagemAvaliadorAjax(@PathVariable Long processoId,
+            @RequestParam String texto, Principal principal) {
+        MembroUrgenciaRenal membro = resolverMembro(principal);
+        Parecer parecer = resolverParecerDoMembro(processoId, membro);
+        if (parecer.getProcesso().getStatus().isFinalizado()) {
+            return ResponseEntity.badRequest().body(Map.of("erro",
+                "Este processo ja foi decidido; a conversa ficou somente leitura."));
+        }
+        if (texto == null || texto.isBlank()) {
+            return ResponseEntity.badRequest().body(Map.of("erro", "A mensagem nao pode estar em branco."));
+        }
+        Usuario usuario = usuarioLogado(principal);
+        mensagemAvaliadorService.enviar(parecer.getProcesso(), membro, texto,
+            RemetenteMensagemAvaliador.AVALIADOR, usuario.getId());
+        // Auditoria: SO id do processo + rotulo do medico, NUNCA o texto nem o
+        // nome do paciente (mesmo padrao ja exigido para MENSAGEM_OPERADOR_ENVIADA).
+        auditoria.registrar("MENSAGEM_AVALIADOR_ENVIADA",
+            "Processo " + parecer.getProcesso().getNumero() + " - " + membro.getRotulo());
+        return ResponseEntity.ok(Map.of("ok", true));
+    }
+
+    @PostMapping("/{processoId}/mensagem/{mensagemId}/apagar/ajax")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> apagarMensagemAvaliadorAjax(@PathVariable Long processoId,
+            @PathVariable Long mensagemId, Principal principal) {
+        try {
+            MembroUrgenciaRenal membro = resolverMembro(principal);
+            Usuario usuario = usuarioLogado(principal);
+            mensagemAvaliadorService.apagar(mensagemId, usuario.getId(), RemetenteMensagemAvaliador.AVALIADOR);
+            return ResponseEntity.ok(Map.of("ok", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("erro", e.getMessage()));
+        }
+    }
+
+    /**
+     * Badge global de mensagens nao lidas do avaliador (F4 do relatorio):
+     * terceiro bloco de poll em layout.html, ao lado dos ja existentes de
+     * ADMIN/OPERADOR e SOLICITANTE. Deliberadamente independente da flag
+     * {@code app.solicitante.habilitado} - este canal nao tem nada a ver com
+     * o Portal do Solicitante.
+     */
+    @GetMapping("/nao-lidas-count")
+    @ResponseBody
+    public Map<String, Object> naoLidasCount(Principal principal) {
+        MembroUrgenciaRenal membro = resolverMembro(principal);
+        return Map.of("total", mensagemAvaliadorService.contarNaoLidasParaMembro(membro.getId()));
+    }
+
+    /**
+     * Resolve o parecer do membro no processo, INDEPENDENTE do resultado ja
+     * ter sido emitido (ao contrario de {@link #resolverParecerPendente}) -
+     * o chat continua aberto para leitura/escrita ate o PROCESSO ser
+     * finalizado, nao ate o voto individual do medico.
+     */
+    private Parecer resolverParecerDoMembro(Long processoId, MembroUrgenciaRenal membro) {
+        return parecerRepo.findByProcessoIdAndMembroIdComProcesso(processoId, membro.getId())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN,
+                "Voce nao e avaliador deste processo."));
+    }
+
+    private Usuario usuarioLogado(Principal principal) {
+        return usuarioRepo.findByUsername(principal.getName())
+            .orElseThrow(() -> new SessaoInvalidaException(
+                "Usuario da sessao (" + principal.getName() + ") nao encontrado no banco."));
     }
 
     // -------------------------------------------------------------------------

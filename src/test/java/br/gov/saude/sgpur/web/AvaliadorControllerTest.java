@@ -8,6 +8,7 @@ import br.gov.saude.sgpur.repository.UsuarioRepository;
 import br.gov.saude.sgpur.service.AnexoStorageService;
 import br.gov.saude.sgpur.service.AuditoriaService;
 import br.gov.saude.sgpur.service.DecisaoFinalService;
+import br.gov.saude.sgpur.service.MensagemAvaliadorService;
 import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.TempoRespostaService;
@@ -53,6 +54,7 @@ class AvaliadorControllerTest {
     @MockitoBean private DecisaoFinalService decisaoFinalService;
     @MockitoBean private AuditoriaService auditoria;
     @MockitoBean private TempoRespostaService tempoRespostaService;
+    @MockitoBean private MensagemAvaliadorService mensagemAvaliadorService;
     // O POST de voto usa um TransactionTemplate proprio (transacoes curtas e
     // independentes - ver AvaliadorController.registrarVoto). Aqui basta o
     // gerenciador mockado: o TransactionTemplate executa o callback normalmente

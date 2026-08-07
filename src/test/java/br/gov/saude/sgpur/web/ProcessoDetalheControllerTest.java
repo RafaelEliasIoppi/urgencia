@@ -61,6 +61,9 @@ class ProcessoDetalheControllerTest {
     // transacao (open-in-view: false).
     @MockitoBean private br.gov.saude.sgpur.repository.ProcessoRepository processoRepository;
     @MockitoBean private TempoRespostaService tempoRespostaService;
+    @MockitoBean private MensagemAvaliadorService mensagemAvaliadorService;
+    @MockitoBean private VerificadorNomePaciente verificadorNomePaciente;
+    @MockitoBean private br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository membroUrgenciaRenalRepository;
 
     private Processo processo;
 

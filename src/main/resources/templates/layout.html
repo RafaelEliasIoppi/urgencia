@@ -166,6 +166,17 @@
                               th:text="${mensagensNaoLidasOperador}">0</span>
                     </a>
                 </li>
+                <li class="nav-item" sec:authorize="hasAnyRole('ADMIN','OPERADOR')">
+                    <a class="nav-link d-inline-flex align-items-center gap-1"
+                       th:classappend="${uri.startsWith('/processos/mensagens-avaliadores')} ? 'active'"
+                       th:href="@{/processos/mensagens-avaliadores}">
+                        <i class="bi bi-chat-square-text-fill"></i> Mensagens dos avaliadores
+                        <span id="navBadgeMsgAvaliadorNaoLida" th:if="${mensagensAvaliadorNaoLidasOperador > 0}"
+                              class="badge rounded-pill bg-warning text-dark"
+                              style="font-size:var(--saur-font-xs);"
+                              th:text="${mensagensAvaliadorNaoLidasOperador}">0</span>
+                    </a>
+                </li>
                 <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                     <a class="nav-link" th:classappend="${uri.startsWith('/usuarios')} ? 'active'" th:href="@{/usuarios}"><i class="bi bi-person-badge me-1"></i>Usuários</a>
                 </li>
@@ -291,6 +302,75 @@
         // Mesma pausa/retomada por visibilidade do poll do operador acima -
         // ver comentario la para o motivo (sessao viva indefinidamente sem
         // isso).
+        var pollAtivo = true;
+        document.addEventListener('visibilitychange', function () {
+            pollAtivo = !document.hidden;
+            if (pollAtivo) poll();
+        });
+        poll();
+        setInterval(function () { if (pollAtivo) poll(); }, 20000);
+    })();
+</script>
+
+<!-- Poll global do chat AVALIADOR<->OPERADOR (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md,
+     F4/F5). Dois blocos, um por lado - MESMO padrao dos dois blocos acima
+     (ADMIN/OPERADOR e SOLICITANTE), so/nunca marca como lida (abrir a
+     conversa de fato e o que marca). Deliberadamente INDEPENDENTE de
+     app.solicitante.habilitado: este canal nao tem nada a ver com o Portal
+     do Solicitante e deve continuar funcionando com aquele modulo desligado
+     (item 12.9 do relatorio). -->
+<script th:if="${chatAtivoNestaTela != true}" sec:authorize="hasRole('AVALIADOR')" th:inline="javascript">
+    (function () {
+        var url = /*[[@{/avaliador/nao-lidas-count}]]*/ '';
+        var chave = 'saur_nl_avaliador_msg';
+        var anterior = sessionStorage.getItem(chave);
+        function poll() {
+            fetch(url, {headers: {'Accept': 'application/json'}, credentials: 'same-origin'})
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+                .then(function (data) {
+                    var atual = data.total;
+                    if (anterior !== null && atual > parseInt(anterior, 10)) {
+                        if (typeof tocarNotificacao === 'function') tocarNotificacao();
+                        if (typeof mostrarToast === 'function') mostrarToast('Nova mensagem da equipe CET-RS sobre um dos seus processos.', 'info');
+                    }
+                    anterior = String(atual);
+                    sessionStorage.setItem(chave, anterior);
+                })
+                .catch(function () { /* falha pontual de rede - proxima tentativa em breve */ });
+        }
+        var pollAtivo = true;
+        document.addEventListener('visibilitychange', function () {
+            pollAtivo = !document.hidden;
+            if (pollAtivo) poll();
+        });
+        poll();
+        setInterval(function () { if (pollAtivo) poll(); }, 20000);
+    })();
+</script>
+<script th:if="${chatAtivoNestaTela != true}" sec:authorize="hasAnyRole('ADMIN','OPERADOR')" th:inline="javascript">
+    (function () {
+        var url = /*[[@{/processos/mensagens-avaliadores/nao-lidas-count}]]*/ '';
+        var chave = 'saur_nl_operador_avaliador';
+        var anterior = sessionStorage.getItem(chave);
+        function poll() {
+            fetch(url, {headers: {'Accept': 'application/json'}, credentials: 'same-origin'})
+                .then(function (r) { return r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status)); })
+                .then(function (data) {
+                    var atual = data.total;
+                    if (anterior !== null && atual > parseInt(anterior, 10)) {
+                        if (typeof tocarNotificacao === 'function') tocarNotificacao();
+                        if (typeof mostrarToast === 'function') mostrarToast('Nova mensagem de um médico avaliador.', 'info');
+                    }
+                    anterior = String(atual);
+                    sessionStorage.setItem(chave, anterior);
+                    var badge = document.getElementById('navBadgeMsgAvaliadorNaoLida');
+                    if (badge) {
+                        badge.textContent = atual;
+                        badge.classList.toggle('d-none', atual <= 0);
+                    }
+                })
+                .catch(function () { /* falha pontual de rede - proxima tentativa em breve */ });
+        }
         var pollAtivo = true;
         document.addEventListener('visibilitychange', function () {
             pollAtivo = !document.hidden;
