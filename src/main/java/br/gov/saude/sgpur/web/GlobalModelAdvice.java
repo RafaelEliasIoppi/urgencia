@@ -5,6 +5,7 @@ import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.domain.Usuario;
 import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
+import br.gov.saude.sgpur.service.MensagemAvaliadorService;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,12 +49,16 @@ public class GlobalModelAdvice {
      */
     private final MensagemSolicitacaoService mensagemService;
     private final boolean solicitanteHabilitado;
+    /** Mesmo padrao de opcional de {@link #mensagemService}: null nos @WebMvcTest que nao mockam o bean. */
+    private final MensagemAvaliadorService mensagemAvaliadorService;
 
     public GlobalModelAdvice(UsuarioRepository usuarioRepo, ParecerRepository parecerRepo,
             SolicitacaoOnlineService solicitacaoOnlineService,
             @Nullable MensagemSolicitacaoService mensagemService,
+            @Nullable MensagemAvaliadorService mensagemAvaliadorService,
             @Value("${app.solicitante.habilitado:true}") boolean solicitanteHabilitado) {
         this.mensagemService = mensagemService;
+        this.mensagemAvaliadorService = mensagemAvaliadorService;
         this.usuarioRepo = usuarioRepo;
         this.parecerRepo = parecerRepo;
         this.solicitacaoOnlineService = solicitacaoOnlineService;
@@ -137,6 +142,26 @@ public class GlobalModelAdvice {
             return 0;
         }
         return mensagemService.contarNaoLidasOperador();
+    }
+
+    /**
+     * Contagem de mensagens de AVALIADORES ainda nao lidas por nenhum
+     * ADMIN/OPERADOR, para o badge do link "Mensagens dos avaliadores" na
+     * navbar (F5 do relatorio de chat). Independente de
+     * {@code app.solicitante.habilitado} de proposito - este canal nao tem
+     * nada a ver com o Portal do Solicitante.
+     */
+    @ModelAttribute("mensagensAvaliadorNaoLidasOperador")
+    @Transactional(readOnly = true)
+    public long mensagensAvaliadorNaoLidasOperador() {
+        if (mensagemAvaliadorService == null) {
+            return 0;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated() || !temPapelOperadorOuAdmin(auth)) {
+            return 0;
+        }
+        return mensagemAvaliadorService.contarNaoLidasParaOperador();
     }
 
     /**

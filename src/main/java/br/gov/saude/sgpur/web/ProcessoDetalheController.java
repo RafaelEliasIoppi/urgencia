@@ -15,11 +15,16 @@ import br.gov.saude.sgpur.service.ProcessoService;
 import br.gov.saude.sgpur.service.ProcessoValidator;
 import br.gov.saude.sgpur.service.TempoRespostaService;
 import br.gov.saude.sgpur.domain.Usuario;
+import br.gov.saude.sgpur.domain.MensagemAvaliador.RemetenteMensagemAvaliador;
 import br.gov.saude.sgpur.service.MensagemSolicitacaoService;
+import br.gov.saude.sgpur.service.MensagemAvaliadorService;
+import br.gov.saude.sgpur.service.VerificadorNomePaciente;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
 import br.gov.saude.sgpur.repository.AnexoRepository;
+import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
+import br.gov.saude.sgpur.repository.ParecerRepository;
 import br.gov.saude.sgpur.repository.ProcessoRepository;
 import br.gov.saude.sgpur.repository.SolicitacaoOnlineRepository;
 import br.gov.saude.sgpur.repository.UsuarioRepository;
@@ -97,6 +102,11 @@ public class ProcessoDetalheController {
     private final ProcessoRepository processoRepo;
     private final boolean solicitanteHabilitado;
     private final TempoRespostaService tempoRespostaService;
+    /** Chat com os avaliadores (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md), lado operador. */
+    private final MensagemAvaliadorService mensagemAvaliadorService;
+    private final VerificadorNomePaciente verificadorNomePaciente;
+    private final ParecerRepository parecerRepo;
+    private final MembroUrgenciaRenalRepository membroRepo;
 
     public ProcessoDetalheController(ProcessoService processoService,
                                      FluxoProcessoService fluxoService,
@@ -113,7 +123,11 @@ public class ProcessoDetalheController {
                                      AnexoRepository anexoRepo,
                                      ProcessoRepository processoRepo,
                                      @Value("${app.solicitante.habilitado:true}") boolean solicitanteHabilitado,
-                                     TempoRespostaService tempoRespostaService) {
+                                     TempoRespostaService tempoRespostaService,
+                                     MensagemAvaliadorService mensagemAvaliadorService,
+                                     VerificadorNomePaciente verificadorNomePaciente,
+                                     ParecerRepository parecerRepo,
+                                     MembroUrgenciaRenalRepository membroRepo) {
         this.processoService = processoService;
         this.fluxoService = fluxoService;
         this.emailTemplateService = emailTemplateService;
@@ -130,6 +144,10 @@ public class ProcessoDetalheController {
         this.processoRepo = processoRepo;
         this.solicitanteHabilitado = solicitanteHabilitado;
         this.tempoRespostaService = tempoRespostaService;
+        this.mensagemAvaliadorService = mensagemAvaliadorService;
+        this.verificadorNomePaciente = verificadorNomePaciente;
+        this.parecerRepo = parecerRepo;
+        this.membroRepo = membroRepo;
     }
 
     /**
@@ -365,6 +383,11 @@ public class ProcessoDetalheController {
         // (chat-solicitacao.js), entao o poll GLOBAL da navbar (layout.html) fica
         // desligado aqui.
         model.addAttribute("chatAtivoNestaTela", true);
+        // Iniciais do paciente: exibidas no aviso fixo do chat com cada
+        // avaliador (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md,
+        // secao 8.2) - copiar as iniciais prontas e mais facil do que digitar
+        // o nome completo por engano.
+        model.addAttribute("iniciais", Iniciais.de(p.getPacienteNome()));
         // Nome da pasta que o operador vera ao descompactar o dossie
         // (botao "Baixar processo completo (ZIP)" no card de Atalhos).
         model.addAttribute("nomePastaExportacao", ExportacaoProcessoService.nomePasta(p));
@@ -382,6 +405,16 @@ public class ProcessoDetalheController {
         model.addAttribute("favoraveis", favoraveis);
         model.addAttribute("naoFavoraveis", naoFavoraveis);
         model.addAttribute("pendentesVoto", pendentesVoto);
+        // Mensagens de AVALIADOR ainda nao lidas pelo OPERADOR, por membro
+        // (chave = Parecer.id, mesma chave usada para os demais mapas desta
+        // tela) - alimenta o badge "N nova(s)" no botao de conversa de cada
+        // linha da tabela "Respostas dos Avaliadores".
+        java.util.Map<Long, Long> naoLidasPorParecer = new java.util.HashMap<>();
+        for (Parecer par : p.getPareceres()) {
+            naoLidasPorParecer.put(par.getId(),
+                mensagemAvaliadorService.contarNaoLidasPorThreadParaOperador(p.getId(), par.getMembro().getId()));
+        }
+        model.addAttribute("naoLidasPorParecer", naoLidasPorParecer);
         // Placar de 3 posicoes no card de Respostas: so apresentacao do que a
         // maioria simples ja calcula (ProcessoValidator), nunca reimplementa a
         // regra aqui - se um dia a regra mudar, este texto some sozinho porque
@@ -911,6 +944,130 @@ public class ProcessoDetalheController {
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // Chat com os avaliadores (docs/RELATORIO-CHAT-MEMBROS-OPERADORES-2026-08.md)
+    // -------------------------------------------------------------------------
+    //
+    // Lado OPERADOR: uma thread 1:1 por (processo, membro), NUNCA um grupo com
+    // os 3 avaliadores (destruiria a independencia dos pareceres). A posse
+    // (este membro E avaliador deste processo) e sempre verificada via
+    // ParecerRepository.findByProcessoIdAndMembroId - nunca resolve a thread
+    // so pelos ids soltos. Conversa aberta ate o PROCESSO ser decidido; depois
+    // disso, somente leitura (podeEnviar=false, mesmo mecanismo de
+    // chat-solicitacao.js ja usado pelo chat do solicitante).
+    //
+    // VERIFICACAO DE NOME (secao 8.1 do relatorio): toda mensagem do operador
+    // e checada contra o nome do paciente e a equipe solicitante DESTE
+    // processo antes de gravar. Decisao de implementacao (o relatorio propos
+    // dois niveis, ALERTA com confirmacao e BLOQUEADO): como chat-solicitacao.js
+    // nao pode ser modificado (item 12.7 do relatorio - "nao reescrever, nunca
+    // bifurcar") e ele nao tem um fluxo de confirmacao de 2 passos, os dois
+    // niveis (ALERTA e BLOQUEADO) sao tratados da MESMA forma aqui: a mensagem
+    // e recusada com uma explicacao clara, o operador reescreve e reenvia. E
+    // mais conservador que a proposta original (nao existe fluxo de "confirmar
+    // mesmo assim"), o que e aceitavel dado que o custo de um falso-positivo
+    // (sobrenome comum) e so ter que reescrever a frase.
+
+    /** Polling do chat com um avaliador especifico (AJAX). */
+    @GetMapping("/{id}/avaliador/{membroId}/mensagens")
+    @ResponseBody
+    public java.util.Map<String, Object> mensagensAvaliadorJson(@PathVariable Long id, @PathVariable Long membroId,
+            Principal principal) {
+        Processo p = processoService.buscar(id);
+        java.util.Map<String, Object> resp = new java.util.LinkedHashMap<>();
+        if (parecerRepo.findByProcessoIdAndMembroId(id, membroId).isEmpty()) {
+            resp.put("mensagens", java.util.List.of());
+            resp.put("podeEnviar", false);
+            return resp;
+        }
+        Usuario operador = usuarioRepo.findByUsername(principal.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        mensagemAvaliadorService.marcarComoLidas(id, membroId, RemetenteMensagemAvaliador.AVALIADOR, operador.getId());
+        String nomeMedico = membroRepo.findById(membroId).map(m -> m.getRotulo()).orElse("Avaliador");
+        resp.put("mensagens", mensagemAvaliadorService.paraChat(
+            id, membroId, RemetenteMensagemAvaliador.OPERADOR, operador.getId(), "Voce", nomeMedico));
+        resp.put("podeEnviar", !p.getStatus().isFinalizado());
+        return resp;
+    }
+
+    @PostMapping("/{id}/avaliador/{membroId}/mensagem/ajax")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> enviarMensagemAvaliadorAjax(@PathVariable Long id,
+            @PathVariable Long membroId, @RequestParam String texto, Principal principal) {
+        Processo p = processoService.buscar(id);
+        var parecerOpt = parecerRepo.findByProcessoIdAndMembroId(id, membroId);
+        if (parecerOpt.isEmpty()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro",
+                "Este medico nao e avaliador deste processo."));
+        }
+        if (p.getStatus().isFinalizado()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro",
+                "Este processo ja foi decidido; a conversa ficou somente leitura."));
+        }
+        if (texto == null || texto.isBlank()) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", "A mensagem nao pode estar em branco."));
+        }
+        var verificacao = verificadorNomePaciente.verificar(texto, p.getPacienteNome(), p.getSolicitanteEquipe());
+        if (verificacao.nivel() != VerificadorNomePaciente.Nivel.LIVRE) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro",
+                "Esta mensagem parece citar o paciente ou a equipe solicitante (contem \""
+                    + String.join("\", \"", verificacao.termosEncontrados())
+                    + "\"). Refira-se ao paciente apenas pelas iniciais e nao cite a equipe solicitante. "
+                    + "Reescreva a mensagem e envie novamente."));
+        }
+        MembroUrgenciaRenal membro = membroRepo.findById(membroId)
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Avaliador nao encontrado."));
+        Usuario operador = usuarioRepo.findByUsername(principal.getName())
+            .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+        mensagemAvaliadorService.enviar(p, membro, texto, RemetenteMensagemAvaliador.OPERADOR, operador.getId());
+        // Auditoria: SO id/numero do processo + rotulo do medico, NUNCA o texto
+        // da mensagem nem o nome do paciente (mesmo padrao ja usado para
+        // MENSAGEM_OPERADOR_ENVIADA/PROCESSO_CADASTRADO - ver CLAUDE.md).
+        auditoria.registrar("MENSAGEM_OPERADOR_AVALIADOR_ENVIADA",
+            "Processo " + p.getNumero() + " - " + membro.getRotulo() + " - operador " + operador.getUsername());
+        return ResponseEntity.ok(java.util.Map.of("ok", true));
+    }
+
+    @PostMapping("/{id}/avaliador/{membroId}/mensagem/{mensagemId}/apagar/ajax")
+    @ResponseBody
+    public ResponseEntity<java.util.Map<String, Object>> apagarMensagemAvaliadorAjax(@PathVariable Long id,
+            @PathVariable Long membroId, @PathVariable Long mensagemId, Principal principal) {
+        try {
+            Usuario operador = usuarioRepo.findByUsername(principal.getName())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED));
+            mensagemAvaliadorService.apagar(mensagemId, operador.getId(), RemetenteMensagemAvaliador.OPERADOR);
+            return ResponseEntity.ok(java.util.Map.of("ok", true));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(java.util.Map.of("erro", e.getMessage()));
+        }
+    }
+
+    /**
+     * Caixa de entrada de mensagens de avaliadores (F5 do relatorio): lista
+     * TODAS as threads (processo, membro) que ja trocaram mensagem, mais
+     * recente primeiro, para o operador achar conversas mesmo sem abrir o
+     * processo correspondente (sem isso, uma mensagem de um medico so aparece
+     * pra quem abrir aquele processo especifico - furo de visibilidade
+     * documentado como risco R4 do relatorio).
+     *
+     * <p>Mostra numero do processo + rotulo do avaliador, NUNCA nome de
+     * paciente - e uma lista de trabalho, e nome de paciente numa lista
+     * aumenta exposicao sem ganho (mesma linha de raciocinio ja aplicada ao
+     * termo de busca das outras telas do operador, que nunca vai para
+     * auditoria nem aparece fora do contexto de um processo especifico).</p>
+     */
+    @GetMapping("/mensagens-avaliadores")
+    public String caixaDeEntradaAvaliadores(Model model) {
+        model.addAttribute("threads", mensagemAvaliadorService.listarCaixaDeEntradaOperador());
+        return "processos/mensagens-avaliadores-lista";
+    }
+
+    @GetMapping("/mensagens-avaliadores/nao-lidas-count")
+    @ResponseBody
+    public java.util.Map<String, Object> mensagensAvaliadoresNaoLidasCount() {
+        return java.util.Map.of("total", mensagemAvaliadorService.contarNaoLidasParaOperador());
     }
 
     @Auditavel(acao = "PROCESSO_EXCLUIDO", detalhe = "'Processo id ' + #args[0]")

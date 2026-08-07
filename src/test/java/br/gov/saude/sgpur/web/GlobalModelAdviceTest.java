@@ -46,7 +46,7 @@ class GlobalModelAdviceTest {
         // sao injetados pelo MockitoExtension DEPOIS que o construtor da
         // classe de teste roda, entao usuarioRepo/parecerRepo ainda estariam
         // null se "advice" fosse montado ali.
-        advice = new GlobalModelAdvice(usuarioRepo, parecerRepo, solicitacaoOnlineService, null, true);
+        advice = new GlobalModelAdvice(usuarioRepo, parecerRepo, solicitacaoOnlineService, null, null, true);
     }
 
     @AfterEach
@@ -131,7 +131,7 @@ class GlobalModelAdviceTest {
     @Test
     void pendentesTriagemOnlineRetornaZeroQuandoModuloDesabilitado() {
         GlobalModelAdvice adviceDesabilitado =
-            new GlobalModelAdvice(usuarioRepo, parecerRepo, solicitacaoOnlineService, null, false);
+            new GlobalModelAdvice(usuarioRepo, parecerRepo, solicitacaoOnlineService, null, null, false);
         SecurityContextHolder.getContext().setAuthentication(
             new TestingAuthenticationToken("op1", "senha", "ROLE_OPERADOR"));
 
