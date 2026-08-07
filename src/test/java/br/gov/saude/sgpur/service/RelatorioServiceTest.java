@@ -128,7 +128,7 @@ class RelatorioServiceTest {
         }
         reader.close();
 
-        assertThat(texto.toString()).contains("Anexo nao encontrado");
+        assertThat(texto.toString()).contains("Anexo não encontrado");
     }
 
     @Test
@@ -188,7 +188,7 @@ class RelatorioServiceTest {
         reader.close();
 
         assertThat(texto.toString())
-            .contains("Anexo (formato nao-PDF)")
+            .contains("Anexo (formato não-PDF)")
             .contains("comprovante.png");
     }
 
@@ -246,7 +246,7 @@ class RelatorioServiceTest {
 
         assertThat(texto).contains("Coordenador da CET-RS");
         assertThat(texto).contains("Dra. Coordenadora");
-        assertThat(texto).contains("excecao regimental");
+        assertThat(texto).contains("exceção regimental");
         assertThat(texto).doesNotContain("regra: 2 de 3 defere o processo");
     }
 
@@ -261,7 +261,7 @@ class RelatorioServiceTest {
 
         String texto = extrairTexto(novoService().gerar(p));
 
-        assertThat(texto).contains("Favoraveis: 2 (regra: 2 de 3 defere o processo)");
+        assertThat(texto).contains("Favoráveis: 2 (regra: 2 de 3 defere o processo)");
         assertThat(texto).doesNotContain("Coordenador da CET-RS");
     }
 
@@ -305,22 +305,63 @@ class RelatorioServiceTest {
     }
 
     @Test
-    void gerarIncluiNumeroDoOficioEDataDeEnvioAoSnt() throws Exception {
-        // numeroOficio e dataEnvioSnt existem em Processo desde 2026-08-04 e
-        // sao os identificadores de protocolo do desfecho - nao apareciam em
-        // lugar nenhum do relatorio.
+    void gerarIncluiDataDeEnvioAoSntQuandoDeferido() throws Exception {
+        // dataEnvioSnt existe em Processo desde 2026-08-04 e e o
+        // identificador de protocolo do desfecho DEFERIDO - nao aparecia em
+        // lugar nenhum do relatorio. Desde a secao "3." ficar condicional ao
+        // status (B4+A7 do relatorio V2), esta linha so aparece em DEFERIDO.
         Processo p = processoBase(StatusProcesso.DEFERIDO);
-        p.setNumeroOficio("0142/2026");
         p.setDataEnvioSnt(LocalDate.of(2026, 1, 10));
         when(fluxoService.montarEtapas(any())).thenReturn(List.of());
         when(processoService.contarFavoraveis(any())).thenReturn(1L);
 
         String texto = extrairTexto(novoService().gerar(p));
 
-        assertThat(texto).contains("Numero do oficio");
-        assertThat(texto).contains("0142/2026");
         assertThat(texto).contains("Data de envio ao SNT");
         assertThat(texto).contains("10/01/2026");
+        assertThat(texto).doesNotContain("Número do ofício");
+    }
+
+    @Test
+    void gerarIncluiNumeroDoOficioQuandoIndeferido() throws Exception {
+        // Espelho do teste acima para o lado INDEFERIDO: numeroOficio so faz
+        // sentido nesse status (DecisaoFinalService.atribuirNumeroOficioSeNecessario
+        // so atribui para INDEFERIDO) e a secao "3." so mostra essa linha
+        // quando aplicavel.
+        Processo p = processoBase(StatusProcesso.INDEFERIDO);
+        p.getPareceres().get(0).setResultado(ResultadoParecer.NAO_FAVORAVEL);
+        p.setNumeroOficio("0142/2026");
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(0L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("Número do ofício");
+        assertThat(texto).contains("0142/2026");
+        assertThat(texto).doesNotContain("Data de envio ao SNT");
+    }
+
+    @Test
+    void gerarSecaoDecisaoViraSituacaoAtualQuandoProcessoNaoFoiDecidido() throws Exception {
+        // B4+A7 do relatorio V2: titulo "3. Decisao final" prometia um
+        // desfecho que ainda nao existe - "3. Situacao atual" corrige a
+        // promessa, e as linhas exclusivas de DEFERIDO/INDEFERIDO
+        // desaparecem em vez de aparecerem todas como "-".
+        Processo p = processoBase(StatusProcesso.ENVIADO);
+        p.getPareceres().get(0).setResultado(null);
+        p.getPareceres().get(0).setDataResposta(null);
+        when(fluxoService.montarEtapas(any())).thenReturn(List.of());
+        when(processoService.contarFavoraveis(any())).thenReturn(0L);
+
+        String texto = extrairTexto(novoService().gerar(p));
+
+        assertThat(texto).contains("3. Situação atual");
+        assertThat(texto).doesNotContain("3. Decisão final");
+        assertThat(texto).doesNotContain("Data de envio ao SNT");
+        assertThat(texto).doesNotContain("Número do ofício");
+        // "Data da decisao" continua aparecendo na CAPA (adicionarCapa,
+        // rotulo fixo la) - so a secao "3." em si nao repete essa linha
+        // quando o processo ainda nao foi decidido.
     }
 
     /** PDF minimo valido contendo o texto informado, para simular um anexo real no disco. */

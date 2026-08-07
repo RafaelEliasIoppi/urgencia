@@ -34,6 +34,61 @@ implementado, nenhuma branch foi aberta, nenhum commit foi feito.
 
 ---
 
+## IMPLEMENTADO em 2026-08-06
+
+Todas as 10 decisões (§7) foram aprovadas pelo dono do produto — exceto a
+Decisão 4 (retrato guardado no dossiê), deliberadamente adiada para PR próprio
+por mexer em fluxo (`ExportacaoProcessoService`/`DecisaoFinalService`), não em
+documento — e implementadas nos 4 blocos sugeridos pelo plano (§8), um commit
+por bloco, na mesma branch deste worktree:
+
+- **Bloco 0 (R0)** — `setHeaderRows(1)` nas tabelas (B2), `"Nº do Processo:"`
+  (A10), nome do sistema unificado (`PdfCabecalhoStamper.NOME_SISTEMA`, B8),
+  `/Lang` + `DisplayDocTitle` (Decisão 10, nível 1), e os 2 literais do
+  stamper (Decisão 5: `"Página "`, `"SECRETARIA DE SAÚDE"`).
+- **Bloco 1 (R1b+R2)** — frase da regra simétrica por status (B3), seção "3."
+  condicional com título "Situação atual" quando não decidido (B4+A7),
+  `dataEnvio` do parecer visível (A5), um único carimbo de emissão (A12),
+  fecho movido para o fim do documento (A11), e os 28 literais acentuados
+  (R2) via tradutores locais `PdfRelatorioBuilder.descricaoResultado`/
+  `descricaoTipoAnexo` — `ResultadoParecer`/`TipoAnexo` **não** foram tocados.
+- **Bloco 2 (R3b+R4)** — `PaletaPdf` (classe nova) compartilhada entre
+  Relatório Final/Anual/Avaliador (Decisões 1 e 6); título de seção com
+  filete de 1,5pt no lugar da faixa AZUL chapada, cabeçalho de tabela claro
+  com filete azul inferior, corpo a 10pt, coluna "Situação" por extenso
+  (R4) — proporções de coluna reajustadas olhando o PDF gerado, como o
+  plano exigia.
+- **Bloco 3 (R5)** — páginas geradas pelo sistema voltam a ser A4 de verdade
+  (`PdfRelatorioBuilder.TAMANHO_PAGINA_SISTEMA`, B1/Decisão 9; páginas de
+  anexo importadas continuam expandidas, de propósito); folha divisória por
+  anexo (P8a); marcadores/bookmarks de navegação via `PdfCopy.setOutlines`
+  (P8c); `setKeepTogether` nas duas tabelas curtas do sumário (P9).
+- **Bloco 4 (R6)** — capa separada eliminada, sumário promovido a folha de
+  rosto com cabeçalho institucional compacto (Decisão 7, Opção B); rótulo
+  "RELATÓRIO PARCIAL" quando o processo não foi decidido, sem bloquear a
+  rota (Decisão 3).
+
+**Validação:** suíte completa rodada ao final de cada bloco (812 testes — os
+5 arquivos citados em §4.9 foram atualizados/divididos conforme o esperado),
+0 falhas de código novo em todas as rodadas (só o par de flakes de timing do
+H2 já documentado em `CLAUDE.md`, intermitente, não relacionado). Em cada
+bloco os 4 PDFs de exemplo (DEFERIDO, INDEFERIDO, EM ANDAMENTO,
+DEFERIDO-POR-COORDENADOR) foram gerados de verdade via instrumento de teste
+temporário (apagado ao final, mesmo padrão do Anexo A) e inspecionados —
+texto extraído página a página, tamanho de página (`PdfReader.getPageSize`),
+presença de `/Lang`/`DisplayDocTitle`/`/Outlines` no binário. Nenhum PDF
+visualizado em leitor gráfico (ambiente sem `pdftoppm`/visualizador nesta
+sessão) — a inspeção estrutural/textual foi o substituto disponível; se
+alguém revisar visualmente depois e achar um problema de layout que a
+inspeção textual não captura, é esperado e deve ser tratado à parte.
+
+**Não implementado nesta rodada** (por decisão explícita do plano): Decisão 4
+(retrato guardado no dossiê) e a Decisão 8(b) (índice com número de página) —
+o layout da coluna "Página" já foi validado no protótipo do §6, falta só o
+mecanismo de duas passagens, "só se (a) e (c) não bastarem".
+
+---
+
 ## 1. Sumário executivo
 
 ### 1.1 O que o PR #45 resolveu — confirmado no código e no PDF
