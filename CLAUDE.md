@@ -3408,6 +3408,56 @@ completa após esses 3 testes novos: **864 testes** (861 + 3), única falha
 é a flakiness de precisão de timestamp já documentada em
 `LembreteAvaliadorTimestampIntegrationTest` (não relacionada).
 
+## Chevron de estado no botão "Conversa" com o avaliador (2026-08-07)
+
+Ajuste puramente visual pedido pelo usuário. O botão "Conversa" da tabela
+de pareceres em `processos/detalhe.html` (que abre/fecha a thread de chat
+com CADA avaliador, `#chatAval{id}`) não tinha nenhum indicador visual de
+estado aberto/fechado — diferente dos outros dois pontos de chat do
+sistema, que já usam a mesma linguagem visual: o cabeçalho de "Conversa
+com o solicitante" (mesmo arquivo) e o card "Dúvida sobre este processo"
+(`avaliador/votar.html`), ambos com um ícone `bi-chevron-up`/
+`bi-chevron-down` + classe `chevron-collapse` (`app.css`, gira 180° via
+`[data-bs-toggle="collapse"].collapsed .chevron-collapse`, aplicado
+automaticamente pelo próprio Bootstrap quando o elemento com
+`data-bs-toggle="collapse"` está recolhido — sem JS adicional).
+
+Correção: o botão "Conversa" ganhou o mesmo ícone
+(`<i class="bi bi-chevron-up chevron-collapse ms-1"></i>`), dentro do
+próprio `<button>` (que já é o elemento com `data-bs-toggle="collapse"`,
+diferente do padrão de cabeçalho de card usado nos outros dois pontos, mas
+o seletor CSS funciona igual porque não depende de ser um cabeçalho — só
+do atributo `data-bs-toggle="collapse"` no ancestral/próprio elemento).
+Nenhum comportamento funcional mudou (poll AJAX, envio, expansão inicial
+via `existeConversaPorParecer` — tudo intocado), só a classe/ícone novos.
+Os outros dois pontos já estavam corretos e não precisaram de mudança.
+Suíte completa validada sem regressão (JDK 21).
+
+**Ajuste posterior no mesmo PR (mesmo dia): aviso de imparcialidade da
+thread menos chamativo.** O texto fixo dentro de cada thread de chat com
+avaliador ("Esta mensagem será lida pelo médico avaliador. Refira-se ao
+paciente apenas pelas iniciais... Não cite o nome, a equipe solicitante
+nem os pareceres dos outros avaliadores.") estava num
+`<div class="alert alert-warning py-2 mb-2 small">` com ícone
+`bi-exclamation-triangle-fill` — visualmente pesado para um aviso que
+aparece em toda thread, competindo com as mensagens de verdade do chat.
+**O texto foi mantido integralmente** (é a defesa documentada contra
+vazar nome/equipe/parecer nesse canal, complementar ao bloqueio
+automático por código do `VerificadorNomePaciente` — ver seção "Chat
+interno Avaliador ↔ Operador" acima) — só o destaque visual mudou: virou
+um `<p class="small text-muted mb-2">` simples, sem `alert-warning`, sem
+ícone, no mesmo padrão discreto já usado em vários outros avisos
+auxiliares do sistema (ex.: o texto de ajuda acima do accordion de
+"Textos de e-mail prontos", no mesmo template). Continua em fluxo normal
+do documento (sem `position: absolute`/z-index), como o primeiro elemento
+dentro do card da thread, antes da lista de mensagens/campo de
+digitar/botão enviar — confirmado por HTML renderizado de verdade (teste
+de integração `@SpringBootTest`+`MockMvc` temporário, descartado após a
+verificação) que o parágrafo não sobrepõe nenhum outro elemento do chat
+(`.chat-box`/`.chat-form-avaliador` não têm `position` absoluta em
+`app.css`, então qualquer conteúdo em fluxo normal nunca se sobreporia).
+Suíte completa revalidada: **879 testes, 0 falhas** (JDK 21).
+
 ## Chat operador↔solicitante: nome real do solicitante em vez do literal genérico (2026-08-07)
 
 **Bug relatado pelo usuário**: no chat entre OPERADOR e SOLICITANTE (as duas
