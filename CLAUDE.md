@@ -1264,7 +1264,7 @@ Dumps diários íntegros de 2026-07-29 a 2026-08-05 no Drive, **incluindo 04 e
 em si). Anexos: 36 arquivos na VM, 34 no Drive (a diferença são anexos de
 hoje, posteriores ao sync das 03:00). O banco inteiro comprimido tem ~12 KB.
 
-### Alerta por e-mail da falha de backup (escrito, PENDENTE DE INSTALAR)
+### Alerta por e-mail da falha de backup — CONFIRMADO INSTALADO (verificado em 2026-08-08)
 Aprovado pelo usuário depois da vistoria. **Sem duplicar a senha SMTP**: o
 backup roda como `postgres`, que não lê `/opt/sgpur/sgpur.env` (600, dono
 `sgpur`); em vez de copiar a credencial para um segundo arquivo, uma regra
@@ -1278,25 +1278,39 @@ seria o backup parar porque o Gmail recusou conexão). Os três caminhos
 (notificador ok / ausente / quebrado) foram testados localmente com
 simuladores de `pg_dump`/`rclone`/`sudo`.
 
-**Ainda não está instalado na VM:** o envio de arquivos novos para a máquina
-de produção foi bloqueado pelo classificador de segurança do harness nesta
-sessão. Os arquivos estão versionados (`deploy/notificar-falha-backup.sh`,
-`deploy/cron/sudoers-sgpur-backup-alerta`, e a função `alertar()` já dentro
-de `deploy/backup-db.sh`) e o passo a passo de instalação + teste está em
-`deploy/README-deploy.md`. **O `backup-db.sh` que roda na VM hoje é a versão
-SEM a função `alertar()`** — reinstalar o do repositório é parte da mesma
-tarefa.
+**Estava documentado aqui como "ainda não instalado" (bloqueio do
+classificador de segurança do harness na sessão que escreveu isto) — uma
+vistoria de pendências em 2026-08-08 confirmou por SSH que já está
+instalado**: `/etc/sudoers.d/sgpur-backup-alerta` existe na VM (datado de
+2026-08-05 12:27 UTC — instalado manualmente pelo usuário pouco depois
+daquela sessão, sem atualizar este registro) e `/opt/sgpur/backup-db.sh` já
+contém a função `alertar()`. Pendência **encerrada**; texto acima mantido só
+como histórico de por que foi escrito assim.
 
-### Pendências que EXIGEM o usuário no navegador (não dá por SSH)
-Passo a passo completo de ambas em `deploy/README-deploy.md`.
-- **`client_id` próprio do rclone** (https://rclone.org/drive/#making-your-own-client-id):
-  o compartilhado será desativado durante 2026 e o backup offsite para. Exige
-  Google Cloud Console (habilitar Drive API, tela de consentimento OAuth,
-  criar ID de cliente tipo "App para computador") + `rclone config` na VM.
+### `client_id` próprio do rclone — aparenta RESOLVIDO (verificado em 2026-08-08, não 100% confirmável por SSH)
+O compartilhado seria desativado durante 2026 e derrubaria o backup offsite
+silenciosamente — texto abaixo (`deploy/README-deploy.md`) descrevia o passo
+a passo via Google Cloud Console + `rclone config` como pendência do
+usuário. Evidência forte de que já foi feito: `/var/lib/postgresql/
+.config/rclone/rclone.conf` tem as chaves `client_id`/`client_secret`
+preenchidas (não só `type`/`token`, que é o mínimo do client padrão), e o
+log `/var/log/sgpur-backup.log` **parou de emitir o aviso** "This remote
+uses rclone's shared Google Drive client_id..." a partir de algum ponto
+entre 2026-08-03 e 2026-08-06 — antes disso, o aviso aparecia em toda
+execução diária sem exceção. Não dá para confirmar 100% por SSH que o
+`client_id` é de fato um ID próprio (não o Console da Oracle/Google), mas a
+combinação dos dois sinais é consistente com a tarefa concluída pelo
+usuário. Se o aviso reaparecer no log num próximo backup, reabrir esta
+pendência.
+
+### Pendência que EXIGE o usuário no navegador (não dá por SSH)
+Passo a passo completo em `deploy/README-deploy.md`.
 - **Reservar o IP público** no console Oracle (Compute → Instances → VNIC →
   IPv4 Addresses → Edit → Reserved): se for efêmero, parar a instância troca
   o IP e derruba DuckDNS/certbot. IP reservado continua dentro do Always Free.
   O `oci` CLI **não** está instalado na VM, então não dá para fazer por SSH.
+  Sem sinal disponível via metadata/SSH para confirmar se já foi feito —
+  segue como pendência real até o usuário confirmar no Console.
 
 ## Vistoria de 2026-08-03 (inspeção SSH real na VM de produção)
 
@@ -3119,7 +3133,7 @@ impede a varredura dos demais candidatos elegíveis na mesma passada
 continua sendo a cobertura mais rápida da lógica de orquestração em si.
 Suíte completa: **857 testes, 0 falhas** (JDK 21).
 
-## `@Version` em `Anexo`/`AnexoSolicitacaoOnline` (2026-08-07) — PENDENTE DE BACKFILL EM PRODUÇÃO
+## `@Version` em `Anexo`/`AnexoSolicitacaoOnline` (2026-08-07) — backfill CONCLUÍDO em 2026-08-08
 
 As duas últimas entidades "quentes" sem lock otimista ganharam `@Version`
 (campo `versao`, mesmo padrão de `Processo`/`Usuario`/`MembroUrgenciaRenal`/
@@ -3127,19 +3141,15 @@ As duas últimas entidades "quentes" sem lock otimista ganharam `@Version`
 uploads concorrentes para o mesmo processo/solicitação podiam se sobrescrever
 silenciosamente (mesma classe de risco já corrigida nas outras entidades).
 
-**PENDÊNCIA EXPLÍCITA — backfill manual obrigatório em produção após o
-deploy** (mesmo pitfall de sempre, documentado na seção "Convenções de
-código" acima: `ddl-auto: update` cria a coluna nova com `NULL` nas linhas
-já existentes, e o primeiro `UPDATE` nelas quebra). Rodar no Postgres da VM
-logo após o deploy:
-```sql
-UPDATE anexo SET versao = 0 WHERE versao IS NULL;
-UPDATE anexo_solicitacao_online SET versao = 0 WHERE versao IS NULL;
-```
-Este backfill **não foi executado nesta sessão** — quem implementou não tem
-acesso à VM de produção. Fica registrado aqui como pendência até alguém com
-acesso confirmar a execução (mesmo padrão de "Backfill de `Usuario.versao`
-feito" documentado acima, mas para este seguinte).
+**Backfill executado em produção em 2026-08-08** (numa vistoria de
+pendências, via SSH real na VM — não presumido): `SELECT count(*) ... WHERE
+versao IS NULL` confirmou 39 linhas em `anexo` e 7 em
+`anexo_solicitacao_online` antes do backfill; rodado
+`UPDATE anexo SET versao = 0 WHERE versao IS NULL;` e
+`UPDATE anexo_solicitacao_online SET versao = 0 WHERE versao IS NULL;`
+(39 e 7 linhas afetadas, respectivamente); confirmado 0 linhas `NULL`
+restantes nas duas tabelas depois. Mesmo padrão de "Backfill de
+`Usuario.versao` feito" documentado acima — pendência **encerrada**.
 
 ## Auditoria de `th:utext` (2026-08-07) — nenhuma ocorrência no projeto
 
