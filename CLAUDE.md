@@ -4731,3 +4731,39 @@ detalheExpoeProcessoVeioDoPortalTrueELinkDaOrigem` e
 ajustados para stubar `nomeSolicitante` e confirmar, via
 `content().string(containsString(...))`, que o **HTML renderizado** (não
 só o model attribute) mostra o nome real no cabeçalho.
+
+## Cores dos Atalhos revertidas de novo pro esquema colorido (2026-08-08)
+
+**Segunda reversão da mesma mudança** — pedido explícito do usuário ao ver
+`/processos/{id}` em produção ("os atalhos possuíam cores, cada um tinha
+uma cor e agora estão em cor [só]"). O card "Atalhos" (barra lateral
+esquerda do detalhe do processo) tinha acabado de ganhar hierarquia neutra
+(item 4.10 do relatório de clareza, commit `0be95ec`/PR #73, mesmo dia) —
+todos os downloads/ações não-destrutivas viraram `btn-outline-secondary`,
+deixando `btn-outline-danger` exclusivo de "Excluir processo". O usuário
+não gostou do resultado visual e pediu pra voltar ao esquema anterior, uma
+cor por botão:
+
+| Botão | Cor (revertida) |
+|---|---|
+| Relatório Final (PDF) | `btn-outline-danger` |
+| Ofício de Indeferimento | `btn-outline-warning` |
+| Comprovante SNT | `btn-outline-warning` |
+| Baixar processo completo (ZIP) | `btn-outline-success` |
+| Editar processo | `btn-outline-primary` |
+| Excluir processo | `btn-outline-danger` (inalterado) |
+
+**Não é a primeira vez que essa mudança específica vai e volta** — o
+histórico do repositório já tinha um revert anterior do mesmo tipo
+(commit `b5a4935`, "Reverte cores dos atalhos do card lateral do processo
+(pedido do usuário)"), bem antes do item 4.10 reintroduzir o esquema
+neutro. **Esta é, portanto, a segunda vez que o usuário pede exatamente
+essa reversão.** Registro explícito pra não reaplicar o esquema neutro de
+novo numa vistoria futura sem pedido explícito — mesmo que o relatório de
+clareza continue recomendando a versão neutra, a preferência confirmada do
+usuário (duas vezes) é o esquema colorido.
+
+Nenhum teste trava a cor desses botões (confirmado por grep antes da
+mudança) — mudança só de classe CSS no template, sem impacto em
+`id`/`name`/rota. `ProcessoDetalhePage` (E2E) localiza esse botão por texto
+("Relatório Final (PDF)"), não por classe, então não foi afetado.
