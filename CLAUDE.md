@@ -5788,3 +5788,101 @@ que `.secao-rotulo`/`.secao-titulo` continuam presentes e com a escala
 tipográfica esperada; o segundo confirma ausência de estouro horizontal em
 todas as 6 larguras testadas, incluindo `/solicitante/nova` com o e-mail
 institucional de fixture (`nefrologia.transplante.renal@...`).
+
+### Ajuste no mesmo dia: `rows` da Justificativa clínica aumentado de 5 para 10
+
+Pedido separado do dono do produto, na sequência da compactação acima: com o
+topo mais enxuto, ele quis que o `<textarea>` de "Descrição" (Justificativa
+clínica) nascesse **maior por padrão** — é o campo mais importante da tela, e
+não há nenhum JS de auto-resize (`solicitante-nova.js` só cuida do contador
+de caracteres). Trocado `rows="5"` → `rows="10"` em
+`solicitante/nova.html`, único caractere que mudou no template. Nenhum outro
+campo/textarea do sistema tem esse padrão de bloco-checklist-antes-do-campo
+(`avaliador/votar.html` — motivo do voto — e o campo de resposta do chat são
+de tamanho fixo pequeno de propósito, por design diferente), então não havia
+"outro lugar" para replicar dessa vez.
+
+Validado com screenshot real (Playwright, desktop 1440px e celular 390px,
+usuário SOLICITANTE de teste criado ao vivo) — o campo cresce visivelmente
+sem cortar nada nem empurrar o botão de envio para fora da tela em nenhum
+dos dois tamanhos. Suíte completa revalidada: **997 testes, 0 falhas** (JDK
+21).
+
+### Refinamento no mesmo dia: bloco "Quem está enviando" ficou "apertado demais" — acabamento em cima da compactação
+
+**Reclamação do dono do produto, ainda em produção, poucas horas depois da
+compactação acima ter ido ao ar:** *"REVEJA TODO CSS DA PAGINA DO
+SOLICITANTE FICOU FEIA. AJUSTE"* / *"MUITO JUSTIFICADA EM CIMA EU NAO
+QUERIA ISSO"* (o bloco de identificação — Equipe/hospital + E-mail — ficou
+visualmente comprimido/apertado) / *"USE AGENTES ESPECIALISTAS, NAO FAÇA DA
+SUA CBEÇA"* — reação a uma sessão anterior que tinha ajustado CSS sem
+supervisão adequada.
+
+**Não é reversão da compactação — é acabamento.** O objetivo original (dar
+mais espaço à Justificativa clínica) continua válido e foi mantido; o
+problema era só a EXECUÇÃO da primeira versão, que apertou demais para
+economizar espaço:
+- `.superficie-apoio px-3 py-2` — **menos padding que TODAS as outras**
+  `.superficie-apoio` da mesma tela, que usam `p-3`. Era a única caixa da
+  tela com um tratamento de espaçamento diferente das demais, sem nenhum
+  motivo de conteúdo para isso.
+- As duas linhas de identidade usavam `.small` (0.875rem) — menor que o
+  corpo normal do formulário (1rem) que está a poucos pixels de distância
+  (rótulos "Nome do paciente"/"RGCT / SNT" etc.), destoando visualmente.
+- As duas linhas tinham só `mb-1` entre si (0.25rem), e a nota de rodapé
+  ("Preenchidos automaticamente...") vinha colada logo abaixo com só
+  `mt-2`, sem nenhum divisor — tudo espremido num bloco só, sem hierarquia
+  visual.
+- O `.secao-rotulo` (título "QUEM ESTÁ ENVIANDO") tinha um `mb-1` extra
+  forçado no template — **Bootstrap `.mb-1` é 0.25rem `!important`**, que
+  na verdade **reduzia** a margem abaixo do padrão da própria classe
+  (`.secao-rotulo { margin-bottom: .35rem }` em `app.css`) — o rótulo
+  ficava com MENOS respiro que o de qualquer outra seção da tela, não mais.
+
+**Correção (`solicitante/nova.html`, só classes CSS — nenhum `name`/`id`
+mudou):**
+- `px-3 py-2` → `p-3` (mesmo padding de toda outra `.superficie-apoio` da
+  tela).
+- Removida a classe `.small` das duas linhas de identidade — voltam ao
+  tamanho de texto normal do formulário.
+- `mb-1` entre as duas linhas → `mb-2` (mais respiro).
+- A nota de rodapé ganhou `mt-3 pt-2 border-top` — um filete separa a nota
+  auxiliar da identidade principal, dando hierarquia em vez de emenda.
+- `.secao-rotulo mb-1` → `.secao-rotulo` sem override — volta a usar a
+  margem padrão de `.35rem` da própria classe, igual a todas as outras
+  seções.
+
+**Efeito medido (mesmo ambiente de teste, mesma fixture de equipe/e-mail
+longos):** a distância até a Justificativa clínica volta a subir um pouco
+(desktop: 859px → 927px; celular: 1130px → 1181px, ~50-70px a mais) — ainda
+**bem mais compacto** que o layout original de dois `<input readonly>`
+inteiros (pré-2026-08-11), só não mais no limite. O ganho estético (caixa
+com o mesmo padding/peso visual das demais, hierarquia clara entre dado e
+nota de rodapé) valeu a troca por poucos pixels a menos de economia — foi
+exatamente o pedido do dono do produto.
+
+**Revisão de "todo o CSS da página" feita, não só o ponto reclamado:**
+`app.css` (o bloco de redesign V1-V6 + a responsividade de 2026-08-11
+inteira) foi relido por completo e as outras 3 telas do Portal do
+Solicitante (`lista.html`, `detalhe.html`, `indisponivel.html`) foram
+renderizadas de verdade e inspecionadas visualmente (desktop 1440px e
+celular 390px, com uma solicitação real enviada para popular `detalhe.html`
+com dado de verdade, não vazio) — nenhuma outra tinha o mesmo padrão de
+bloco espremido; nenhuma mudança foi necessária nelas. `app.css` em si não
+tinha nenhuma regra ruim — o problema inteiro estava nas classes escolhidas
+no template.
+
+**Validação:** suíte completa revalidada (JDK 21, `mvn test`) sem
+regressão. `ResponsividadeSolicitanteIT`/`RedesignVisualSolicitanteIT`
+seguem válidos sem ajuste — nenhum dos dois trava padding/margem exatos
+desse bloco (só ausência de estouro horizontal e a presença/escala de
+`.secao-rotulo`/`.secao-titulo`/`.superficie-apoio`, todos preservados).
+Validação visual real com Playwright (desktop 1440px + celular 390px,
+usuário SOLICITANTE de teste, screenshots antes/depois comparados lado a
+lado) confirma o resultado — sem cramping, sem estouro, mesma identidade
+visual do restante da tela.
+
+**PR:** deixado **aberto, sem merge automático**, a pedido explícito do
+dono do produto nesta rodada (queixa foi justamente sobre mudança de CSS
+sem supervisão adequada) — pronto para revisão humana antes de ir a
+produção.
