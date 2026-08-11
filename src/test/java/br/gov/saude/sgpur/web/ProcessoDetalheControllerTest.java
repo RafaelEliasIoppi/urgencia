@@ -598,10 +598,28 @@ class ProcessoDetalheControllerTest {
      * aparece no detalhe quando a regra aplicada e a excecao do
      * coordenador, e NAO aparece num processo decidido por maioria simples
      * comum (nao polui a tela com "maioria simples" em todo processo).
+     *
+     * <p>Atualizado (pedido do dono do produto): o badge deixou de ficar ao
+     * lado do badge de Status, no topo da pagina, e passou a aparecer
+     * embaixo do nome do proprio médico, na tabela de Respostas dos
+     * Avaliadores - só na linha do parecer que de fato decidiu sozinho
+     * ({@code Parecer.eraCoordenadorNoVoto}), não em qualquer linha só por a
+     * regra aplicada ser a exceção do coordenador.</p>
      */
     @Test
     @WithMockUser(roles = "OPERADOR")
     void detalheMostraBadgeDeRegraDecisaoQuandoForDoCoordenadorENaoQuandoForMaioriaSimples() throws Exception {
+        br.gov.saude.sgpur.domain.MembroUrgenciaRenal coordenador =
+            new br.gov.saude.sgpur.domain.MembroUrgenciaRenal("CET-RS", "Dra. Coordenadora", "coord@ex.com");
+        coordenador.setId(99L);
+        coordenador.setCoordenador(true);
+        br.gov.saude.sgpur.domain.Parecer parecerCoordenador = new br.gov.saude.sgpur.domain.Parecer(coordenador);
+        parecerCoordenador.setId(1L);
+        parecerCoordenador.setDataEnvio(java.time.LocalDate.now());
+        parecerCoordenador.setResultado(br.gov.saude.sgpur.domain.ResultadoParecer.FAVORAVEL);
+        parecerCoordenador.setEraCoordenadorNoVoto(true);
+        processo.setPareceres(new java.util.ArrayList<>(java.util.List.of(parecerCoordenador)));
+
         when(processoService.regraAplicada(processo))
             .thenReturn(br.gov.saude.sgpur.service.dto.RegraDecisao.VOTO_COORDENADOR);
 

@@ -21,7 +21,6 @@
                       th:classappend="${processo.status.bootstrapBadge}"
                       th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
                 <span th:replace="~{layout :: badgeEncerramento(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
-                <span th:replace="~{layout :: badgeRegraDecisao(${regraDecisao}, 'align-middle px-3 py-1 ms-1')}"></span>
                 <span th:replace="~{layout :: badgeReaberturas(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
                 <!-- "Aguardando parecer"/"pronto para decidir" - pendencia interna
                      (medicos ainda votando), nao a pausa "Solicita informacao".
@@ -806,6 +805,20 @@
                         <tr>
                             <td>
                                 <span th:text="${par.membro.rotulo}">Médico</span>
+                                <!-- Badge da excecao regimental do voto isolado do coordenador
+                                     (RegraDecisao.VOTO_COORDENADOR): vivia ao lado do badge de
+                                     Status no topo da pagina; movido para debaixo do nome do
+                                     proprio coordenador (pedido do dono do produto), onde fica
+                                     claro A QUEM a excecao se refere. So aparece na linha do
+                                     parecer que de fato decidiu sozinho (snapshot
+                                     Parecer.eraCoordenadorNoVoto, nao o cargo atual do membro). -->
+                                <span th:if="${regraDecisao != null and regraDecisao.excepcional and par.eraCoordenadorNoVoto != null and par.eraCoordenadorNoVoto}"
+                                      class="badge rounded-pill bg-info text-dark d-block mt-1"
+                                      style="width: fit-content;"
+                                      th:title="${regraDecisao.rotuloLongo}">
+                                    <i class="bi bi-award-fill" aria-hidden="true"></i>
+                                    <span th:text="${regraDecisao.rotuloCurto}">Voto único do Coordenador CET-RS</span>
+                                </span>
                                 <!-- Aguardando ha N dias: mesmo criterio/prazo-meta do Portal do
                                      Avaliador, para o operador decidir se vale lembrar (Fase 4). -->
                                 <span th:if="${par.resultado == null and diasAguardandoPorParecer.get(par.id) != null}"
