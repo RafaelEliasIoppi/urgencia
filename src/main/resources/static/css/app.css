@@ -595,6 +595,16 @@ tr.linha-inativa > td:first-child {
 .badge-rs-green { background: var(--rs-green-light); color: var(--rs-green-dark); }
 .badge-rs-red { background: var(--rs-red-light); color: var(--rs-red); }
 
+/* Card de pausa "Aguardando informacao complementar" (processos/detalhe.html,
+   #info-complementar): o border-warning padrao do Bootstrap e um contorno de
+   1px bem palido, que some visualmente logo abaixo do cabecalho solido
+   bg-warning - o corpo do card ficava branco puro, sem nenhuma pista de
+   "atencao/pausa" alem do cabecalho. Reforcado com borda mais grossa e
+   saturada + fundo tingido no corpo, na mesma paleta ouro (--rs-gold) ja
+   usada no resto do sistema para estados de atencao. */
+#info-complementar { border-width: 2px; border-color: var(--rs-gold); }
+#info-complementar > .card-body { background: var(--rs-gold-light); }
+
 /* Badge de encerramento (layout :: badgeEncerramento) na planilha do Painel:
    a celula ja tem o badge de status acima, entao o segundo entra menor para
    nao competir com ele. Substitui o style="font-size:.65rem" inline que
