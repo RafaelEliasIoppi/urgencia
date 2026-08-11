@@ -1,5 +1,11 @@
 # Relatório — padrão de largura de container entre os 3 "mundos" do SAUR
 
+**Status: IMPLEMENTADO.** Mesclado em `main` pelo PR #107
+(`fix/largura-container-dashboard-padrao-lista`, commit `30d2a3f`). Este
+documento é registro do diagnóstico e da correção, não um plano pendente —
+ver `CLAUDE.md`, seção "Padrão de largura de container entre os 3 portais",
+para o resumo.
+
 **Data:** 2026-08-11 · **Analista:** vistoria técnica de UI (agente especialista)
 **Gatilho:** pergunta direta do dono do produto, olhando o sistema em
 produção — *"por que o Portal do Solicitante é todo justo e o Operador fica

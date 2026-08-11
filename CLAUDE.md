@@ -6013,3 +6013,50 @@ navega `pareceres` de verdade e nunca pegaria este bug) — insere um
 
 **Validação:** suíte completa **1012 testes, 0 falhas** (JDK 21,
 `mvn test`, 1011 + 1 novo).
+
+## Padrão de largura de container entre os 3 portais (2026-08-11) — IMPLEMENTADO
+
+`docs/RELATORIO-PADRAO-LARGURA-PORTAIS-2026-08.md` — **status: IMPLEMENTADO**
+(PR #107, `fix/largura-container-dashboard-padrao-lista`, commit `30d2a3f`,
+já em `main`). Registrando aqui para não repetir o diagnóstico numa vistoria
+futura — este relatório tinha ficado sem entrada neste arquivo, mesma
+recaída de documentação já descrita 3x acima ("Lição de processo").
+
+**Gatilho:** pergunta direta do dono do produto olhando produção — *"por que
+o Portal do Solicitante é todo justo e o Operador fica todo esticado?"* —
+com pedido explícito de relatório primeiro, ajuste depois.
+
+**Achado principal: a premissa "Portal = estreito, Operador = largo" é
+FALSA.** Levantamento das 28 telas do sistema mostrou que a largura de
+container já segue, na prática, uma regra por **tipo de conteúdo**, não por
+portal: `.container-narrow` (760px, formulário/leitura de 1 item) é usada
+em 5 telas do Operador **e** nas 3 do Solicitante; `.container-portal`
+(980px, lista simples) é usada no Avaliador e no Solicitante;
+`.container` puro (~1320px, cap do Bootstrap) cobre as 12 listas densas do
+Operador; `container-fluid` (sem cap) é usada só onde há split-pane
+estrutural de verdade (`processos/detalhe.html`, `avaliador/votar.html`).
+
+**O único problema real: `dashboard.html` (Painel) era a ÚNICA tela
+`container-fluid` sem nenhum split-pane por trás** — só um grid de 8
+cartões + uma tabela, a mesma "forma" que `membros/lista.html` já resolve
+bem dentro do cap de 1320px. Como é a primeira tela que o operador vê ao
+logar, o contraste com a tela seguinte (`processos/lista.html`, com ~72px
+de margem) criava a sensação de "esticado" que motivou a pergunta.
+
+**Correção (Opção A, recomendada e implementada):** `dashboard.html`,
+`<main id="conteudo">`, classe trocada de `container-fluid px-3 px-lg-4
+py-4` para `container my-4` — mesmo padrão das outras 12 telas de lista do
+Operador. Nenhum grid interno, `id`, controller, endpoint ou model
+attribute foi tocado; nenhuma classe nova criada.
+
+**O que NÃO muda (decisão explícita, não esquecimento):**
+`processos/detalhe.html` e `avaliador/votar.html` continuam
+`container-fluid` (split-pane real); `.container-narrow`/`.container-portal`
+continuam como estão; o cap de ~1320px das listas densas do Operador não
+foi uniformizado com os 980px dos Portais (fora do escopo pedido); a
+densidade por portal (`data-densidade`) é um eixo independente, não tocado.
+
+**Validação:** suíte completa sem regressão (nenhuma asserção trava a
+classe CSS do container — confirmado por grep antes da mudança); validação
+visual real via Playwright (1440px e 390px) confirmando os 8 cartões e a
+tabela de 6 colunas continuam responsivos dentro do cap de 1320px.
