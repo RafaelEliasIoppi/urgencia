@@ -1143,6 +1143,27 @@ tr.linha-inativa > td:first-child {
     border-color: var(--rs-blue);
     background: var(--rs-blue-light);
 }
+/* Cada caixa de voto usa a cor do proprio resultado, nao um azul generico -
+   pedido do usuario: "cada um tem uma cor... as caixas devem ter a mesma cor
+   do respectivo voto". Em repouso/hover, so a borda fica tingida (o fundo
+   continua branco, para nao competir visualmente antes da escolha); ao
+   marcar, a caixa inteira assume a cor do voto (fundo + borda), substituindo
+   o azul generico acima nesses 3 casos especificos. */
+.voto-opcao-favoravel:hover { border-color: var(--rs-green); }
+.voto-opcao-favoravel:has(.voto-opcao-radio:checked) {
+    border-color: var(--rs-green);
+    background: var(--rs-green-light);
+}
+.voto-opcao-nao-favoravel:hover { border-color: var(--rs-red); }
+.voto-opcao-nao-favoravel:has(.voto-opcao-radio:checked) {
+    border-color: var(--rs-red);
+    background: var(--rs-red-light);
+}
+.voto-opcao-solicita-info:hover { border-color: var(--rs-gold); }
+.voto-opcao-solicita-info:has(.voto-opcao-radio:checked) {
+    border-color: var(--rs-gold);
+    background: var(--rs-gold-light);
+}
 .voto-opcao-radio {
     margin-top: .2rem;
     flex-shrink: 0;

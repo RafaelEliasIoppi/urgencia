@@ -224,7 +224,8 @@
                 <fieldset class="mb-3">
                     <legend class="form-label fw-semibold float-none">Qual é o seu parecer? *</legend>
                     <div class="d-flex flex-column gap-2">
-                        <label th:each="r : ${resultados}" class="voto-opcao" th:for="${'resultado_' + r.name()}">
+                        <label th:each="r : ${resultados}" class="voto-opcao" th:for="${'resultado_' + r.name()}"
+                               th:classappend="${r.name() == 'FAVORAVEL'} ? 'voto-opcao-favoravel' : (${r.name() == 'NAO_FAVORAVEL'} ? 'voto-opcao-nao-favoravel' : 'voto-opcao-solicita-info')">
                             <input class="form-check-input voto-opcao-radio" type="radio" name="resultado"
                                    th:id="${'resultado_' + r.name()}"
                                    th:value="${r.name()}" required>

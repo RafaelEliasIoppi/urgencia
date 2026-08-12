@@ -6173,3 +6173,37 @@ acima, em worktree isolado (arquivos totalmente diferentes:
 nenhum conflito no merge. Suíte completa pós-merge: **1005 testes**, única
 falha vista foi a flakiness de timestamp já documentada
 (`ComprovanteSntPendenteQueriesIntegrationTest`), não relacionada.
+
+## REGRA FIXA: cada opção lado a lado usa SUA PRÓPRIA cor semântica, nunca uma genérica (2026-08-12)
+
+Confirmado explicitamente pelo usuário ("já grave isso como uma regra pro
+sistema") depois de duas instâncias do mesmo padrão: **quando a tela tem
+várias opções distintas apresentadas lado a lado** (cards de voto, botões
+de atalho, badges), cada uma deve usar a cor ligada ao seu próprio
+significado — nunca uma cor genérica única (ex.: o azul de "selecionado" do
+Bootstrap) aplicada a todas por padrão.
+
+- **Instância 1** — card "Atalhos" do detalhe do processo: revertido **duas
+  vezes** de um esquema neutro (`btn-outline-secondary` uniforme) de volta
+  para uma cor por botão (ver "Cores dos Atalhos revertidas de novo pro
+  esquema colorido" acima).
+- **Instância 2** — caixas de voto do Portal do Avaliador
+  (`avaliador/votar.html`, classe `.voto-opcao`): o ícone de cada opção já
+  tinha cor própria (verde/vermelho/dourado), mas a CAIXA em si (borda +
+  fundo ao selecionar) ficava cinza neutro e virava **azul genérico** ao
+  marcar, independente de qual opção fosse escolhida — usuário reportou
+  "as caixas não têm cores... cada voto deve ter sua caixa na mesma cor do
+  respectivo voto". Corrigido: `label.voto-opcao` ganhou uma classe por
+  resultado (`voto-opcao-favoravel`/`voto-opcao-nao-favoravel`/
+  `voto-opcao-solicita-info`, calculada no template a partir de
+  `r.name()`), e `app.css` estiliza cada uma com a cor do próprio voto
+  (`--rs-green`/`--rs-red`/`--rs-gold`, os mesmos tokens já usados no resto
+  do sistema) tanto no hover quanto ao selecionar — substituindo, só nesses
+  3 casos, a regra genérica azul que ainda vale para qualquer outro grupo
+  de opções sem semântica de cor própria.
+
+**Aplicar proativamente em qualquer tela nova com esse padrão** (grupo de
+opções lado a lado com significado semântico claro: positivo/negativo/
+atenção/neutro, ou uma ação específica) — reusar os tokens `--rs-green`/
+`--rs-red`/`--rs-gold`/`--rs-blue` já existentes, nunca criar cor nova, e
+não esperar o usuário reclamar de novo antes de aplicar a regra.
