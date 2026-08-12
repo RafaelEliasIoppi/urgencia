@@ -38,11 +38,14 @@ public class FluxoProcessoService {
 
     private final ProcessoService processoService;
     private final SolicitacaoOnlineRepository solicitacaoOnlineRepository;
+    private final ProcessoValidator processoValidator;
 
     public FluxoProcessoService(ProcessoService processoService,
-                                 SolicitacaoOnlineRepository solicitacaoOnlineRepository) {
+                                 SolicitacaoOnlineRepository solicitacaoOnlineRepository,
+                                 ProcessoValidator processoValidator) {
         this.processoService = processoService;
         this.solicitacaoOnlineRepository = solicitacaoOnlineRepository;
+        this.processoValidator = processoValidator;
     }
 
     /**
@@ -90,14 +93,19 @@ public class FluxoProcessoService {
         String detEnvio;
         if (totalMedicos != ProcessoService.AVALIADORES_POR_PROCESSO) {
             detEnvio = "Processo deve ter " + ProcessoService.AVALIADORES_POR_PROCESSO
-                + " medicos (atual: " + totalMedicos + ").";
+                + " médicos (atual: " + totalMedicos + ").";
         } else if (!temDocClinicoPdf && !enviado) {
+            // Acentuacao deliberadamente NAO aplicada aqui (2026-08-11): este
+            // literal exato e asserido, fora do escopo deste arquivo, por
+            // HomeControllerTest e ProcessoListaControllerTest - acentuar so
+            // aqui quebraria esses dois testes sem poder corrigi-los (fora do
+            // escopo desta tarefa). Ver Achado 5 do relatorio de status.
             detEnvio = "Anexe o(s) documento(s) clinico(s) (PDF) para gerar o processo dos avaliadores.";
         } else if (!enviado) {
-            detEnvio = "Registre o envio aos medicos (faltam " + (totalMedicos - enviadosCount)
+            detEnvio = "Registre o envio aos médicos (faltam " + (totalMedicos - enviadosCount)
                 + " de " + totalMedicos + ").";
         } else {
-            detEnvio = "Enviado aos " + totalMedicos + " medicos.";
+            detEnvio = "Enviado aos " + totalMedicos + " médicos.";
         }
         etapas.add(montar(Chave.ENVIO, "Envio aos 3 médicos", "send-fill", enviado, anterioresConcluidas, detEnvio));
         anterioresConcluidas = finalizado || (anterioresConcluidas && enviado);
@@ -123,12 +131,20 @@ public class FluxoProcessoService {
         boolean maioria = sugestaoResp.isPresent();
         boolean todasRespondidas = totalMedicos > 0 && respondidos == totalMedicos;
         boolean respostasOk = maioria || todasRespondidas;
-        boolean pausaBloqueiaDecisao = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+        // Achado 7 (relatorio de status 2026-08-11): pausa ativa = status OU
+        // fato (mesmo predicado usado por ProcessoValidator.
+        // validarPausaDecisao), nao mais so o campo derivado `status`. Evita
+        // que a timeline/wizard destravem uma aba que o proprio `decidir`
+        // recusaria, caso o campo `status` algum dia dessincronize do fato
+        // (ver ProcessoValidator.temPedidoInformacaoAtivo).
+        boolean pausaAtiva = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+            || processoValidator.temPedidoInformacaoAtivo(p);
+        boolean pausaBloqueiaDecisao = pausaAtiva
             && !processoService.temVotoCoordenadorFavoravel(p);
         boolean decididoResp = p.getStatus().isFinalizado();
         String detResp;
         if (totalMedicos == 0) {
-            detResp = "Aguardando definicao dos medicos.";
+            detResp = "Aguardando definição dos médicos.";
         } else if (decididoResp) {
             // Achado 3 do relatorio de vistoria de brechas (2026-08-10): o
             // texto antigo continuava dizendo "Maioria formada ... pronto
@@ -140,38 +156,78 @@ public class FluxoProcessoService {
             // a regra que de fato decidiu, via a mesma fonte unica usada
             // pelo Relatorio Final/dossie/auditoria.
             RegraDecisao regra = processoService.regraAplicada(p);
-            detResp = "Processo ja decidido (" + p.getStatus().getDescricao() + "). "
+            detResp = "Processo já decidido (" + p.getStatus().getDescricao() + "). "
                 + regra.getRotuloLongo();
         } else if (maioria && pausaBloqueiaDecisao) {
             detResp = "Maioria formada (" + sugestaoResp.get().getDescricao()
-                + ") mas a decisao esta BLOQUEADA: aguardando informacao complementar "
-                + "de outro avaliador. Favoraveis: " + favoraveis + ".";
+                + ") mas a decisão está BLOQUEADA: aguardando informação complementar "
+                + "de outro avaliador. Favoráveis: " + favoraveis + ".";
         } else if (maioria && processoService.temVotoCoordenadorFavoravel(p)) {
             // Idem: nao e "maioria formada" quando quem decidiu foi o voto
             // isolado do coordenador (1 voto so).
-            detResp = "Voto favoravel do Coordenador da CET-RS registrado - pronto para decidir "
+            detResp = "Voto favorável do Coordenador da CET-RS registrado - pronto para decidir "
                 + "(" + sugestaoResp.get().getDescricao() + " isoladamente, sem precisar da maioria).";
         } else if (maioria) {
             detResp = "Maioria formada (" + sugestaoResp.get().getDescricao()
-                + ") - pronto para decidir. Favoraveis: " + favoraveis + ".";
+                + ") - pronto para decidir. Favoráveis: " + favoraveis + ".";
+        } else if (pausaAtiva && !todasRespondidas) {
+            // Achado 1 (relatorio de status 2026-08-11): quando a pausa
+            // chega ANTES de a maioria se formar, o texto antigo dizia so
+            // "Faltam N pareceres" - dando a entender que o 3o voto
+            // destravaria a decisao. Nao destrava: quem destrava e o
+            // solicitante enviar a informacao e o operador retomar a
+            // analise (ver Chave.INFO_COMPLEMENTAR logo abaixo).
+            detResp = "Processo PAUSADO aguardando informação complementar. Faltam "
+                + (totalMedicos - respondidos) + " de " + totalMedicos
+                + " pareceres — mas o voto pendente não libera a decisão sozinho.";
         } else if (!todasRespondidas) {
             detResp = "Faltam " + (totalMedicos - respondidos) + " de " + totalMedicos
-                + " pareceres. Favoraveis ate agora: " + favoraveis + ".";
+                + " pareceres. Favoráveis até agora: " + favoraveis + ".";
         } else {
-            detResp = respondidos + " pareceres recebidos. Favoraveis: " + favoraveis + ".";
+            detResp = respondidos + " pareceres recebidos. Favoráveis: " + favoraveis + ".";
         }
+        // Achado 1 (continuacao): quando a pausa chega ANTES da maioria se
+        // formar (!respostasOk), "Respostas dos medicos" nao pode continuar
+        // ATUAL ao mesmo tempo que "Informacao complementar" tambem vira
+        // ATUAL logo abaixo (forcado) - teriam DUAS etapas "atuais"
+        // simultaneas, e pendenciaAberta() (que devolve a PRIMEIRA etapa
+        // ATUAL da lista) continuaria escolhendo esta aqui, por vir antes na
+        // lista. Rebaixa a exibicao desta etapa para BLOQUEADA nesse caso
+        // especifico (sem mudar `respostasOk`/a cascata usada pelas etapas
+        // seguintes, que continuam identicas a antes) - a etapa continua
+        // legitimamente pendente (nao fica CONCLUIDA/verde), so deixa de
+        // "roubar" o holofote de ATUAL da etapa da pausa, que e a acao
+        // presente de verdade. Quando a pausa chega DEPOIS da maioria
+        // (respostasOk=true), esta etapa fica CONCLUIDA normalmente - nada
+        // muda.
+        boolean respostasDisplayAnterioresConcluidas = anterioresConcluidas && !(pausaAtiva && !respostasOk);
         etapas.add(montar(Chave.RESPOSTAS, "Respostas dos médicos", "chat-square-text-fill",
-            respostasOk, anterioresConcluidas, detResp));
+            respostasOk, respostasDisplayAnterioresConcluidas, detResp));
         anterioresConcluidas = finalizado || (anterioresConcluidas && respostasOk);
 
         // 2b. Informacao complementar (apenas enquanto um medico pediu mais dados).
         //     Funciona como uma PAUSA: bloqueia a decisao ate o solicitante
         //     responder e o operador retomar a analise.
-        if (p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO) {
+        //
+        //     Achado 1 (relatorio de status 2026-08-11): esta etapa deve ser
+        //     SEMPRE a etapa ATUAL enquanto a pausa estiver ativa - e
+        //     literalmente a situacao presente do processo -, mesmo quando a
+        //     etapa anterior ("Respostas dos medicos") ainda nao concluiu
+        //     (pausa chegou ANTES da maioria se formar). Por isso o `true`
+        //     fixo abaixo (nao o `anterioresConcluidas` corrente) so para
+        //     ESTA chamada de `montar` - as etapas seguintes (Decisao,
+        //     Finalizacao) continuam recebendo `anterioresConcluidas = false`
+        //     logo em seguida, entao a pausa continua travando o que vem
+        //     depois. Antes desta correcao, a pausa "antes da maioria" ficava
+        //     BLOQUEADA (cinza, como se fosse futura) e `pendenciaAberta`
+        //     apontava "Respostas dos medicos" - uma pendencia que cobrar o
+        //     3o medico nao resolve, porque quem destrava e o
+        //     retomarAposInformacao.
+        if (pausaAtiva) {
             etapas.add(montar(Chave.INFO_COMPLEMENTAR, "Informação complementar", "question-circle-fill",
-                false, anterioresConcluidas,
-                "Aguardando informacao complementar do solicitante. Envie o pedido, "
-                + "anexe a resposta recebida e retome a analise para liberar a decisao."));
+                false, true,
+                "Aguardando informação complementar do solicitante. Envie o pedido, "
+                + "anexe a resposta recebida e retome a análise para liberar a decisão."));
             // bloqueia tudo o que vem depois enquanto nao for retomado
             anterioresConcluidas = false;
         }
@@ -191,25 +247,25 @@ public class FluxoProcessoService {
             // voto favoravel do coordenador).
             var sugestao = processoService.sugerirDecisao(p);
             detDecisao = sugestao
-                .map(s -> "Sugestao automatica: " + s.getDescricao()
-                    + " - BLOQUEADA pela pausa (aguardando informacao complementar).")
-                .orElse("Aguardando informacao complementar do solicitante.");
+                .map(s -> "Sugestão automática: " + s.getDescricao()
+                    + " - BLOQUEADA pela pausa (aguardando informação complementar).")
+                .orElse("Aguardando informação complementar do solicitante.");
         } else if (processoService.sugerirDecisao(p).isPresent()
                 && processoService.temVotoCoordenadorFavoravel(p)) {
             // Achado 3 (segunda evidencia do relatorio de vistoria): apos
             // reabertura, um processo com 1 unico voto (do coordenador) NAO
             // pode dizer "regra 2 de 3 favoraveis" - a sugestao aqui vem da
             // excecao regimental, nao da maioria.
-            detDecisao = "Sugestao automatica: " + processoService.sugerirDecisao(p).get().getDescricao()
-                + " (voto favoravel isolado do Coordenador da CET-RS, dispensa a maioria de "
+            detDecisao = "Sugestão automática: " + processoService.sugerirDecisao(p).get().getDescricao()
+                + " (voto favorável isolado do Coordenador da CET-RS, dispensa a maioria de "
                 + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
                 + ProcessoService.AVALIADORES_POR_PROCESSO + ").";
         } else {
             var sugestao = processoService.sugerirDecisao(p);
             detDecisao = sugestao
-                .map(s -> "Sugestao automatica: " + s.getDescricao()
+                .map(s -> "Sugestão automática: " + s.getDescricao()
                     + " (regra " + ProcessoService.FAVORAVEIS_PARA_DEFERIR + " de "
-                    + ProcessoService.AVALIADORES_POR_PROCESSO + " favoraveis).")
+                    + ProcessoService.AVALIADORES_POR_PROCESSO + " favoráveis).")
                 .orElse("Aguardando pareceres suficientes para decidir.");
         }
         etapas.add(montar(Chave.DECISAO, "Decisão final", "hammer", decidido, anterioresConcluidas, detDecisao));
@@ -223,9 +279,9 @@ public class FluxoProcessoService {
             List<String> faltas = new ArrayList<>();
             if (p.getMotivoIndeferimento() == null || p.getMotivoIndeferimento().isBlank())
                 faltas.add("motivo da reprova");
-            if (!temAnexo(p, TipoAnexo.OFICIO_INDEFERIMENTO)) faltas.add("anexo do oficio");
-            if (p.getDataEmissaoOficio() == null) faltas.add("data de emissao");
-            String detOficio = oficioOk ? "Oficio de indeferimento completo."
+            if (!temAnexo(p, TipoAnexo.OFICIO_INDEFERIMENTO)) faltas.add("anexo do ofício");
+            if (p.getDataEmissaoOficio() == null) faltas.add("data de emissão");
+            String detOficio = oficioOk ? "Ofício de indeferimento completo."
                 : "Falta: " + String.join(", ", faltas) + ".";
             etapas.add(montar(Chave.OFICIO, "Ofício de indeferimento", "file-earmark-text-fill",
                 oficioOk, anterioresConcluidas, detOficio));
@@ -237,8 +293,8 @@ public class FluxoProcessoService {
             boolean comprovanteOk = temAnexo(p, TipoAnexo.COMPROVANTE_SNT);
             etapas.add(montar(Chave.COMPROVANTE_SNT, "Comprovante SNT", "clipboard2-check-fill",
                 comprovanteOk, anterioresConcluidas,
-                comprovanteOk ? "Comprovante de insercao da urgencia renal no SNT anexado."
-                              : "Anexe o comprovante de insercao da urgencia renal no "
+                comprovanteOk ? "Comprovante de inserção da urgência renal no SNT anexado."
+                              : "Anexe o comprovante de inserção da urgência renal no "
                                 + "Sistema Nacional de Transplantes (SNT)."));
             anterioresConcluidas = anterioresConcluidas && comprovanteOk;
         }
@@ -260,7 +316,7 @@ public class FluxoProcessoService {
         boolean respostaOk = emailMarcado || cancelado;
         String detResposta;
         if (cancelado) {
-            detResposta = "Cancelamento nao exige envio de resposta formal por e-mail.";
+            detResposta = "Cancelamento não exige envio de resposta formal por e-mail.";
         } else if (respostaOk) {
             detResposta = "Resposta enviada ao solicitante.";
         } else {
@@ -288,7 +344,7 @@ public class FluxoProcessoService {
 
         anteriorConcluido = adicionarPasso(passos, 1, "1. Envio", "pane-envio",
             etapaConcluida(etapas, Chave.ENVIO), anteriorConcluido,
-            "Envio aos avaliadores ainda nao foi registrado.", "Envio aos avaliadores");
+            "Envio aos avaliadores ainda não foi registrado.", "Envio aos avaliadores");
 
         anteriorConcluido = adicionarPasso(passos, 2, "2. Respostas", "pane-respostas",
             etapaConcluida(etapas, Chave.RESPOSTAS), anteriorConcluido,
@@ -308,7 +364,7 @@ public class FluxoProcessoService {
         anteriorConcluido = adicionarPasso(passos, 3, "3. Decisão", "pane-decisao",
             etapaConcluida(etapas, Chave.DECISAO), anteriorConcluido,
             aguardandoInfo
-                ? "Aguardando informacao complementar do solicitante antes de decidir."
+                ? "Aguardando informação complementar do solicitante antes de decidir."
                 : "Receba todos os pareceres (passo 2) antes de decidir.",
             "Decisão final");
 
@@ -321,7 +377,7 @@ public class FluxoProcessoService {
             && etapaConcluida(etapas, Chave.RESPOSTA_SOLICITANTE);
         adicionarPasso(passos, 4, "4. Finalização", "pane-finalizacao",
             finalizacaoOk, anteriorConcluido,
-            "Registre a decisao (passo 3) primeiro.", "Finalização");
+            "Registre a decisão (passo 3) primeiro.", "Finalização");
 
         return passos;
     }
@@ -388,8 +444,14 @@ public class FluxoProcessoService {
         boolean respostasOk = maioriaFormada || todasRespondidas;
         boolean decidido = p.getStatus().isFinalizado();
         // PAUSA: enquanto aguarda informacao complementar do solicitante, a
-        // decisao e a finalizacao ficam bloqueadas ate o operador retomar a analise.
-        boolean aguardandoInfo = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
+        // decisao e a finalizacao ficam bloqueadas ate o operador retomar a
+        // analise. Achado 7 (relatorio de status 2026-08-11): mesmo predicado
+        // "status OU fato" ja usado por ProcessoValidator.validarPausaDecisao
+        // (via temPedidoInformacaoAtivo) - se um dia o campo `status`
+        // dessincronizar do fato real, esta aba nao pode liberar um botao que
+        // ProcessoService.decidir recusaria em seguida.
+        boolean aguardandoInfo = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+            || processoValidator.temPedidoInformacaoAtivo(p);
 
         boolean liberadoRespostas = liberadoEnvio && envioFeito;
         boolean liberadoDecisao = liberadoRespostas && respostasOk && !aguardandoInfo;
@@ -424,7 +486,7 @@ public class FluxoProcessoService {
         } else if (envioFeito && totalMedicos > 0 && respondidos < totalMedicos) {
             return "Aguardando parecer (" + respondidos + "/" + totalMedicos + ")";
         } else if (envioFeito && respostasOk) {
-            return "Pareceres recebidos - aguardando decisao";
+            return "Pareceres recebidos - aguardando decisão";
         }
         return null;
     }
@@ -433,7 +495,7 @@ public class FluxoProcessoService {
     public String resumoPendencia(Processo p) {
         return pendenciaAberta(p)
             .map(e -> e.titulo() + ": " + e.detalhe())
-            .orElse("Processo concluido.");
+            .orElse("Processo concluído.");
     }
 
     /**

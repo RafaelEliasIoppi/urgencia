@@ -17,6 +17,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -52,7 +53,9 @@ class FluxoProcessoServiceTest {
         // 2026-07-27 isso nao afeta mais o Recebimento (sempre automatico) -
         // so o link "Ver solicitacao original" na tela de detalhe depende disso.
         lenient().when(solicitacaoOnlineRepository.existsByProcessoGeradoId(anyLong())).thenReturn(false);
-        return new FluxoProcessoService(ps, solicitacaoOnlineRepository);
+        // ProcessoValidator e stateless (sem dependencias) - instancia real,
+        // mesmo padrao ja usado acima para montar o ProcessoService de teste.
+        return new FluxoProcessoService(ps, solicitacaoOnlineRepository, new ProcessoValidator());
     }
 
     private Processo processoComTresPareceres() {
@@ -310,7 +313,7 @@ class FluxoProcessoServiceTest {
         p.addAnexo(comprovanteEnvio);
         List<EtapaFluxo> eFinal = fluxo().montarEtapas(p);
         assertThat(eFinal).allSatisfy(e -> assertThat(e.estado()).isEqualTo(EstadoEtapa.CONCLUIDA));
-        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
+        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluído.");
     }
 
     // ----------------------------------------------------------------
@@ -402,12 +405,19 @@ class FluxoProcessoServiceTest {
     // ----------------------------------------------------------------
 
     @Test
-    void solicitaInformacaoAntesDeQualquerVotoMantemInformacaoComplementarPendente() {
-        // Nenhuma maioria formada ainda (so 1 dos 3 respondeu, pedindo info):
-        // a etapa "Respostas dos medicos" (anterior na timeline) continua sem
-        // concluir - entao "Informacao complementar" fica PENDENTE, nao ATUAL.
-        // Isso e esperado (nao e o bug de "etapa fora de ordem"): a timeline so
-        // acende a etapa de pausa quando o fluxo realmente "chegou" nela.
+    void pausaAntesDaMaioriaMostraInfoComplementarComoAtual() {
+        // Achado 1 do relatorio de status (2026-08-11), motivado pelo
+        // processo real 12/2026: nenhuma maioria formada ainda (so 1 dos 3
+        // respondeu, pedindo informacao complementar) - a etapa "Respostas
+        // dos medicos" (anterior na timeline) continua sem concluir. ANTES
+        // da correcao, a cascata `anterioresConcluidas=false` derrubava
+        // "Informacao complementar" para BLOQUEADA (cinza, como se fosse
+        // futura) e `pendenciaAberta` apontava "Respostas dos medicos" - uma
+        // pendencia que cobrar o 3o medico nao resolve, porque quem destrava
+        // o processo e o solicitante enviar a informacao e o operador
+        // retomar a analise. A pausa e a situacao PRESENTE do processo,
+        // entao a etapa da pausa deve ser sempre ATUAL enquanto ela durar,
+        // mesmo com a etapa anterior ainda pendente.
         Processo p = processoComTresPareceres();
         registrarEnvioCompleto(p);
         p.setStatus(StatusProcesso.ENVIADO);
@@ -419,8 +429,48 @@ class FluxoProcessoServiceTest {
         List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
         assertThat(estado(etapas, Chave.ENVIO)).isEqualTo(EstadoEtapa.CONCLUIDA);
         assertThat(estado(etapas, Chave.RESPOSTAS)).isNotEqualTo(EstadoEtapa.CONCLUIDA);
-        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.BLOQUEADA);
+        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.ATUAL);
         assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
+
+        // pendenciaAberta devolve a etapa da PAUSA, nao "Respostas dos
+        // medicos" (que continua sem concluir, mas nao e mais o que o
+        // operador ve como "o que falta").
+        Optional<EtapaFluxo> pendencia = fluxo().pendenciaAberta(p);
+        assertThat(pendencia).isPresent();
+        assertThat(pendencia.get().chave()).isEqualTo(Chave.INFO_COMPLEMENTAR);
+        assertThat(fluxo().resumoPendencia(p)).startsWith("Informação complementar");
+
+        // O detalhe da etapa Respostas tambem passa a avisar da pausa, em
+        // vez de so "Faltam N pareceres" (que dava a entender que o 3o voto
+        // destravaria a decisao sozinho).
+        assertThat(detalhe(etapas, Chave.RESPOSTAS))
+                .contains("PAUSADO")
+                .contains("informação complementar");
+    }
+
+    @Test
+    void pausaDepoisDaMaioriaMostraInfoComplementarComoAtual() {
+        // Par simetrico do teste acima, com nome explicito (relatorio de
+        // status 2026-08-11): quando a pausa chega DEPOIS da maioria ja
+        // formada, o codigo sempre acertou (Respostas CONCLUIDA -> Info
+        // complementar ATUAL). Mantido lado a lado com o "antes" para a
+        // assimetria original nunca mais passar despercebida.
+        Processo p = processoComTresPareceres();
+        registrarEnvioCompleto(p);
+        registrarMaioria(p, ResultadoParecer.FAVORAVEL);
+        Parecer par2 = p.getPareceres().get(2);
+        par2.setId(3L);
+        par2.setResultado(ResultadoParecer.SOLICITA_INFORMACAO);
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+        assertThat(estado(etapas, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
+
+        Optional<EtapaFluxo> pendencia = fluxo().pendenciaAberta(p);
+        assertThat(pendencia).isPresent();
+        assertThat(pendencia.get().chave()).isEqualTo(Chave.INFO_COMPLEMENTAR);
     }
 
     @Test
@@ -583,7 +633,7 @@ class FluxoProcessoServiceTest {
         assertThat(estado(etapas, Chave.RESPOSTA_SOLICITANTE)).isEqualTo(EstadoEtapa.CONCLUIDA);
         assertThat(etapas.stream()
             .filter(e -> e.chave() == Chave.RESPOSTA_SOLICITANTE).findFirst().orElseThrow()
-            .detalhe()).contains("Cancelamento nao exige envio de resposta formal");
+            .detalhe()).contains("Cancelamento não exige envio de resposta formal");
     }
 
     @Test
@@ -646,7 +696,7 @@ class FluxoProcessoServiceTest {
         // nenhum documento clinico, nenhum envio registrado
 
         assertThat(fluxo().pendenciaAberta(p)).isEmpty();
-        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
+        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluído.");
     }
 
     @Test
@@ -657,7 +707,7 @@ class FluxoProcessoServiceTest {
         // envio feito, mas nenhum parecer respondido ainda
 
         assertThat(fluxo().pendenciaAberta(p)).isEmpty();
-        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluido.");
+        assertThat(fluxo().resumoPendencia(p)).isEqualTo("Processo concluído.");
     }
 
     @Test
@@ -735,7 +785,7 @@ class FluxoProcessoServiceTest {
         assertThat(detalhe(etapas, Chave.RESPOSTAS))
                 .doesNotContain("Maioria formada")
                 .doesNotContain("pronto para decidir")
-                .contains("ja decidido")
+                .contains("já decidido")
                 .contains("Deferido");
         assertThat(detalhe(etapas, Chave.DECISAO))
                 .contains("Deferido")
@@ -784,6 +834,92 @@ class FluxoProcessoServiceTest {
         assertThat(detalhe(etapas, Chave.DECISAO))
                 .doesNotContain("regra 2 de 3 favoraveis")
                 .contains("Coordenador da CET-RS");
+    }
+
+    // ----------------------------------------------------------------
+    // Achado 7 (relatorio de status 2026-08-11): a pausa deve ser detectada
+    // por "status OU fato" (mesmo predicado de ProcessoValidator.
+    // temPedidoInformacaoAtivo), nao so pelo campo derivado `status` - senao
+    // a timeline/wizard podem liberar uma aba que ProcessoValidator.
+    // validarPausaDecisao recusaria em seguida (o operador veria um botao
+    // que nao funciona).
+    // ----------------------------------------------------------------
+
+    @Test
+    void pausaDetectadaPeloFatoMesmoQuandoOStatusDivergeAchado7() {
+        // Simula uma divergencia hipotetica entre o campo derivado `status`
+        // (ainda ENVIADO) e o FATO (ja existe um parecer com resultado
+        // SOLICITA_INFORMACAO) - o mesmo tipo de dessincronia que ja
+        // aconteceu de verdade em producao (achados C/D do relatorio de dois
+        // votos, ver ProcessoValidator.temPedidoInformacaoAtivo). Maioria ja
+        // formada (2 favoraveis) para garantir que, SE a pausa nao fosse
+        // detectada pelo fato, a Decisao ficaria liberada por engano.
+        Processo p = processoComTresPareceres();
+        registrarEnvioCompleto(p);
+        registrarMaioria(p, ResultadoParecer.FAVORAVEL); // pareceres 0 e 1 favoraveis
+        Parecer par2 = p.getPareceres().get(2);
+        par2.setId(3L);
+        par2.setResultado(ResultadoParecer.SOLICITA_INFORMACAO);
+        p.setStatus(StatusProcesso.ENVIADO); // status NAO sincronizado com o fato
+
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+        assertThat(estado(etapas, Chave.RESPOSTAS)).isEqualTo(EstadoEtapa.CONCLUIDA);
+        assertThat(etapas.stream().anyMatch(e -> e.chave() == Chave.INFO_COMPLEMENTAR)).isTrue();
+        assertThat(estado(etapas, Chave.INFO_COMPLEMENTAR)).isEqualTo(EstadoEtapa.ATUAL);
+        assertThat(estado(etapas, Chave.DECISAO)).isEqualTo(EstadoEtapa.BLOQUEADA);
+
+        FluxoProcessoService.GatingAbas gating = fluxo().calcularGating(p);
+        assertThat(gating.liberadoDecisao()).isFalse();
+
+        List<PassoWizard> wizard = fluxo().montarPassosWizard(p);
+        PassoWizard passoDecisao = wizard.stream()
+                .filter(w -> w.numero() == 3).findFirst().orElseThrow();
+        assertThat(passoDecisao.estado()).isEqualTo(EstadoEtapa.BLOQUEADA);
+    }
+
+    // ----------------------------------------------------------------
+    // Achado 5 (relatorio de status 2026-08-11): acentuacao dos literais de
+    // EtapaFluxo.detalhe e dos tooltips do wizard - guarda simples (nao
+    // exaustiva) contra a recaida.
+    // ----------------------------------------------------------------
+
+    @Test
+    void textosDeDetalheDasEtapasEstaoAcentuados() {
+        Processo p = processoComTresPareceres();
+        registrarEnvioCompleto(p);
+        p.setStatus(StatusProcesso.ENVIADO);
+        List<EtapaFluxo> etapas = fluxo().montarEtapas(p);
+        assertThat(detalhe(etapas, Chave.ENVIO)).contains("Enviado aos").contains("médicos");
+        assertThat(detalhe(etapas, Chave.RESPOSTAS)).contains("Favoráveis");
+
+        Processo semMedico = new Processo();
+        List<EtapaFluxo> etapasSemMedico = fluxo().montarEtapas(semMedico);
+        assertThat(detalhe(etapasSemMedico, Chave.RESPOSTAS)).contains("definição").contains("médicos");
+
+        Processo pausado = processoComTresPareceres();
+        registrarEnvioCompleto(pausado);
+        Parecer par0 = pausado.getPareceres().get(0);
+        par0.setId(1L);
+        par0.setResultado(ResultadoParecer.SOLICITA_INFORMACAO);
+        pausado.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        List<EtapaFluxo> etapasPausado = fluxo().montarEtapas(pausado);
+        assertThat(detalhe(etapasPausado, Chave.INFO_COMPLEMENTAR))
+                .contains("informação")
+                .contains("análise")
+                .contains("decisão")
+                .doesNotContain("informacao")
+                .doesNotContain("analise")
+                .doesNotContain("decisao");
+        assertThat(detalhe(etapasPausado, Chave.RESPOSTAS)).contains("PAUSADO").contains("informação");
+
+        List<PassoWizard> wizard = fluxo().montarPassosWizard(pausado);
+        PassoWizard passoDecisao = wizard.stream()
+                .filter(w -> w.numero() == 3).findFirst().orElseThrow();
+        assertThat(passoDecisao.tooltip()).contains("informação").doesNotContain("informacao");
+
+        Processo semPendencia = processoComTresPareceres();
+        semPendencia.setStatus(StatusProcesso.CANCELADO);
+        assertThat(fluxo().resumoPendencia(semPendencia)).isEqualTo("Processo concluído.");
     }
 
     private EstadoEtapa estado(List<EtapaFluxo> etapas, EtapaFluxo.Chave chave) {
