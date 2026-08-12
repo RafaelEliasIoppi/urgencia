@@ -320,4 +320,35 @@ class HomeControllerTest {
         org.assertj.core.api.Assertions.assertThat(html).contains("Solicita informação");
         org.assertj.core.api.Assertions.assertThat(html).doesNotContain("Solicita informacao<");
     }
+
+    /**
+     * Bug real relatado pelo dono do produto em produção (2026-08-12): o
+     * cabeçalho da tabela do Painel (dentro de
+     * {@code .dashboard-tabela-scroll}, que rola por dentro com
+     * {@code overflow-y:auto}) tinha {@code sticky-top}. Como as linhas têm
+     * altura MUITO variável (1 a 4 linhas de conteúdo por célula — status,
+     * pendência, badge do coordenador, comprovante SNT etc.), o cabeçalho
+     * fixo "fatiava" visualmente a linha que passava por baixo dele durante
+     * o scroll: um pedacinho de badge (ou do botão "Abrir") ficava solto
+     * bem na borda do cabeçalho, parecendo colidir com ele e com a linha
+     * seguinte — reproduzido visualmente (Playwright) antes da correção, e
+     * confirmado que sumia por completo ao remover o {@code sticky-top}.
+     * Guarda barata: falha se o `<thead>` do Painel ganhar `sticky-top` de
+     * novo (nenhuma outra tela do sistema usa esse padrão).
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void cabecalhoDaTabelaDoPainelNaoUsaStickyTop() throws Exception {
+        when(processoRepository.findByAnoComPareceres(org.mockito.ArgumentMatchers.anyInt()))
+            .thenReturn(List.of());
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        String html = mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("<thead class=\"sticky-top\"");
+    }
 }

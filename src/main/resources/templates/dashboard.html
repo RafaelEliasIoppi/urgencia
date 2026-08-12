@@ -187,7 +187,21 @@
 
         <div class="table-responsive dashboard-tabela-scroll">
             <table class="table table-hover align-middle mb-0 small">
-                <thead class="sticky-top">
+                <!-- Sem sticky-top de proposito: com linhas de altura MUITO
+                     variavel (1 a 4 linhas de conteudo por celula - status,
+                     pendencia, badge do coordenador, comprovante SNT etc.),
+                     um cabecalho fixo dentro do .dashboard-tabela-scroll
+                     (overflow-y:auto) "fatiava" visualmente a linha que
+                     estava passando por baixo dele: a metade de cima da
+                     linha ficava escondida atras do cabecalho e um pedacinho
+                     de badge (ou do botao "Abrir") aparecia solto bem na
+                     borda, parecendo colidir com o cabecalho e com a linha
+                     seguinte - bug real relatado pelo usuario em producao
+                     (Painel principal, "status colidindo com Medico 1").
+                     Confirmado por reproducao visual (Playwright, scroll
+                     dentro do container): o glitch some por completo ao
+                     tirar o sticky-top, sem precisar mexer em mais nada. -->
+                <thead>
                     <tr>
                         <th class="fw-semibold text-nowrap">Nº / Ano</th>
                         <th class="fw-semibold text-nowrap">Paciente / Solicitante</th>

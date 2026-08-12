@@ -6207,3 +6207,37 @@ opções lado a lado com significado semântico claro: positivo/negativo/
 atenção/neutro, ou uma ação específica) — reusar os tokens `--rs-green`/
 `--rs-red`/`--rs-gold`/`--rs-blue` já existentes, nunca criar cor nova, e
 não esperar o usuário reclamar de novo antes de aplicar a regra.
+
+## Bug real corrigido: cabeçalho fixo da tabela do Painel "fatiava" linhas (2026-08-12)
+
+**Relatado pelo usuário em produção**: "as informações de status estão
+colidindo com as informações do médico 01" no Painel principal (`/`,
+`dashboard.html`). Investigado com reprodução visual de verdade (app local
++ Playwright), não só leitura de código — a suspeita inicial (colisão
+horizontal entre colunas) não se confirmou em nenhuma largura testada
+(992px a 1920px); o bug só aparecia ao **rolar dentro** da tabela.
+
+**Causa raiz confirmada:** a tabela do Painel rola por dentro
+(`.dashboard-tabela-scroll { max-height: 70vh; overflow-y: auto; }`) e o
+`<thead>` tinha `sticky-top`. As linhas dessa tabela têm altura MUITO
+variável — de 1 a 4 linhas de conteúdo por célula (status, pendência,
+badge do coordenador, comprovante SNT etc.). Com um cabeçalho fixo por
+cima de linhas de altura tão desigual, ao rolar, a metade de cima de uma
+linha ficava escondida atrás do cabeçalho e um pedacinho de badge (ou do
+botão "Abrir") aparecia solto bem na borda — parecendo colidir com o
+cabeçalho e com a linha seguinte. Confirmado isolando a causa por
+experimento: `border-collapse: separate` não resolvia (hipótese
+descartada); remover o `sticky-top` resolvia por completo, sem tocar em
+mais nada.
+
+**Correção:** removido `sticky-top` do `<thead>` de `dashboard.html` — a
+única tela do sistema que tinha esse padrão (cabeçalho fixo dentro de uma
+caixa com scroll próprio). O resto da UX é preservado (as caixas de
+estatística continuam sempre visíveis, só a tabela rola por dentro); só se
+perde o cabeçalho ficar visível durante esse scroll específico, uma troca
+aceitável para eliminar a classe inteira do bug (a alternativa — forçar
+altura uniforme nas linhas — perderia informação hoje mostrada inline).
+
+**Guarda de regressão:** `HomeControllerTest
+.cabecalhoDaTabelaDoPainelNaoUsaStickyTop` — falha se `sticky-top` voltar
+para o `<thead>` do Painel.
