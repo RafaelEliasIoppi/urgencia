@@ -6334,6 +6334,14 @@ bloqueia os outros avaliadores de votar).
   que identifique o pedido (dessincronização/legado) mantém o comportamento
   histórico global — pendente enquanto não houver nenhum envio —, para nunca
   deixar o solicitante sem caminho de resposta.
+- **Semântica confirmada pelo dono do produto (2026-08-12): um único envio de
+  informação complementar responde a TODOS os pedidos abertos naquele
+  momento** — não exige um envio separado por avaliador que pediu. Era a
+  premissa assumida pela implementação (`enviarInformacaoComplementar` marca
+  como respondidos todos os `pedidosPendentes` do estado calculado); ficou
+  como pergunta aberta no PR #110 e foi aprovada explicitamente antes do
+  merge. Não é mais pendência — se algum dia mudar para exigir resposta por
+  pedido, é uma decisão de produto nova, não uma correção de bug.
 
 **Nada de regra de decisão foi tocado:** `ProcessoValidator` (contagens,
 `sugerirDecisao`, `validarPausaDecisao`, coordenador), `ProcessoService.decidir`
