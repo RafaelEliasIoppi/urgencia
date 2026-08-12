@@ -105,7 +105,14 @@ public enum StatusProcesso {
     public String getTom() {
         return switch (this) {
             case SOLICITADO -> "neutral";
-            case ENVIADO -> "neutral";
+            // Padronizacao de cores 2026-08-06 ("Aguardando" = azul): o badge
+            // Bootstrap (getBootstrapBadge()) ja usa bg-primary/azul para
+            // ENVIADO - getTom() estava divergente ("neutral"/cinza) porque
+            // nenhum template consumia este metodo ainda (ver
+            // RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md, Achado 6).
+            // Corrigido para nao virar uma recaida silenciosa quando algum
+            // template futuro migrar para o fragment layout :: tomBadge.
+            case ENVIADO -> "aguardando";
             case SOLICITA_INFORMACAO -> "attention";
             case DEFERIDO -> "ok";
             case INDEFERIDO -> "danger";

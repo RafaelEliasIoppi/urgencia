@@ -623,6 +623,44 @@
     </span>
 </th:block>
 
+<!-- ============================================================
+     Texto ACENTUADO do StatusProcesso, sem mexer no enum (2026-08-11,
+     Relatorio processo 12/2026, Achado 4). StatusProcesso.descricao (ex.
+     "Solicita informacao", sem cedilha/til) alimenta o Relatorio Final em
+     PDF, o dossie exportado e a auditoria - decisao deliberada de NAO
+     acentuar o enum (raio de impacto em documento oficial), ver CLAUDE.md.
+     Este fragment e o tradutor local para as telas: mesmo padrao ja usado
+     em avaliador/lista.html para ResultadoParecer (th:switch por nome do
+     enum, literal acentuado por th:case, com um th:case="*" de fallback
+     lendo status.descricao cru - se um valor novo aparecer no enum sem
+     ninguem lembrar de atualizar este fragment, ele nao quebra, so some o
+     acento daquele valor especifico).
+
+     So devolve o TEXTO (dentro de um th:block/th:switch, sem span/classe
+     propria) - use aninhado dentro do <span class="badge ..."> que ja
+     carrega a classe/icone de cada tela, nunca substituindo esse span
+     inteiro (senao perderia a classe bg-*/badge-icone do elemento pai).
+
+     deferidoPeloCoordenador (opcional, pode ser null/false): quando true,
+     sobrepoe tudo com o rotulo especial "Deferido pelo Coordenador da
+     CET-RS" (mesma logica ja usada em processos/detalhe.html antes desta
+     mudanca) - unico consumidor hoje que passa esse parametro.
+
+     Uso: <span th:replace="~{layout :: statusProcessoTexto(${p.status}, false)}">status</span>
+     ============================================================ -->
+<th:block th:fragment="statusProcessoTexto(status, deferidoPeloCoordenador)">
+    <th:block th:if="${deferidoPeloCoordenador}">Deferido pelo Coordenador da CET-RS</th:block>
+    <th:block th:unless="${deferidoPeloCoordenador}" th:switch="${status.name()}">
+        <th:block th:case="'SOLICITADO'">Solicitado</th:block>
+        <th:block th:case="'ENVIADO'">Enviado</th:block>
+        <th:block th:case="'SOLICITA_INFORMACAO'">Solicita informação</th:block>
+        <th:block th:case="'DEFERIDO'">Deferido</th:block>
+        <th:block th:case="'INDEFERIDO'">Indeferido</th:block>
+        <th:block th:case="'CANCELADO'">Cancelado</th:block>
+        <th:block th:case="*" th:text="${status.descricao}">status</th:block>
+    </th:block>
+</th:block>
+
 <div th:fragment="footer" class="footer-sgpur mt-auto">
     <small>SAUR &mdash; Sistema de Avaliação de Urgência Renal &bull; Central de Transplantes do RS</small>
     <!--/* Sem opacity:.7 aqui: empilhada sobre o cinza do rodape, derrubava o

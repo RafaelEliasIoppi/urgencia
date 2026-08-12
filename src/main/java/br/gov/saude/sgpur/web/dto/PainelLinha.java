@@ -86,7 +86,7 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
         }
 
         static CelulaMedico vazia() {
-            return new CelulaMedico(null, "Nao definido", "muted", "dash-circle", false);
+            return new CelulaMedico(null, "Não definido", "muted", "dash-circle", false);
         }
 
         static CelulaMedico de(String medico, ResultadoParecer resultado, boolean impedido,
@@ -106,9 +106,9 @@ public record PainelLinha(Processo processo, List<CelulaMedico> medicos) {
             }
             return switch (resultado) {
                 case FAVORAVEL ->
-                    new CelulaMedico(medico, "Favoravel", "success", "check-circle-fill", true);
+                    new CelulaMedico(medico, "Favorável", "success", "check-circle-fill", true);
                 case NAO_FAVORAVEL ->
-                    new CelulaMedico(medico, "Desfavoravel", "danger", "x-circle-fill", true);
+                    new CelulaMedico(medico, "Desfavorável", "danger", "x-circle-fill", true);
                 // Padronizacao de cores 2026-08-06: "Solicita informacao"
                 // (a pausa do processo) = AMARELO.
                 case SOLICITA_INFORMACAO ->

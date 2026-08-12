@@ -294,4 +294,30 @@ class HomeControllerTest {
             .andExpect(model().attribute("linhas",
                 List.of(PainelLinha.de(emAndamento), PainelLinha.de(finalizado))));
     }
+
+    /**
+     * Achado 4 do RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md:
+     * {@code StatusProcesso.descricao} nao pode ser acentuado (alimenta PDF
+     * oficial/dossie/auditoria), entao a acentuacao vem do fragment
+     * {@code layout :: statusProcessoTexto} - este teste confirma que o HTML
+     * de verdade (nao o enum) mostra "Solicita informação" acentuado, no
+     * lugar do "Solicita informacao" cru que o enum devolve.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void badgeDeStatusDoPainelMostraSolicitaInformacaoAcentuado() throws Exception {
+        int ano = Year.now().getValue();
+        Processo pausado = processo(1L, 1, StatusProcesso.SOLICITA_INFORMACAO);
+        when(processoRepository.findByAnoComPareceres(ano)).thenReturn(List.of(pausado));
+        when(membroService.contarAtivos()).thenReturn(0L);
+        when(tempoRespostaService.calcular()).thenReturn(
+            new TempoRespostaService.ResumoTempo(0, null, 0, 7, Map.of()));
+
+        String html = mvc.perform(get("/"))
+            .andExpect(status().isOk())
+            .andReturn().getResponse().getContentAsString();
+
+        org.assertj.core.api.Assertions.assertThat(html).contains("Solicita informação");
+        org.assertj.core.api.Assertions.assertThat(html).doesNotContain("Solicita informacao<");
+    }
 }
