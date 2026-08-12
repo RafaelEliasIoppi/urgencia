@@ -3,7 +3,9 @@ package br.gov.saude.sgpur.web;
 import br.gov.saude.sgpur.domain.Anexo;
 import br.gov.saude.sgpur.domain.AnexoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.MensagemSolicitacao;
+import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
+import br.gov.saude.sgpur.domain.ResultadoParecer;
 import br.gov.saude.sgpur.domain.RascunhoSolicitacaoOnline;
 import br.gov.saude.sgpur.domain.SolicitacaoOnline;
 import br.gov.saude.sgpur.domain.StatusSolicitacaoOnline;
@@ -518,7 +520,8 @@ public class SolicitanteController {
                     + "Urgência Renal pediu mais informações sobre este pedido. Envie os documentos/dados "
                     + "solicitados abaixo para que a análise possa continuar.";
                 return new SituacaoPedidoView("Informação necessária", "warning", "exclamation-triangle-fill",
-                    "Informação complementar necessária", mensagem, null, true, false, null, numero);
+                    "Informação complementar necessária", mensagem, textoDoPedidoDeInformacao(proc),
+                    true, false, null, numero);
             }
             if (precisaInfo) {
                 // Padronizacao de cores 2026-08-06: "Aguardando" = azul.
@@ -550,6 +553,62 @@ public class SolicitanteController {
             + "equipe de Urgência Renal analisar o pedido.";
         return new SituacaoPedidoView("Aguardando triagem", "primary", "hourglass-split", "Aguardando triagem",
             mensagem, null, false, false, null, null);
+    }
+
+    /**
+     * Texto do que foi PEDIDO pelo(s) avaliador(es) que votaram
+     * {@link ResultadoParecer#SOLICITA_INFORMACAO} — o {@code detalhe} do
+     * cartao de situacao quando o processo esta pausado aguardando informacao
+     * complementar.
+     *
+     * <p><b>Bug real que isto corrige</b> (relatado pelo dono do produto em
+     * producao, 2026-08): o cartao dizia apenas que "um(a) avaliador(a) pediu
+     * mais informações" e o solicitante nao tinha, em NENHUM lugar do Portal,
+     * como descobrir o que especificamente faltava — apesar de
+     * {@code Parecer.justificativa} ser obrigatorio nesse voto desde
+     * 2026-08-03 justamente para descrever isso.
+     *
+     * <p><b>Imparcialidade:</b> expoe o CONTEUDO do pedido, nunca a AUTORIA —
+     * o nome/instituicao do medico avaliador continua invisivel ao
+     * solicitante (mesma regra ja aplicada a mensagem do cartao, que atribui
+     * o pedido genericamente a "um(a) avaliador(a)"). Nao ler
+     * {@code par.getMembro()} aqui.
+     *
+     * <p>Pode haver MAIS DE UM parecer em SOLICITA_INFORMACAO ao mesmo tempo:
+     * desde a correcao de 2026-08-06 ("pausa nao bloqueia mais os outros
+     * avaliadores", ver CLAUDE.md) os demais medicos continuam podendo votar
+     * durante a pausa, entao mais de um pode ter pedido informacao. Nesse
+     * caso os pedidos sao numerados.
+     *
+     * <p>Parecer legado/sem justificativa preenchida nao quebra a tela: cai
+     * num fallback educado que aponta o chat como caminho para perguntar o
+     * que e necessario.
+     *
+     * @return o texto pronto para o {@code detalhe} do cartao (nunca
+     *         {@code null} — sempre ha algo util a dizer ao solicitante).
+     */
+    private String textoDoPedidoDeInformacao(Processo proc) {
+        List<String> pedidos = proc == null ? List.of() : proc.getPareceres().stream()
+            .filter(par -> par.getResultado() == ResultadoParecer.SOLICITA_INFORMACAO)
+            .map(Parecer::getJustificativa)
+            .filter(j -> j != null && !j.isBlank())
+            .map(String::trim)
+            .toList();
+
+        if (pedidos.isEmpty()) {
+            return "O detalhe do que foi pedido não ficou registrado aqui. Use a conversa com a "
+                + "equipe de Urgência Renal, mais abaixo nesta página, para perguntar quais "
+                + "documentos ou informações são necessários.";
+        }
+        if (pedidos.size() == 1) {
+            return "O que foi pedido: " + pedidos.get(0);
+        }
+        StringBuilder sb = new StringBuilder("O que foi pedido (")
+            .append(pedidos.size()).append(" pedidos):");
+        for (int i = 0; i < pedidos.size(); i++) {
+            sb.append('\n').append(i + 1).append(". ").append(pedidos.get(i));
+        }
+        return sb.toString();
     }
 
     /**

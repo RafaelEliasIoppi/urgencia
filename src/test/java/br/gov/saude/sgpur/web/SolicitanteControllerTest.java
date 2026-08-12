@@ -970,4 +970,111 @@ class SolicitanteControllerTest {
             .andExpect(content().string(org.hamcrest.Matchers.containsString(
                 "A fundamentação completa da decisão está no ofício, disponível abaixo.")));
     }
+
+    /**
+     * Bug real relatado pelo dono do produto em producao (2026-08, processo
+     * 12/2026): com o processo pausado em "Solicita informação", o cartao do
+     * Portal do Solicitante so dizia que "um(a) avaliador(a) pediu mais
+     * informações" — o texto do que EXATAMENTE faltava
+     * ({@code Parecer.justificativa}, obrigatorio nesse voto desde
+     * 2026-08-03) nao aparecia em lugar nenhum do Portal.
+     */
+    private br.gov.saude.sgpur.domain.Processo processoPausadoComPedido(String... justificativas) {
+        br.gov.saude.sgpur.domain.Processo processo = new br.gov.saude.sgpur.domain.Processo();
+        processo.setId(314L);
+        processo.setNumero("12/2026");
+        processo.setStatus(br.gov.saude.sgpur.domain.StatusProcesso.SOLICITA_INFORMACAO);
+        for (String justificativa : justificativas) {
+            br.gov.saude.sgpur.domain.MembroUrgenciaRenal membro =
+                new br.gov.saude.sgpur.domain.MembroUrgenciaRenal();
+            membro.setNome("Dra. Avaliadora Secreta");
+            membro.setInstituicao("Hospital Sigiloso");
+            br.gov.saude.sgpur.domain.Parecer parecer = new br.gov.saude.sgpur.domain.Parecer();
+            parecer.setMembro(membro);
+            parecer.setResultado(br.gov.saude.sgpur.domain.ResultadoParecer.SOLICITA_INFORMACAO);
+            parecer.setJustificativa(justificativa);
+            processo.addParecer(parecer);
+        }
+        solicitacaoDoDono.setStatus(StatusSolicitacaoOnline.CONVERTIDA);
+        solicitacaoDoDono.setProcessoGerado(processo);
+        return processo;
+    }
+
+    private void stubDetalhePausado() {
+        when(usuarioRepo.findByUsername("solicitante1")).thenReturn(Optional.of(dono));
+        when(solicitacaoService.buscarParaDetalhe(50L)).thenReturn(solicitacaoDoDono);
+        when(solicitacaoService.diasEspera(solicitacaoDoDono))
+            .thenReturn(new SolicitacaoOnlineService.DiasEspera(1, "bg-secondary"));
+        when(solicitacaoService.precisaInformacaoComplementar(solicitacaoDoDono)).thenReturn(true);
+        when(solicitacaoService.jaEnviouInformacaoComplementarNestaRodada(solicitacaoDoDono))
+            .thenReturn(false);
+        when(mensagemService.listarPorSolicitacao(50L)).thenReturn(java.util.List.of());
+    }
+
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void cartaoDeInformacaoNecessariaMostraOQueOAvaliadorPediu() throws Exception {
+        processoPausadoComPedido("Enviar o laudo da biópsia renal e a creatinina dos últimos 30 dias.");
+        stubDetalhePausado();
+
+        mvc.perform(get("/solicitante/50"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "O que foi pedido: Enviar o laudo da biópsia renal "
+                    + "e a creatinina dos últimos 30 dias.")));
+    }
+
+    /**
+     * Desde a correcao de 2026-08-06 ("a pausa nao bloqueia mais os outros
+     * avaliadores"), mais de um medico pode ter pedido informacao ao mesmo
+     * tempo — os dois pedidos precisam chegar ao solicitante.
+     */
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void cartaoDeInformacaoNecessariaMostraTodosOsPedidosQuandoHaMaisDeUm() throws Exception {
+        processoPausadoComPedido("Falta o laudo da biópsia renal.", "Falta o resultado do PRA atual.");
+        stubDetalhePausado();
+
+        mvc.perform(get("/solicitante/50"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.containsString("O que foi pedido (2 pedidos)")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "1. Falta o laudo da biópsia renal.")))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "2. Falta o resultado do PRA atual.")));
+    }
+
+    /** Parecer legado, sem justificativa: a tela nao pode quebrar. */
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void cartaoDeInformacaoNecessariaSemJustificativaUsaFallbackEducado() throws Exception {
+        processoPausadoComPedido((String) null);
+        stubDetalhePausado();
+
+        mvc.perform(get("/solicitante/50"))
+            .andExpect(status().isOk())
+            .andExpect(view().name("solicitante/detalhe"))
+            .andExpect(content().string(org.hamcrest.Matchers.containsString(
+                "O detalhe do que foi pedido não ficou registrado aqui")))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("O que foi pedido:"))));
+    }
+
+    /**
+     * Imparcialidade: o solicitante ve o CONTEUDO do pedido, nunca a AUTORIA.
+     * O nome/instituicao do medico avaliador nao pode vazar por este caminho.
+     */
+    @Test
+    @WithMockUser(username = "solicitante1", roles = "SOLICITANTE")
+    void cartaoDeInformacaoNecessariaNuncaRevelaOMedicoAvaliador() throws Exception {
+        processoPausadoComPedido("Enviar o laudo da biópsia renal.");
+        stubDetalhePausado();
+
+        mvc.perform(get("/solicitante/50"))
+            .andExpect(status().isOk())
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("Dra. Avaliadora Secreta"))))
+            .andExpect(content().string(org.hamcrest.Matchers.not(
+                org.hamcrest.Matchers.containsString("Hospital Sigiloso"))));
+    }
 }

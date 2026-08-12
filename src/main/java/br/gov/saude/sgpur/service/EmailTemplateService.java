@@ -2,7 +2,9 @@ package br.gov.saude.sgpur.service;
 
 import br.gov.saude.sgpur.config.EmailProperties;
 import br.gov.saude.sgpur.domain.MembroUrgenciaRenal;
+import br.gov.saude.sgpur.domain.Parecer;
 import br.gov.saude.sgpur.domain.Processo;
+import br.gov.saude.sgpur.domain.ResultadoParecer;
 import br.gov.saude.sgpur.domain.StatusProcesso;
 import br.gov.saude.sgpur.service.dto.EmailTemplate;
 import org.springframework.beans.factory.annotation.Value;
@@ -308,7 +310,7 @@ public class EmailTemplateService {
             Durante a análise do processo acima, um(a) dos(as) avaliadores(as)
             da Urgência Renal solicitou informações complementares para
             concluir o parecer.
-
+            %s
             Solicitamos, por gentileza, o envio das informações e/ou dos documentos
             adicionais necessários à continuidade da análise, respondendo a este
             e-mail. Assim que recebidas, a análise será retomada e o processo
@@ -316,12 +318,54 @@ public class EmailTemplateService {
 
             Atenciosamente,
             %s
-            """.formatted(p.getNumero(), p.getPacienteNome(), p.getSolicitanteEquipe(), assinatura());
+            """.formatted(p.getNumero(), p.getPacienteNome(), p.getSolicitanteEquipe(),
+                blocoPedidoDeInformacao(p), assinatura());
 
         return new EmailTemplate("solicita-info",
             "Pedido de informação complementar ao solicitante", "question-circle",
             assunto("Processo " + idProcesso + " - Solicitação de informações complementares"),
             corpo);
+    }
+
+    /**
+     * Bloco com o que foi PEDIDO pelo(s) avaliador(es) que votaram
+     * {@link ResultadoParecer#SOLICITA_INFORMACAO} (o texto obrigatorio de
+     * {@code Parecer.justificativa}), para o corpo de
+     * {@link #emailSolicitaInfo}.
+     *
+     * <p>Mesmo bug corrigido no Portal do Solicitante em 2026-08: o pedido
+     * era 100% generico ("solicitou informações complementares") e a equipe
+     * solicitante nao tinha como saber o que especificamente faltava. Quem so
+     * acompanha por e-mail, sem entrar no Portal, precisa da mesma informacao.
+     *
+     * <p><b>Imparcialidade:</b> expoe o CONTEUDO do pedido, nunca a AUTORIA —
+     * o nome do medico avaliador nao entra no e-mail (nao ler
+     * {@code par.getMembro()} aqui). Pode haver mais de um parecer nesse
+     * estado ao mesmo tempo (os demais avaliadores continuam votando durante
+     * a pausa): nesse caso os pedidos sao numerados. Parecer sem justificativa
+     * preenchida (legado) simplesmente nao acrescenta bloco nenhum.
+     */
+    private String blocoPedidoDeInformacao(Processo p) {
+        List<String> pedidos = p.getPareceres().stream()
+            .filter(par -> par.getResultado() == ResultadoParecer.SOLICITA_INFORMACAO)
+            .map(Parecer::getJustificativa)
+            .filter(j -> j != null && !j.isBlank())
+            .map(String::trim)
+            .toList();
+
+        if (pedidos.isEmpty()) {
+            return "";
+        }
+        StringBuilder sb = new StringBuilder("\n");
+        if (pedidos.size() == 1) {
+            sb.append("O que foi pedido:\n").append(pedidos.get(0)).append('\n');
+        } else {
+            sb.append("O que foi pedido (").append(pedidos.size()).append(" pedidos):\n");
+            for (int i = 0; i < pedidos.size(); i++) {
+                sb.append(i + 1).append(". ").append(pedidos.get(i)).append('\n');
+            }
+        }
+        return sb.toString();
     }
 
     public EmailTemplate emailDeferido(Processo p) {
