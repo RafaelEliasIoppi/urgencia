@@ -64,6 +64,13 @@ class ProcessoDetalheControllerTest {
     @MockitoBean private MensagemAvaliadorService mensagemAvaliadorService;
     @MockitoBean private VerificadorNomePaciente verificadorNomePaciente;
     @MockitoBean private br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository membroUrgenciaRenalRepository;
+    // Achado 7 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md: o
+    // controller passou a detectar a pausa por status OU
+    // ProcessoValidator.temPedidoInformacaoAtivo (mesmo predicado que de fato
+    // bloqueia a decisao) - por default (mock sem stub) devolve false, entao
+    // os testes que so setam processo.setStatus(SOLICITA_INFORMACAO) continuam
+    // funcionando sem precisar estubar isto.
+    @MockitoBean private ProcessoValidator processoValidator;
 
     private Processo processo;
 
@@ -515,7 +522,7 @@ class ProcessoDetalheControllerTest {
             .andExpect(status().isOk())
             .andExpect(model().attribute("pausaBloqueiaDecisao", true))
             .andExpect(model().attribute("fraseMaioria",
-                "Maioria formada, mas BLOQUEADA: aguardando informacao complementar"))
+                "Maioria formada, mas BLOQUEADA: aguardando informação complementar"))
             .andReturn().getResponse().getContentAsString();
 
         org.assertj.core.api.Assertions.assertThat(html)
@@ -526,8 +533,13 @@ class ProcessoDetalheControllerTest {
     /**
      * Contraste do teste acima: quando o coordenador da CET-RS ja votou
      * Favoravel, a decisao NAO esta de fato bloqueada pela pausa (excecao
-     * documentada em CLAUDE.md) - o texto deve continuar dizendo "pronto"/
-     * "Maioria ja formada", sem a ressalva de bloqueio.
+     * documentada em CLAUDE.md) - {@code pausaBloqueiaDecisao} continua
+     * {@code false}. O TEXTO, porem, nao deve dizer "Maioria ja formada" -
+     * nunca houve maioria nenhuma, foi 1 voto so (Achado 3 do
+     * docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md, recaida do Achado
+     * 3 do relatorio de vistoria de brechas de 2026-08-10, que so corrigiu a
+     * timeline lateral, nao este placar). O texto correto reusa
+     * RegraDecisao.VOTO_COORDENADOR.
      */
     @Test
     @WithMockUser(roles = "OPERADOR")
@@ -543,12 +555,97 @@ class ProcessoDetalheControllerTest {
         String html = mvc.perform(get("/processos/1"))
             .andExpect(status().isOk())
             .andExpect(model().attribute("pausaBloqueiaDecisao", false))
-            .andExpect(model().attribute("fraseMaioria", "Maioria ja formada"))
+            .andExpect(model().attribute("fraseMaioria",
+                br.gov.saude.sgpur.service.dto.RegraDecisao.VOTO_COORDENADOR.getRotuloLongo()))
             .andReturn().getResponse().getContentAsString();
 
         org.assertj.core.api.Assertions.assertThat(html)
             .contains("coordenador da CET-RS defere sozinho")
-            .doesNotContain("BLOQUEADA</strong> enquanto o processo aguarda");
+            .doesNotContain("BLOQUEADA</strong> enquanto o processo aguarda")
+            .doesNotContain("Maioria já formada")
+            .doesNotContain("Maioria ja formada");
+    }
+
+    /**
+     * Achado 3 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md: o
+     * mesmo texto errado ("Maioria ja formada") tambem aparecia quando o
+     * processo JA ESTA decidido (11/2026 real: DEFERIDO pelo voto unico do
+     * coordenador, sem pausa nenhuma) - nao e exclusivo do cenario pausado.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void fraseMaioriaNaoDizMaioriaJaFormadaQuandoDecisaoFoiPeloCoordenadorSemPausa() throws Exception {
+        processo.setStatus(StatusProcesso.DEFERIDO);
+        MembroUrgenciaRenal m1 = membro(1L, "CET-RS", "Coordenadora");
+        processo.addParecer(parecer(processo, m1, ResultadoParecer.FAVORAVEL,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        when(processoService.sugerirDecisao(processo)).thenReturn(Optional.of(StatusProcesso.DEFERIDO));
+        when(processoService.contarRespondidos(processo)).thenReturn(1L);
+        when(processoService.temVotoCoordenadorFavoravel(processo)).thenReturn(true);
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("fraseMaioria",
+                br.gov.saude.sgpur.service.dto.RegraDecisao.VOTO_COORDENADOR.getRotuloLongo()));
+    }
+
+    /**
+     * Achado 2 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md: caso
+     * real do processo 12/2026 - a pausa acontece ANTES de a maioria se
+     * formar (1 favoravel + 1 solicita-informacao + 1 pendente: nem maioria
+     * nem todos votaram). Antes desta correcao o placar dizia so "Faltam 1
+     * voto", escondendo que cobrar o voto pendente nao desbloqueia nada -
+     * quem desbloqueia e o solicitante mandar a informacao e o operador
+     * retomar a analise.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void fraseMaioriaMencionaAPausaQuandoAindaNaoHaMaioriaFormada() throws Exception {
+        processo.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        MembroUrgenciaRenal m1 = membro(1L, "HCPA", "Ana");
+        MembroUrgenciaRenal m2 = membro(2L, "HCC", "Bruno");
+        MembroUrgenciaRenal m3 = membro(3L, "HSL", "Carla");
+        processo.addParecer(parecer(processo, m1, ResultadoParecer.FAVORAVEL,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        processo.addParecer(parecer(processo, m2, ResultadoParecer.SOLICITA_INFORMACAO,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        processo.addParecer(parecer(processo, m3, null, LocalDate.now(), null));
+        when(processoService.sugerirDecisao(processo)).thenReturn(Optional.empty());
+        when(processoService.contarRespondidos(processo)).thenReturn(2L);
+        // temVotoCoordenadorFavoravel nao estubado = false (default do mock).
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("pausaBloqueiaDecisao", true))
+            .andExpect(model().attribute("fraseMaioria",
+                "PAUSADO (aguardando informação complementar) — faltam 1 voto"));
+    }
+
+    /**
+     * Achado 7 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md: a
+     * pausa tambem precisa ser detectada pelo FATO (ProcessoValidator.
+     * temPedidoInformacaoAtivo), nao so pelo status - mesmo predicado em OU
+     * que ProcessoValidator.validarPausaDecisao usa para de fato bloquear a
+     * decisao. Aqui o status NAO e SOLICITA_INFORMACAO (dessincronizado, o
+     * mesmo cenario que ja causou incidente real segundo o javadoc de
+     * temPedidoInformacaoAtivo), mas o fato observavel diz que a pausa esta
+     * ativa - aguardandoInfo e pausaBloqueiaDecisao devem acompanhar o fato.
+     */
+    @Test
+    @WithMockUser(roles = "OPERADOR")
+    void pausaDetectadaPeloFatoMesmoComStatusDessincronizado() throws Exception {
+        processo.setStatus(StatusProcesso.ENVIADO);
+        MembroUrgenciaRenal m1 = membro(1L, "HCPA", "Ana");
+        processo.addParecer(parecer(processo, m1, ResultadoParecer.SOLICITA_INFORMACAO,
+            LocalDate.now(), OrigemParecer.AVALIADOR_SISTEMA));
+        when(processoService.sugerirDecisao(processo)).thenReturn(Optional.empty());
+        when(processoService.contarRespondidos(processo)).thenReturn(1L);
+        when(processoValidator.temPedidoInformacaoAtivo(processo)).thenReturn(true);
+
+        mvc.perform(get("/processos/1"))
+            .andExpect(status().isOk())
+            .andExpect(model().attribute("aguardandoInfo", true))
+            .andExpect(model().attribute("pausaBloqueiaDecisao", true));
     }
 
     @Test

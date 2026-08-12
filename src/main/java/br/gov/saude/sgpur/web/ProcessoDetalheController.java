@@ -22,6 +22,7 @@ import br.gov.saude.sgpur.service.VerificadorNomePaciente;
 import br.gov.saude.sgpur.service.SolicitacaoOnlineService;
 import br.gov.saude.sgpur.service.dto.EstadoEtapa;
 import br.gov.saude.sgpur.service.dto.PassoWizard;
+import br.gov.saude.sgpur.service.dto.RegraDecisao;
 import br.gov.saude.sgpur.repository.AnexoRepository;
 import br.gov.saude.sgpur.repository.MembroUrgenciaRenalRepository;
 import br.gov.saude.sgpur.repository.ParecerRepository;
@@ -108,6 +109,13 @@ public class ProcessoDetalheController {
     private final VerificadorNomePaciente verificadorNomePaciente;
     private final ParecerRepository parecerRepo;
     private final MembroUrgenciaRenalRepository membroRepo;
+    /**
+     * So para LEITURA de predicados ja existentes (ex.: temPedidoInformacaoAtivo,
+     * Achado 7 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md) - nunca
+     * para decidir nada aqui. A escrita de decisao continua so via
+     * {@link ProcessoService}.
+     */
+    private final ProcessoValidator processoValidator;
 
     public ProcessoDetalheController(ProcessoService processoService,
                                      FluxoProcessoService fluxoService,
@@ -128,7 +136,8 @@ public class ProcessoDetalheController {
                                      MensagemAvaliadorService mensagemAvaliadorService,
                                      VerificadorNomePaciente verificadorNomePaciente,
                                      ParecerRepository parecerRepo,
-                                     MembroUrgenciaRenalRepository membroRepo) {
+                                     MembroUrgenciaRenalRepository membroRepo,
+                                     ProcessoValidator processoValidator) {
         this.processoService = processoService;
         this.fluxoService = fluxoService;
         this.emailTemplateService = emailTemplateService;
@@ -149,6 +158,7 @@ public class ProcessoDetalheController {
         this.verificadorNomePaciente = verificadorNomePaciente;
         this.parecerRepo = parecerRepo;
         this.membroRepo = membroRepo;
+        this.processoValidator = processoValidator;
     }
 
     /**
@@ -438,22 +448,50 @@ public class ProcessoDetalheController {
         // regra aqui - se um dia a regra mudar, este texto some sozinho porque
         // deriva dos mesmos numeros usados para decidir.
         //
+        // pausaAtiva: status OU fato observavel (docs/RELATORIO-STATUS-PROCESSO-
+        // 12-2026-2026-08-11.md, Achado 7) - o MESMO predicado que
+        // ProcessoValidator.validarPausaDecisao usa para de fato bloquear a
+        // decisao (nao so o campo derivado Processo.status, que ja dessincronizou
+        // do fato real em incidentes passados - ver javadoc de
+        // ProcessoValidator.temPedidoInformacaoAtivo). Antes, esta tela detectava
+        // a pausa so por status == SOLICITA_INFORMACAO; agora usa o mesmo OU.
+        //
         // pausaBloqueiaDecisao: MESMO calculo de FluxoProcessoService.montarEtapas
         // (ver PR #47) - "maioria formada" NAO significa "decisao liberada"
-        // enquanto o processo estiver em SOLICITA_INFORMACAO, exceto quando o
-        // coordenador da CET-RS ja votou favoravel (excecao que defere mesmo
-        // pausado). Sem isso, este card dizia "Maioria ja formada" e o alerta
-        // "Sugestao automatica: Deferido" sem nenhuma ressalva - achado A do
+        // enquanto a pausa estiver ativa, exceto quando o coordenador da CET-RS
+        // ja votou favoravel (excecao que defere mesmo pausado). Sem isso, este
+        // card dizia "Maioria ja formada" e o alerta "Sugestao automatica:
+        // Deferido" sem nenhuma ressalva - achado A do
         // docs/RELATORIO-BUG-DOIS-VOTOS-DEFEREM-DURANTE-PAUSA-2026-08.md (o PR
         // #47 so corrigiu o texto da timeline lateral, nao este card).
-        boolean pausaBloqueiaDecisao = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
-            && !processoService.temVotoCoordenadorFavoravel(p);
+        boolean pausaAtiva = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO
+            || processoValidator.temPedidoInformacaoAtivo(p);
+        boolean pausaBloqueiaDecisao = pausaAtiva && !processoService.temVotoCoordenadorFavoravel(p);
         model.addAttribute("pausaBloqueiaDecisao", pausaBloqueiaDecisao);
         String fraseMaioria;
+        // Achado 3 (mesmo relatorio): quando quem decide e o voto unico do
+        // coordenador CET-RS, NUNCA houve maioria - nem antes, nem depois da
+        // pausa. Checado ANTES do ramo generico de "sugestao presente" para nao
+        // cair em "Maioria ja formada" (recaida do Achado 3 do relatorio de
+        // vistoria de brechas de 2026-08-10, que so corrigiu a timeline lateral,
+        // nao este placar). Reusa o vocabulario ja existente em RegraDecisao, em
+        // vez de inventar texto novo.
+        boolean decisaoPeloCoordenador = processoService.temVotoCoordenadorFavoravel(p);
         if (sugestao.isPresent() && pausaBloqueiaDecisao) {
-            fraseMaioria = "Maioria formada, mas BLOQUEADA: aguardando informacao complementar";
+            fraseMaioria = "Maioria formada, mas BLOQUEADA: aguardando informação complementar";
+        } else if (sugestao.isPresent() && decisaoPeloCoordenador) {
+            fraseMaioria = RegraDecisao.VOTO_COORDENADOR.getRotuloLongo();
         } else if (sugestao.isPresent()) {
-            fraseMaioria = "Maioria ja formada";
+            fraseMaioria = "Maioria já formada";
+        } else if (pausaBloqueiaDecisao) {
+            // Achado 2: a pausa tambem pode acontecer ANTES de a maioria se
+            // formar (caso real do processo 12/2026 - 1 favoravel + 1 solicita
+            // informacao + 1 pendente). Sem este ramo, o placar dizia so "Faltam
+            // N voto(s)", escondendo que cobrar o voto pendente nao desbloqueia o
+            // processo sozinho - quem desbloqueia e o solicitante mandar a
+            // informacao e o operador retomar a analise.
+            fraseMaioria = "PAUSADO (aguardando informação complementar) — faltam " + pendentesVoto
+                + (pendentesVoto == 1 ? " voto" : " votos");
         } else if (pendentesVoto == 0) {
             fraseMaioria = "Todos os votos recebidos";
         } else {
@@ -563,7 +601,9 @@ public class ProcessoDetalheController {
 
         // PAUSA: enquanto aguarda informacao complementar do solicitante, a
         // decisao e a finalizacao ficam bloqueadas ate o operador retomar a analise.
-        boolean aguardandoInfo = p.getStatus() == StatusProcesso.SOLICITA_INFORMACAO;
+        // Reusa o mesmo predicado "status OU fato" ja calculado acima (pausaAtiva)
+        // - Achado 7 do docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md.
+        boolean aguardandoInfo = pausaAtiva;
         model.addAttribute("aguardandoInfo", aguardandoInfo);
         // Anexos de informacao complementar ja recebidos (via e-mail lancado pelo
         // operador OU enviados diretamente pelo solicitante no Portal do Solicitante).
