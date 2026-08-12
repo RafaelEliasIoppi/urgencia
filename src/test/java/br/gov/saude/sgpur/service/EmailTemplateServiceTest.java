@@ -72,6 +72,45 @@ class EmailTemplateServiceTest {
         assertThat(info.corpo()).contains("07/2026");
     }
 
+    /**
+     * Mesmo bug corrigido no Portal do Solicitante (2026-08): o e-mail dizia
+     * apenas que "solicitou informações complementares", sem nunca dizer O QUE
+     * foi pedido — quem acompanha so por e-mail ficava sem saber o que enviar.
+     * A justificativa do parecer e obrigatoria nesse voto desde 2026-08-03.
+     */
+    @Test
+    void emailSolicitaInfoIncluiOQueOAvaliadorPediuSemCitarOMedico() {
+        Processo p = processo();
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        Parecer par = p.getPareceres().get(0);
+        par.setResultado(ResultadoParecer.SOLICITA_INFORMACAO);
+        par.setJustificativa("Enviar o laudo da biópsia renal e a creatinina dos últimos 30 dias.");
+
+        EmailTemplate info = service.gerar(p).stream()
+            .filter(e -> e.chave().equals("solicita-info")).findFirst().orElseThrow();
+
+        assertThat(info.corpo()).contains("O que foi pedido:");
+        assertThat(info.corpo())
+            .contains("Enviar o laudo da biópsia renal e a creatinina dos últimos 30 dias.");
+        // Imparcialidade: conteudo do pedido sim, autoria nunca.
+        assertThat(info.corpo()).doesNotContain("Dr. Avaliador");
+        assertThat(info.corpo()).doesNotContain("HCPA");
+    }
+
+    /** Parecer legado, sem justificativa: o e-mail continua valido, so sem o bloco. */
+    @Test
+    void emailSolicitaInfoSemJustificativaNaoQuebraNemInventaBloco() {
+        Processo p = processo();
+        p.setStatus(StatusProcesso.SOLICITA_INFORMACAO);
+        p.getPareceres().get(0).setResultado(ResultadoParecer.SOLICITA_INFORMACAO);
+
+        EmailTemplate info = service.gerar(p).stream()
+            .filter(e -> e.chave().equals("solicita-info")).findFirst().orElseThrow();
+
+        assertThat(info.corpo()).doesNotContain("O que foi pedido");
+        assertThat(info.corpo()).contains("solicitou informações complementares");
+    }
+
     @Test
     void emAnaliseNaoGeraEmailDeResposta() {
         Processo p = processo(); // sem decisao (status nulo) por padrao

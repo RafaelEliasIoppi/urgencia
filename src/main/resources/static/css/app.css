@@ -1797,6 +1797,12 @@ tr.linha-inativa > td:first-child {
     padding: .7rem .85rem;
     font-size: .9rem;
     margin-bottom: .9rem;
+    /* O detalhe carrega texto escrito por gente (motivo do indeferimento,
+       observacoes da triagem e o pedido de informacao complementar do
+       avaliador, que pode vir numerado quando ha mais de um) - as quebras
+       de linha do autor precisam sobreviver, como ja acontece no card de
+       Respostas do operador. */
+    white-space: pre-wrap;
 }
 .cartao-resultado-destaque h2 { font-size: var(--saur-font-xl); }
 
