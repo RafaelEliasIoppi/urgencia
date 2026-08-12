@@ -1,7 +1,12 @@
 # Revisão dos status exibidos — motivada pelo processo 12/2026 (2026-08-11)
 
-**Status deste documento: DIAGNÓSTICO + PLANO. Nada foi implementado.**
-Nenhuma linha de código de produção foi alterada nesta sessão.
+**Status deste documento: IMPLEMENTADO.** As 6 fases do plano (§4) foram
+implementadas no mesmo dia, aprovadas explicitamente pelo dono do produto
+("sim implemente não deixe nada pendente"), por 3 agentes em paralelo (um
+por arquivo, em worktrees isolados, sem sobreposição de escopo) + merge
+serial manual. Ver resumo no `CLAUDE.md`, seção "Implementação do plano de
+correção de status (processo 12/2026)". As seções abaixo continuam sendo o
+registro fiel do diagnóstico original — leia como histórico do "antes".
 
 **Pedido que originou a revisão** (dono do produto, olhando `/processos/17`
 em produção): *"verifique o status do processo 12/2026, corrija os status

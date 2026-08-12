@@ -6060,3 +6060,63 @@ densidade por portal (`data-densidade`) é um eixo independente, não tocado.
 classe CSS do container — confirmado por grep antes da mudança); validação
 visual real via Playwright (1440px e 390px) confirmando os 8 cartões e a
 tabela de 6 colunas continuam responsivos dentro do cap de 1320px.
+
+## Implementação do plano de correção de status (processo 12/2026) — 2026-08-11/12
+
+`docs/RELATORIO-STATUS-PROCESSO-12-2026-2026-08-11.md` — **IMPLEMENTADO**.
+Gatilho: dono do produto olhando `/solicitante/17` (processo 12/2026) em
+produção, achando os status inconsistentes entre telas. Revisão + plano
+feitos com Opus 5 (ver seção anterior deste arquivo); aprovado explicitamente
+("sim implemente não deixe nada pendente") e implementado no mesmo ciclo por
+**3 agentes em paralelo, cada um em worktree isolado, com escopo de arquivo
+sem sobreposição** (para permitir paralelismo real sem risco de conflito de
+merge), seguido de merge serial manual — mesmo padrão já documentado em
+`sgpur-fluxo-agentes-paralelos-merge-manual` (memória do projeto).
+
+**Confirmação prévia (antes de qualquer código):** consulta real ao Postgres
+de produção (somente leitura, via SSH) confirmou que **nenhum status
+gravado estava errado** — os 11 processos de produção (o 12/2026 incluso)
+batiam com a regra de maioria simples/exceção do coordenador/pausa. O
+problema era só de EXIBIÇÃO — nenhum `UPDATE` rodou em produção.
+
+**Divisão dos 3 agentes** (achados do relatório entre parênteses):
+- **`FluxoProcessoService.java`** (Achado 1, o principal, + partes dos
+  Achados 5 e 7): a etapa "Informação complementar" agora nasce sempre
+  `ATUAL` enquanto a pausa `SOLICITA_INFORMACAO` está ativa — antes, se a
+  pausa chegava **antes** de a maioria de pareceres se formar (exatamente o
+  caso do 12/2026: 1 favorável + 1 solicita-informação + 1 pendente), a
+  cascata `anterioresConcluidas` bloqueava a própria etapa da pausa e
+  `pendenciaAberta` apontava erroneamente para "Respostas dos médicos" — uma
+  ação que, mesmo cumprida, não destrava o processo. A detecção da pausa
+  também passou a considerar `ProcessoValidator.temPedidoInformacaoAtivo`
+  (mesmo predicado que já bloqueia a decisão de verdade), não só o `status`
+  cru. Acentuação corrigida nos textos de detalhe das etapas/tooltips.
+- **`ProcessoDetalheController.java`** (Achados 2, 3, partes de 5 e 7): o
+  placar do card "Respostas dos Avaliadores" passou a citar a pausa quando
+  ela ainda não tem maioria formada (antes só dizia "Faltam N votos", sem
+  menção à pausa) e parou de dizer "Maioria já formada" quando quem decidiu
+  foi o voto único do Coordenador CET-RS (recaída do Achado 3 do
+  `RELATORIO-VISTORIA-BRECHAS-DECISAO-2026-08-10.md` — a timeline já tinha
+  sido corrigida, o placar deste card tinha ficado de fora; afetava o
+  processo real 11/2026).
+- **Templates + `StatusProcesso.java` + `PainelLinha.java`** (Achados 4 e
+  6): badge de status acentuado ("Solicita informação" em vez de "Solicita
+  informacao") nas 4 telas que exibiam `StatusProcesso.getDescricao()` cru
+  (`processos/detalhe.html`, `processos/lista.html`, `arquivo/lista.html`,
+  `dashboard.html`) via fragment novo `layout :: statusProcessoTexto` — sem
+  tocar no enum em si (continua alimentando PDF/dossiê/auditoria, decisão
+  deliberada já documentada). `StatusProcesso.getTom()` de `ENVIADO` trocado
+  de `"neutral"` para `"aguardando"`, alinhando com o badge azul já existente
+  (padronização de 2026-08-06) — confirmado sem consumidor em template antes
+  da troca.
+
+Nenhuma fase tocou `ProcessoValidator.validarPausaDecisao`/`sugerirDecisao`/
+`decidir`/`tentarDecisaoAutomatica` nem constantes de maioria simples — só
+apresentação, exatamente como o plano especificou.
+
+**Validação:** merge dos 3 sem nenhum conflito (escopo desenhado
+propositalmente sem sobreposição de arquivo). Suíte completa pós-merge:
+**1003 testes, 0 falhas, 0 erros** (JDK 21). Testes novos cobrindo
+especificamente o cenário "pausa antes da maioria" (a forma exata do
+12/2026) e o par simétrico "pausa depois da maioria", para a assimetria
+nunca mais passar despercebida.
