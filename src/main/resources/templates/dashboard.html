@@ -220,7 +220,7 @@
                             <span class="badge rounded-pill text-wrap"
                                   th:classappend="${l.processo.status.bootstrapBadge}">
                                 <i class="bi" th:classappend="'bi-' + ${l.processo.status.badgeIcone}"></i>
-                                <span th:text="${l.processo.status.descricao}">status</span>
+                                <span th:replace="~{layout :: statusProcessoTexto(${l.processo.status}, false)}">status</span>
                             </span>
                             <div th:if="${l.processo.status.isFinalizado()}" class="badge-encerramento-xs">
                                 <span th:replace="~{layout :: badgeEncerramento(${l.processo}, '')}"></span>

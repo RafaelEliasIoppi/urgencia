@@ -65,8 +65,9 @@
                         <span class="badge badge-rs-blue fw-normal" th:text="${p.solicitanteEquipe}">Equipe</span>
                     </td>
                     <td class="text-center">
-                        <span class="badge rounded-pill" th:classappend="${p.status.bootstrapBadge}"
-                              th:text="${p.status.descricao}">status</span>
+                        <span class="badge rounded-pill" th:classappend="${p.status.bootstrapBadge}">
+                            <span th:replace="~{layout :: statusProcessoTexto(${p.status}, false)}">status</span>
+                        </span>
                         <span th:replace="~{layout :: badgeEncerramento(${p}, 'ms-1')}"></span>
                         <span th:replace="~{layout :: badgeRegraDecisao(${regrasDecisao.get(p.id)}, 'ms-1')}"></span>
                         <span th:replace="~{layout :: badgeReaberturas(${p}, 'ms-1')}"></span>

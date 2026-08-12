@@ -18,8 +18,9 @@
                     <span th:text="${processo.identificacao()}">00/0000 - Paciente - RGCT</span>
                 </h1>
                 <span class="badge align-middle fs-6 px-3 py-1 rounded-pill"
-                      th:classappend="${processo.status.bootstrapBadge}"
-                      th:text="${deferidoPeloCoordenador} ? 'Deferido pelo Coordenador da CET-RS' : ${processo.status.descricao}">status</span>
+                      th:classappend="${processo.status.bootstrapBadge}">
+                    <span th:replace="~{layout :: statusProcessoTexto(${processo.status}, ${deferidoPeloCoordenador})}">status</span>
+                </span>
                 <span th:replace="~{layout :: badgeEncerramento(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
                 <span th:replace="~{layout :: badgeReaberturas(${processo}, 'align-middle px-3 py-1 ms-1')}"></span>
                 <!-- "Aguardando parecer"/"pronto para decidir" - pendencia interna
