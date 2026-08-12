@@ -6120,3 +6120,56 @@ propositalmente sem sobreposição de arquivo). Suíte completa pós-merge:
 especificamente o cenário "pausa antes da maioria" (a forma exata do
 12/2026) e o par simétrico "pausa depois da maioria", para a assimetria
 nunca mais passar despercebida.
+
+## Bug grave corrigido: justificativa do avaliador nunca chegava ao solicitante (2026-08-11/12)
+
+**Achado pelo dono do produto**, olhando `/solicitante/17` (processo
+12/2026) em produção: o processo estava pausado por "Solicita informação",
+mas em NENHUM lugar do Portal do Solicitante aparecia o que o avaliador
+tinha efetivamente pedido — só a mensagem genérica "um(a) avaliador(a)
+pediu mais informações". O solicitante não tinha como saber o quê enviar.
+
+**Causa raiz:** `Parecer.justificativa` (campo obrigatório desde
+2026-08-03 em voto Não favorável/Solicita informação — ver "Justificativa
+obrigatória em voto..." acima) nunca era repassado a lugar nenhum voltado
+ao solicitante — nem no cartão de situação do Portal (`SituacaoPedidoView
+.detalhe` ficava `null` nesse ramo), nem no corpo do e-mail pronto
+`EmailTemplateService.emailSolicitaInfo` (100% genérico). O texto só
+existia no card interno "Respostas dos Avaliadores" do lado do OPERADOR
+(`processos/detalhe.html`), que já o exibia corretamente — o gap era
+específico do lado do solicitante.
+
+**Correção:** `SolicitanteController.montarSituacaoPedido` (ramo
+`precisaInfo && !jaEnviouInfo`) passou a coletar as `Parecer.justificativa`
+de todo parecer com `resultado == SOLICITA_INFORMACAO` (pode haver mais de
+um — desde a correção de 2026-08-06/07, outros avaliadores continuam
+podendo votar durante a pausa) e preenche o `detalhe` do
+`SituacaoPedidoView` com "O que foi pedido: ..." (ou uma lista numerada, se
+houver mais de um pedido); sem nenhuma justificativa preenchida (parecer
+legado), cai num fallback educado que aponta o chat da própria página, sem
+quebrar. `EmailTemplateService.emailSolicitaInfo` ganhou o mesmo bloco no
+corpo do e-mail pronto. `.cartao-resultado-detalhe` ganhou
+`white-space: pre-wrap` para a lista numerada não colar numa linha só.
+
+**Imparcialidade preservada:** só o CONTEÚDO do pedido é exposto — nenhum
+caminho novo lê `par.getMembro()`; `SituacaoPedidoView` não ganhou nenhum
+campo de autoria. Coberto por teste negativo (nome/instituição do médico
+ausentes do HTML renderizado).
+
+**Verificado que não é o mesmo problema em outro lugar:** a triagem do
+operador (`processos/solicitacoes-online-detalhe.html`) não lista
+pareceres (é a tela da solicitação pré-conversão) — sem pendência ali.
+
+**Pendência conhecida, fora de escopo desta correção** (achado durante a
+investigação, aguardando decisão do dono do produto): quando o solicitante
+JÁ enviou a informação complementar (`precisaInfo && jaEnviouInfo`), o
+cartão muda para "Informações complementares recebidas" e o texto do
+pedido original SOME da tela — pode ser útil manter visível, para o
+solicitante conferir se enviou tudo o que foi pedido. Não implementado.
+
+**Validação:** implementado por um 4º agente (Opus 5) em paralelo aos 3
+acima, em worktree isolado (arquivos totalmente diferentes:
+`SolicitanteController.java`, `EmailTemplateService.java`, `app.css`) — sem
+nenhum conflito no merge. Suíte completa pós-merge: **1005 testes**, única
+falha vista foi a flakiness de timestamp já documentada
+(`ComprovanteSntPendenteQueriesIntegrationTest`), não relacionada.
