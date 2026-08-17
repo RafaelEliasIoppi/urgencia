@@ -6501,3 +6501,51 @@ encerrado bloqueando o endpoint.
 
 **Validação:** suíte completa **1050 testes, 0 falhas** (JDK 21) — sem
 nenhuma flakiness nesta rodada.
+
+## Confirmação de conflito de equipe logo após escolher os 3 médicos (2026-08-17)
+
+`docs/RELATORIO-CONFIRMACAO-CONFLITO-EQUIPE-2026-08.md` — **IMPLEMENTADO**
+(PR #112, `feat/confirmacao-conflito-equipe-escolha-medicos`, squash merge
+em `main`). Pedido do dono do produto: o aviso de "médico da mesma equipe do
+solicitante" (`ConflitoEquipeMatcher.mesmaEquipe`, até então só usado dentro
+de `RegistroEnvioService` e mostrado como `alert-warning` passivo na aba
+Envio do detalhe, recalculado a cada `GET /processos/{id}`) passou a ser
+checado **logo após a escolha dos 3 médicos**, em `processos/form.html`, com
+confirmação explícita do operador.
+
+**Opção A (client-side) escolhida, entre as duas do relatório** — a B
+(trava server-side síncrona no `POST /processos`) foi descartada por ser
+mais rígida/invasiva do que o pedido exigia.
+
+- `ProcessoConflitoEquipeController` (novo): `GET /processos/conflito-
+  equipe?equipe=...&medicoIds=1,2,3` — reusa `ConflitoEquipeMatcher
+  .mesmaEquipe` sem duplicar a regra em JS, mesmo controle de acesso de
+  `/processos/**` (ADMIN/OPERADOR).
+- `static/js/processo-form.js`: assim que o trio de 3 checkboxes de
+  `medicoIds` fica completo (ou muda estando já completo, ou o campo
+  "Equipe / hospital solicitante" é editado depois), consulta o endpoint e,
+  se houver conflito, abre `window.confirmarAcao(mensagem)` — o modal
+  genérico já existente no sistema (`confirmar-acao.js` +
+  `layout :: confirmModal`), citando o(s) nome(s) do(s) médico(s) em
+  conflito. **Fail-open deliberado**: erro de rede não trava o operador,
+  cai silenciosamente em "sem conflito detectado". Guarda contra reperguntar
+  o mesmo trio+equipe já consultado.
+- `processos/form.html` passou a incluir `layout :: confirmModal`/
+  `confirmarAcaoScript` (não incluía) e ganhou `th:checked` nos checkboxes
+  de médico (achado extra do relatório: a seleção se perdia se o form
+  re-renderizasse por erro de validação, ex. número de processo duplicado)
+  — `ProcessoDetalheController.novo`/`salvar` expõem
+  `medicoIdsSelecionados` para alimentar isso.
+- **Nada de regra de negócio real mudou**: `ConflitoEquipeMatcher`,
+  `ProcessoService.cadastrar`, `ProcessoValidator` intocados. O `POST
+  /processos` continua sem bloquear no servidor mesmo com conflito (fiel à
+  filosofia "aviso heurístico, não trava dado" já documentada acima); o
+  aviso não-bloqueante que já existia na tela de detalhe continua existindo,
+  sem alteração — esta mudança é aditiva, antecipa o momento em que o
+  operador toma conhecimento.
+
+**Testes:** `ProcessoConflitoEquipeControllerTest` (`@WebMvcTest`) — sem
+conflito, 1 e 2 médicos em conflito, equipe ausente/em branco (não chama o
+matcher), sem `medicoIds`, acesso por ADMIN e OPERADOR. Suíte completa:
+**1057 testes**, 0 falhas atribuíveis (JDK 21) — a única falha vista numa
+rodada é a flakiness de timestamp do H2 já documentada, pré-existente.
